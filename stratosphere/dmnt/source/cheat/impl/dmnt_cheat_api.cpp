@@ -58,7 +58,21 @@ namespace ams::dmnt::cheat::impl {
         };
 
         constinit os::SdkMutex g_text_file_buffer_lock;
-        constinit char g_text_file_buffer[64_KB];
+        constinit char g_text_file_buffer[128_KB];  //was 64_KB  //I need my 95kb cheat txts to work!!!!!   ELY M.    
+		/*
+		
+		Why not do it via settings like system_settings.ini  
+		and let someone make decision.....   
+		I know there is risk for stuff not to work.... 
+		
+		I need my 95kb txt cheats to work.  
+		It was working great for me in atmosphere 0.17.1   
+		
+		ELY M.   
+		
+		
+		*/
+		
 
         constinit u8 g_frozen_address_map_memory[sizeof(FrozenAddressMapEntry) * MaxFrozenAddressCount];
         constinit lmem::HeapHandle g_frozen_address_map_heap;
