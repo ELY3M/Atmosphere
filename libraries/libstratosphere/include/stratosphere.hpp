@@ -53,6 +53,10 @@
 #include <stratosphere/gpio.hpp>
 #include <stratosphere/hid.hpp>
 #include <stratosphere/hos.hpp>
+#include <stratosphere/htc.hpp>
+#include <stratosphere/htcfs.hpp>
+#include <stratosphere/htclow.hpp>
+#include <stratosphere/htcs.hpp>
 #include <stratosphere/i2c.hpp>
 #include <stratosphere/kvdb.hpp>
 #include <stratosphere/ldr.hpp>
@@ -78,6 +82,7 @@
 #include <stratosphere/socket.hpp>
 #include <stratosphere/spl.hpp>
 #include <stratosphere/time.hpp>
+#include <stratosphere/tma.hpp>
 #include <stratosphere/updater.hpp>
 #include <stratosphere/usb.hpp>
 #include <stratosphere/wec.hpp>
@@ -86,3 +91,6 @@
 #include <stratosphere/fs.hpp>
 #include <stratosphere/fssrv.hpp>
 #include <stratosphere/fssystem.hpp>
+
+/* External modules that we're including. */
+#include <stratosphere/rapidjson.hpp>

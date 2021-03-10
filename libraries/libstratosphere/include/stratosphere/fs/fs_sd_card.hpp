@@ -18,8 +18,14 @@
 
 namespace ams::fs {
 
+    class IEventNotifier;
+
     Result MountSdCard(const char *name);
 
     Result MountSdCardErrorReportDirectoryForAtmosphere(const char *name);
+
+    Result OpenSdCardDetectionEventNotifier(std::unique_ptr<IEventNotifier> *out);
+
+    bool IsSdCardInserted();
 
 }
