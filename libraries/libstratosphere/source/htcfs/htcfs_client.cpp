@@ -20,7 +20,7 @@ namespace ams::htcfs {
 
     namespace {
 
-        constinit TYPED_STORAGE(Client) g_client_storage;
+        constinit util::TypedStorage<Client> g_client_storage;
         constinit bool g_initialized;
 
     }
@@ -28,13 +28,13 @@ namespace ams::htcfs {
     void InitializeClient(htclow::HtclowManager *manager) {
         AMS_ASSERT(!g_initialized);
 
-        std::construct_at(GetPointer(g_client_storage), manager);
+        util::ConstructAt(g_client_storage, manager);
     }
 
     void FinalizeClient() {
         AMS_ASSERT(g_initialized);
 
-        std::destroy_at(GetPointer(g_client_storage));
+        util::DestroyAt(g_client_storage);
     }
 
     Client &GetClient() {
