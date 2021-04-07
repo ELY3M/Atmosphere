@@ -13,6 +13,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+//Modded by ELY M.  
 #include <stratosphere.hpp>
 #include "fatal_task_screen.hpp"
 #include "fatal_config.hpp"
@@ -235,7 +236,7 @@ namespace ams::fatal::srv {
             font::AddSpacingLines(0.5f);
 
             /* TODO: Remove Mesosphere identifier in 1.0.0. */
-            font::PrintFormatLine("Firmware: %s (Atmosphère%s %u.%u.%u-%s)", config.GetFirmwareVersion().display_version, svc::IsKernelMesosphere() ? " M" : "", ATMOSPHERE_RELEASE_VERSION, ams::GetGitRevision());
+            font::PrintFormatLine("Firmware: %s (Atmosphère-elys-%s %u.%u.%u-%s)", config.GetFirmwareVersion().display_version, svc::IsKernelMesosphere() ? " M" : "", ATMOSPHERE_RELEASE_VERSION, ams::GetGitRevision());
             font::AddSpacingLines(1.5f);
             if (!exosphere::ResultVersionMismatch::Includes(this->context->result)) {
                 font::Print(config.GetErrorDescription());

@@ -13,6 +13,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+ //Modded by ELY M. 
 #include <stratosphere.hpp>
 #include "dmnt_cheat_api.hpp"
 #include "dmnt_cheat_vm.hpp"
@@ -58,7 +59,7 @@ namespace ams::dmnt::cheat::impl {
         };
 
         constinit os::SdkMutex g_text_file_buffer_lock;
-        constinit char g_text_file_buffer[128_KB];  //was 64_KB  //I need my 95kb cheat txts to work!!!!!   ELY M.    
+        constinit char g_text_file_buffer[256_KB];  //was 64_KB  //I need my 95kb cheat txts to work!!!!!   ELY M.    
 		/*
 		
 		Why not do it via settings like system_settings.ini  

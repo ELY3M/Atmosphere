@@ -13,6 +13,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+//Modded by ELY M.  
 #include <stratosphere.hpp>
 #include "fatal_config.hpp"
 #include "fatal_task_error_report.hpp"
@@ -84,7 +85,7 @@ namespace ams::fatal::srv {
                     if (strlen(this->context->proc_name)) {
                         file.WriteFormat("Process Name:                    %s\n", this->context->proc_name);
                     }
-                    file.WriteFormat("Firmware:                        %s (Atmosphère %u.%u.%u-%s)\n", GetFatalConfig().GetFirmwareVersion().display_version, ATMOSPHERE_RELEASE_VERSION, ams::GetGitRevision());
+                    file.WriteFormat("Firmware:                        %s (Atmosphère-elys %u.%u.%u-%s)\n", GetFatalConfig().GetFirmwareVersion().display_version, ATMOSPHERE_RELEASE_VERSION, ams::GetGitRevision());
 
                     if (this->context->cpu_ctx.architecture == CpuContext::Architecture_Aarch32) {
                         file.WriteFormat("General Purpose Registers:\n");
