@@ -17,3 +17,7 @@
 
 #include <stratosphere/htc/server/htc_htcmisc_hipc_server.hpp>
 #include <stratosphere/htc/server/htc_htcmisc_channel_ids.hpp>
+
+#include <stratosphere/htc/tenv/htc_tenv_types.hpp>
+#include <stratosphere/htc/tenv/htc_tenv.hpp>
+#include <stratosphere/htc/tenv/htc_tenv_service_manager.hpp>

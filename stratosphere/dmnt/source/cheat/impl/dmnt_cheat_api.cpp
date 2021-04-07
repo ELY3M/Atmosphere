@@ -80,13 +80,13 @@ namespace ams::dmnt::cheat::impl {
         FrozenAddressMapEntry *AllocateFrozenAddress(u64 address, FrozenAddressValue value) {
             FrozenAddressMapEntry *entry = static_cast<FrozenAddressMapEntry *>(lmem::AllocateFromUnitHeap(g_frozen_address_map_heap));
             if (entry != nullptr) {
-                new (entry) FrozenAddressMapEntry(address, value);
+                std::construct_at(entry, address, value);
             }
             return entry;
         }
 
         void DeallocateFrozenAddress(FrozenAddressMapEntry *entry) {
-            entry->~FrozenAddressMapEntry();
+            std::destroy_at(entry);
             lmem::FreeToUnitHeap(g_frozen_address_map_heap, entry);
         }
 
@@ -1162,7 +1162,7 @@ namespace ams::dmnt::cheat::impl {
 
 
         /* Manager global. */
-        TYPED_STORAGE(CheatProcessManager) g_cheat_process_manager;
+        util::TypedStorage<CheatProcessManager> g_cheat_process_manager;
 
     }
 
@@ -1174,7 +1174,7 @@ namespace ams::dmnt::cheat::impl {
         g_frozen_address_map_heap = lmem::CreateUnitHeap(g_frozen_address_map_memory, sizeof(g_frozen_address_map_memory), sizeof(FrozenAddressMapEntry), lmem::CreateOption_ThreadSafe);
 
         /* Create the cheat process manager (spawning its threads). */
-        new (GetPointer(g_cheat_process_manager)) CheatProcessManager;
+        util::ConstructAt(g_cheat_process_manager);
     }
 
     bool GetHasActiveCheatProcess() {
