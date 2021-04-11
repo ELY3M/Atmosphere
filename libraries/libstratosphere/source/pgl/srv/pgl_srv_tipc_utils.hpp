@@ -16,14 +16,8 @@
 #pragma once
 #include <stratosphere.hpp>
 
-namespace ams::sm::impl {
+namespace ams::pgl::srv {
 
-    using ResumeFunction = Result (*)(os::WaitableHolderType *session_holder);
-
-    Result StartRegisterRetry(ServiceName service);
-    void   ProcessRegisterRetry(os::WaitableHolderType *session_holder);
-
-    void TriggerResume(ServiceName service);
-    void TestAndResume(ResumeFunction resume_function);
+    Result AllocateShellEventObserverForTipc(svc::Handle *out);
 
 }

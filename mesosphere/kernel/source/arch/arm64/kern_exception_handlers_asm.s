@@ -13,6 +13,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include <mesosphere/kern_select_assembly_offsets.h>
 
 /* ams::kern::arch::arm64::EL1IrqExceptionHandler() */
 .section    .text._ZN3ams4kern4arch5arm6422EL1IrqExceptionHandlerEv, "ax", %progbits
@@ -99,7 +100,7 @@ _ZN3ams4kern4arch5arm6422EL0IrqExceptionHandlerEv:
     str     x23, [sp, #(8 * 34)]
 
     /* Invoke KInterruptManager::HandleInterrupt(bool user_mode). */
-    ldr     x18, [sp, #(0x120 + 0x28)]
+    ldr     x18, [sp, #(0x120 + THREAD_STACK_PARAMETERS_CUR_THREAD)]
     mov     x0, #1
     bl      _ZN3ams4kern4arch5arm6417KInterruptManager15HandleInterruptEb
 
@@ -196,7 +197,7 @@ _ZN3ams4kern4arch5arm6430EL0SynchronousExceptionHandlerEv:
     str     x23, [sp, #(8 * 34)]
 
     /* Call ams::kern::arch::arm64::HandleException(ams::kern::arch::arm64::KExceptionContext *) */
-    ldr     x18, [sp, #(0x120 + 0x28)]
+    ldr     x18, [sp, #(0x120 + THREAD_STACK_PARAMETERS_CUR_THREAD)]
     mov     x0,  sp
     bl      _ZN3ams4kern4arch5arm6415HandleExceptionEPNS2_17KExceptionContextE
 
@@ -280,8 +281,8 @@ _ZN3ams4kern4arch5arm6430EL0SynchronousExceptionHandlerEv:
 .global     _ZN3ams4kern4arch5arm6430EL1SynchronousExceptionHandlerEv
 .type       _ZN3ams4kern4arch5arm6430EL1SynchronousExceptionHandlerEv, %function
 _ZN3ams4kern4arch5arm6430EL1SynchronousExceptionHandlerEv:
-    /* Nintendo uses the "unused" virtual timer compare value as a scratch register. */
-    msr     cntv_cval_el0, x0
+    /* Nintendo uses tpidr_el1 as a scratch register. */
+    msr     tpidr_el1, x0
 
     /* Get and parse the exception syndrome register. */
     mrs     x0, esr_el1
@@ -296,18 +297,21 @@ _ZN3ams4kern4arch5arm6430EL1SynchronousExceptionHandlerEv:
     b.eq    5f
 
 1:  /* The exception is not a data abort or instruction abort caused by a TLB conflict. */
-    /* Load the exception stack top from tpidr_el1. */
-    mrs     x0, tpidr_el1
+    /* Load the exception stack top from otherwise "unused" virtual timer compare value. */
+    mrs     x0, cntv_cval_el0
 
     /* Setup the stack for a generic exception handle */
+    lsl     x0, x0, #8
+    asr     x0, x0, #8
     sub     x0, x0, #0x20
-    str     x1, [x0, #16]
+    str     x1, [x0, #8]
     mov     x1, sp
     str     x1, [x0]
     mov     sp, x0
-    ldr     x1, [x0, #16]
-    mrs     x0, cntv_cval_el0
+    ldr     x1, [x0, #8]
+    mrs     x0, tpidr_el1
     str     x0, [sp, #8]
+    str     x1, [sp, #16]
 
     /* Check again if this is a data abort from EL1. */
     mrs     x0, esr_el1
@@ -405,7 +409,7 @@ _ZN3ams4kern4arch5arm6430EL1SynchronousExceptionHandlerEv:
     isb
 
     /* Restore x0 from scratch. */
-    mrs     x0, cntv_cval_el0
+    mrs     x0, tpidr_el1
 
     /* Return from the exception. */
     eret
@@ -440,7 +444,7 @@ _ZN3ams4kern4arch5arm6425FpuAccessExceptionHandlerEv:
     stp     x20, x21, [sp, #(8 * 32)]
 
     /* Invoke the FPU context switch handler. */
-    ldr     x18, [sp, #(0x120 + 0x28)]
+    ldr     x18, [sp, #(0x120 + THREAD_STACK_PARAMETERS_CUR_THREAD)]
     bl      _ZN3ams4kern4arch5arm6423FpuContextSwitchHandlerEv
 
     /* Restore registers that we saved. */
@@ -473,21 +477,22 @@ _ZN3ams4kern4arch5arm6425FpuAccessExceptionHandlerEv:
 .global     _ZN3ams4kern4arch5arm6421EL1SystemErrorHandlerEv
 .type       _ZN3ams4kern4arch5arm6421EL1SystemErrorHandlerEv, %function
 _ZN3ams4kern4arch5arm6421EL1SystemErrorHandlerEv:
-    /* Nintendo uses the "unused" virtual timer compare value as a scratch register. */
-    msr     cntv_cval_el0, x0
+    /* Nintendo uses tpidr_el1 as a scratch register. */
+    msr     tpidr_el1, x0
 
-    /* Load the exception stack top from tpidr_el1. */
-    mrs     x0, tpidr_el1
+    /* Load the exception stack top from otherwise "unused" virtual timer compare value. */
+    mrs     x0, cntv_cval_el0
 
     /* Setup the stack for a generic exception handle */
+    lsl     x0, x0, #8
+    asr     x0, x0, #8
     sub     x0, x0, #0x20
-    str     x1, [x0, #16]
+    str     x1, [x0, #8]
     mov     x1, sp
     str     x1, [x0]
     mov     sp, x0
-    ldr     x1, [x0, #16]
-    mrs     x0, cntv_cval_el0
-    str     x0, [sp, #8]
+    ldr     x1, [x0, #8]
+    mrs     x0, tpidr_el1
 
     /* Create a KExceptionContext to pass to HandleException. */
     sub     sp, sp, #0x120
@@ -554,7 +559,7 @@ _ZN3ams4kern4arch5arm6421EL0SystemErrorHandlerEv:
     str     x23, [sp, #(8 * 34)]
 
     /* Invoke ams::kern::arch::arm64::HandleException(ams::kern::arch::arm64::KExceptionContext *). */
-    ldr     x18, [sp, #(0x120 + 0x28)]
+    ldr     x18, [sp, #(0x120 + THREAD_STACK_PARAMETERS_CUR_THREAD)]
     mov     x0, sp
     bl      _ZN3ams4kern4arch5arm6415HandleExceptionEPNS2_17KExceptionContextE
 

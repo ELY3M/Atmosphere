@@ -15,17 +15,16 @@
  */
 
 #pragma once
-#include <stratosphere.hpp>
+#include <vapours/results/results_common.hpp>
 
-namespace ams::sm {
+namespace ams::tipc {
 
-    /* Service definition. */
-    class DebugMonitorService {
-        public:
-            Result AtmosphereGetRecord(sf::Out<ServiceRecord> record, ServiceName service);
-            void AtmosphereListRecords(const sf::OutArray<ServiceRecord> &records, sf::Out<u64> out_count, u64 offset);
-            void AtmosphereGetRecordSize(sf::Out<u64> record_size);
-    };
-    static_assert(sm::impl::IsIDebugMonitorInterface<DebugMonitorService>);
+    R_DEFINE_NAMESPACE_RESULT_MODULE(35);
+
+    R_DEFINE_ERROR_RESULT(InvalidMethod,        10);
+    R_DEFINE_ERROR_RESULT(InvalidMessageFormat, 15);
+
+    R_DEFINE_ERROR_RESULT(RequestDeferred, 100);
+    R_DEFINE_ERROR_RESULT(SessionClosed,   101);
 
 }
