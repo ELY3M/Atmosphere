@@ -24,8 +24,10 @@ namespace ams::dmnt::cheat::impl {
     namespace {
 
         /* Helper definitions. */
-        constexpr size_t MaxCheatCount = 0x80;
-        constexpr size_t MaxFrozenAddressCount = 0x80;
+		// from 0x80 to 0x100  (128 to 256) //ELY M. 
+		//need to increase or the cheats will get cut off....    
+        constexpr size_t MaxCheatCount = 0x100;
+        constexpr size_t MaxFrozenAddressCount = 0x100;
 
         class FrozenAddressMapEntry : public util::IntrusiveRedBlackTreeBaseNode<FrozenAddressMapEntry> {
             public:
