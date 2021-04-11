@@ -53,7 +53,7 @@ __metadata_kernel_layout:
     .word __bss_start__      - _start /* rw_end_offset */
     .word __bss_start__      - _start /* bss_offset */
     .word __bss_end__        - _start /* bss_end_offset */
-    .word __end__            - _start /* ini_load_offset */
+    .word __end__            - _start /* resource_offset */
     .word _DYNAMIC           - _start /* dynamic_offset */
     .word __init_array_start - _start /* init_array_offset */
     .word __init_array_end   - _start /* init_array_end_offset */
@@ -227,9 +227,9 @@ _ZN3ams4kern4init16InvokeEntrypointEPKNS1_14KInitArgumentsE:
     /* Ensure that the exception vectors are setup. */
     bl _ZN3ams4kern4init26InitializeExceptionVectorsEv
 
-    /* Setup the exception stack in tpidr_el1. */
+    /* Setup the exception stack in cntv_cval_el0. */
     ldr x1, [x20, #0x58]
-    msr tpidr_el1, x1
+    msr cntv_cval_el0, x1
 
     /* Jump to the entrypoint. */
     ldr x1, [x20, #0x40]
