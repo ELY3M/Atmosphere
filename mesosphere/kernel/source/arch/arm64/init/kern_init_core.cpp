@@ -462,16 +462,20 @@ namespace ams::kern::init {
 
         /* All linear-mapped DRAM regions that we haven't tagged by this point will be allocated to some pool partition. Tag them. */
         for (auto &region : KMemoryLayout::GetPhysicalMemoryRegionTree()) {
-            if (region.GetType() == (KMemoryRegionType_Dram | KMemoryRegionAttr_LinearMapped)) {
+            constexpr auto UntaggedLinearDram = util::FromUnderlying<KMemoryRegionType>(util::ToUnderlying<KMemoryRegionType>(KMemoryRegionType_Dram) | util::ToUnderlying(KMemoryRegionAttr_LinearMapped));
+            if (region.GetType() == UntaggedLinearDram) {
                 region.SetType(KMemoryRegionType_DramPoolPartition);
             }
         }
+
+        /* Set the linear memory offsets, to enable conversion between physical and virtual addresses. */
+        KMemoryLayout::InitializeLinearMemoryAddresses(aligned_linear_phys_start, linear_region_start);
 
         /* Setup all other memory regions needed to arrange the pool partitions. */
         SetupPoolPartitionMemoryRegions();
 
         /* Cache all linear regions in their own trees for faster access, later. */
-        KMemoryLayout::InitializeLinearMemoryRegionTrees(aligned_linear_phys_start, linear_region_start);
+        KMemoryLayout::InitializeLinearMemoryRegionTrees();
 
         /* Turn on all other cores. */
         TurnOnAllCores(GetInteger(init_pt.GetPhysicalAddress(reinterpret_cast<uintptr_t>(::ams::kern::init::StartOtherCore))));
