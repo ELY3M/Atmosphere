@@ -387,8 +387,8 @@ namespace ams::dmnt::cheat::impl {
                 break;
             case CheatVmOpcodeType_EndConditionalBlock:
                 {
-                    /* 20000000 */
-                    /* There's actually nothing left to process here! */
+                    /* 2X000000 */
+                    opcode.end_cond.is_else = ((first_dword >> 24) & 0xF) == 1;
                 }
                 break;
             case CheatVmOpcodeType_ControlLoop:
@@ -397,7 +397,7 @@ namespace ams::dmnt::cheat::impl {
                     /* 310R0000 */
                     /* Parse register, whether loop start or loop end. */
                     opcode.ctrl_loop.start_loop = ((first_dword >> 24) & 0xF) == 0;
-                    opcode.ctrl_loop.reg_index = ((first_dword >> 20) & 0xF);
+                    opcode.ctrl_loop.reg_index = ((first_dword >> 16) & 0xF);
 
                     /* Read number of iters if loop start. */
                     if (opcode.ctrl_loop.start_loop) {
@@ -668,7 +668,7 @@ namespace ams::dmnt::cheat::impl {
         return valid;
     }
 
-    void CheatVirtualMachine::SkipConditionalBlock() {
+    void CheatVirtualMachine::SkipConditionalBlock(bool is_if) {
         if (this->condition_depth > 0) {
             /* We want to continue until we're out of the current block. */
             const size_t desired_depth = this->condition_depth - 1;
@@ -685,15 +685,18 @@ namespace ams::dmnt::cheat::impl {
                 if (skip_opcode.begin_conditional_block) {
                     this->condition_depth++;
                 } else if (skip_opcode.opcode == CheatVmOpcodeType_EndConditionalBlock) {
-                    this->condition_depth--;
+                    if (!skip_opcode.end_cond.is_else) {
+                        this->condition_depth--;
+                    } else if (is_if && this->condition_depth - 1 == desired_depth) {
+                        /* An if will continue to an else at the same depth. */
+                        break;
+                    }
                 }
             }
         } else {
             /* Skipping, but this->condition_depth = 0. */
             /* This is an error condition. */
-            /* However, I don't actually believe it is possible for this to happen. */
-            /* I guess we'll throw a fatal error here, so as to encourage me to fix the VM */
-            /* in the event that someone triggers it? I don't know how you'd do that. */
+            /* This could occur with a mismatched "else" opcode, for example. */
             R_ABORT_UNLESS(ResultVirtualMachineInvalidConditionDepth());
         }
     }
@@ -721,6 +724,10 @@ namespace ams::dmnt::cheat::impl {
                 return metadata->main_nso_extents.base + rel_address;
             case MemoryAccessType_Heap:
                 return metadata->heap_extents.base + rel_address;
+            case MemoryAccessType_Alias:
+                return metadata->alias_extents.base + rel_address;
+            case MemoryAccessType_Aslr:
+                return metadata->aslr_extents.base + rel_address;
         }
     }
 
@@ -846,15 +853,20 @@ namespace ams::dmnt::cheat::impl {
                         }
                         /* Skip conditional block if condition not met. */
                         if (!cond_met) {
-                            this->SkipConditionalBlock();
+                            this->SkipConditionalBlock(true);
                         }
                     }
                     break;
                 case CheatVmOpcodeType_EndConditionalBlock:
-                    /* Decrement the condition depth. */
-                    /* We will assume, graciously, that mismatched conditional block ends are a nop. */
-                    if (this->condition_depth > 0) {
-                        this->condition_depth--;
+                    if (cur_opcode.end_cond.is_else) {
+                        /* Skip to the end of the conditional block. */
+                        this->SkipConditionalBlock(false);
+                    } else {
+                        /* Decrement the condition depth. */
+                        /* We will assume, graciously, that mismatched conditional block ends are a nop. */
+                        if (this->condition_depth > 0) {
+                            this->condition_depth--;
+                        }
                     }
                     break;
                 case CheatVmOpcodeType_ControlLoop:
@@ -961,7 +973,7 @@ namespace ams::dmnt::cheat::impl {
                     /* Check for keypress. */
                     if ((cur_opcode.begin_keypress_cond.key_mask & kHeld) != cur_opcode.begin_keypress_cond.key_mask) {
                         /* Keys not pressed. Skip conditional block. */
-                        this->SkipConditionalBlock();
+                        this->SkipConditionalBlock(true);
                     }
                     break;
                 case CheatVmOpcodeType_PerformArithmeticRegister:
@@ -1160,7 +1172,7 @@ namespace ams::dmnt::cheat::impl {
 
                         /* Skip conditional block if condition not met. */
                         if (!cond_met) {
-                            this->SkipConditionalBlock();
+                            this->SkipConditionalBlock(true);
                         }
                     }
                     break;

@@ -14,22 +14,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef FUSEE_FS_UTILS_H
-#define FUSEE_FS_UTILS_H
+#pragma once
+#include <vapours/common.hpp>
+#include <vapours/assert.hpp>
 
-#include <stdbool.h>
-#include <stdint.h>
+namespace ams::util {
 
-#include "../../../fusee/common/sdmmc/sdmmc.h"
-#include "utils.h"
+    struct in_place_t{};
 
-extern sdmmc_t g_sd_sdmmc;
-extern sdmmc_device_t g_sd_device;
+    constexpr inline in_place_t in_place = {};
 
-bool mount_sd(void);
-void unmount_sd(void);
-uint32_t get_file_size(const char *filename);
-int read_from_file(void *dst, uint32_t dst_size, const char *filename);
-int write_to_file(void *src, uint32_t src_size, const char *filename);
-
-#endif
+}
