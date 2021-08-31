@@ -65,7 +65,6 @@ dist-no-debug: all
 	mkdir -p atmosphere-$(AMSVER)/atmosphere/flags
 	touch atmosphere-$(AMSVER)/atmosphere/flags/clean_stratosphere_for_0.19.0.flag
 	cp fusee/fusee-primary/fusee-primary.bin atmosphere-$(AMSVER)/atmosphere/reboot_payload.bin
-	cp fusee/fusee-mtc/fusee-mtc.bin atmosphere-$(AMSVER)/atmosphere/fusee-mtc.bin
 	cp fusee/fusee-secondary/fusee-secondary-experimental.bin atmosphere-$(AMSVER)/atmosphere/fusee-secondary.bin
 	cp config_templates/BCT.ini atmosphere-$(AMSVER)/atmosphere/config_templates/BCT.ini
 	cp config_templates/override_config.ini atmosphere-$(AMSVER)/atmosphere/config_templates/override_config.ini
@@ -120,7 +119,6 @@ dist: dist-no-debug
 	rm -rf atmosphere-$(AMSVER)-debug
 	mkdir atmosphere-$(AMSVER)-debug
 	cp fusee/fusee-primary/fusee-primary.elf atmosphere-$(AMSVER)-debug/fusee-primary.elf
-	cp fusee/fusee-mtc/fusee-mtc.elf atmosphere-$(AMSVER)-debug/fusee-mtc.elf
 	cp fusee/fusee-secondary/fusee-secondary-experimental.elf atmosphere-$(AMSVER)-debug/fusee-secondary.elf
 	cp exosphere/loader_stub/loader_stub.elf atmosphere-$(AMSVER)-debug/exosphere-loader-stub.elf
 	cp exosphere/program/program.elf atmosphere-$(AMSVER)-debug/exosphere-program.elf
