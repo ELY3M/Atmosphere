@@ -13,6 +13,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+//Modded by ELY M.   
 #include <stratosphere.hpp>
 #include "setsys_mitm_service.hpp"
 #include "settings_sd_kvs.hpp"
@@ -60,7 +61,7 @@ namespace ams::mitm::settings {
                 /* No truncation occurs assuming two-digits for all version number components. */
                 char display_version[sizeof(g_ams_firmware_version.display_version)];
 
-                util::SNPrintf(display_version, sizeof(display_version), "%s|AMS %u.%u.%u|%c", g_ams_firmware_version.display_version, api_info.GetMajorVersion(), api_info.GetMinorVersion(), api_info.GetMicroVersion(), emummc_char);
+                util::SNPrintf(display_version, sizeof(display_version), "%s|AMSELY %u.%u.%u|%c", g_ams_firmware_version.display_version, api_info.GetMajorVersion(), api_info.GetMinorVersion(), api_info.GetMicroVersion(), emummc_char);
 
                 std::memcpy(g_ams_firmware_version.display_version, display_version, sizeof(display_version));
             }
