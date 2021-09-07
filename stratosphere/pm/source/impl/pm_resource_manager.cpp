@@ -171,10 +171,6 @@ namespace ams::pm::resource {
         }
 
         bool IsKTraceEnabled() {
-            if (!svc::IsKernelMesosphere()) {
-                return false;
-            }
-
             u64 value = 0;
             R_ABORT_UNLESS(svc::GetInfo(std::addressof(value), svc::InfoType_MesosphereMeta, INVALID_HANDLE, svc::MesosphereMetaInfo_IsKTraceEnabled));
 
@@ -248,7 +244,7 @@ namespace ams::pm::resource {
         }
 
         /* Choose and initialize memory arrangement. */
-        const bool use_dynamic_memory_arrangement = (hos_version >= hos::Version_6_0_0) || (svc::IsKernelMesosphere() && hos_version >= hos::Version_5_0_0);
+        const bool use_dynamic_memory_arrangement = (hos_version >= hos::Version_5_0_0);
         if (use_dynamic_memory_arrangement) {
             /* 6.0.0 retrieves memory limit information from the kernel, rather than using a hardcoded profile. */
             g_memory_arrangement = spl::MemoryArrangement_Dynamic;
@@ -275,8 +271,7 @@ namespace ams::pm::resource {
 
             /* Adjust memory limits for atmosphere. */
             /* We take memory away from applet normally, but away from application on < 3.0.0 to avoid a rare hang on boot. */
-            /* NOTE: On Version 5.0.0+, we cannot set the pools so simply. We must instead modify the kernel, which we do */
-            /* via patches in fusee-secondary. */
+            /* NOTE: On Version 5.0.0+, we cannot set the pools so simply. We must instead rely on mesosphere support. */
             const size_t extra_memory_size = hos_version == hos::Version_5_0_0 ? ExtraSystemMemorySizeAtmosphere500 : ExtraSystemMemorySizeAtmosphere;
             const auto src_group = hos_version >= hos::Version_3_0_0 ? ResourceLimitGroup_Applet : ResourceLimitGroup_Application;
             for (size_t i = 0; i < spl::MemoryArrangement_Count; i++) {
