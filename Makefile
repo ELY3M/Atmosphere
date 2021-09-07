@@ -122,6 +122,7 @@ dist-no-debug: all
 	@build_romfs atmosphere-$(AMSVER)/stratosphere_romfs atmosphere-$(AMSVER)/atmosphere/stratosphere.romfs
 	rm -r atmosphere-$(AMSVER)/stratosphere_romfs
 	cp troposphere/reboot_to_payload/reboot_to_payload.nro atmosphere-$(AMSVER)/switch/reboot_to_payload.nro
+	cp troposphere/reboot_to_hekate/reboot_to_hekate.nro atmosphere-$(AMSVER)/switch/reboot_to_hekate.nro
 	cp troposphere/daybreak/daybreak.nro atmosphere-$(AMSVER)/switch/daybreak.nro
 	cd atmosphere-$(AMSVER); zip -r ../atmosphere-$(AMSVER).zip ./*; cd ../;
 	rm -rf atmosphere-$(AMSVER)
