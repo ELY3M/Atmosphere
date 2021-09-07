@@ -24,6 +24,8 @@ namespace ams::fuse {
         static_assert(SocType_CommonInternal != SocType_Erista);
         static_assert(SocType_CommonInternal != SocType_Mariko);
 
+        constinit SocType g_soc_type = SocType_CommonInternal;
+
         struct BypassEntry {
             u32 offset;
             u32 value;
@@ -365,22 +367,35 @@ namespace ams::fuse {
     }
 
     SocType GetSocType() {
-        switch (GetHardwareType()) {
-            case HardwareType_Icosa:
-            case HardwareType_Copper:
-                return SocType_Erista;
-            case HardwareType_Iowa:
-            case HardwareType_Hoag:
-            case HardwareType_Calcio:
-            case HardwareType_Aula:
-                return SocType_Mariko;
-            default:
-                return SocType_Undefined;
+        if (AMS_LIKELY(g_soc_type != SocType_CommonInternal)) {
+            return g_soc_type;
+        } else {
+            switch (GetHardwareType()) {
+                case HardwareType_Icosa:
+                case HardwareType_Copper:
+                    g_soc_type = SocType_Erista;
+                    break;
+                case HardwareType_Iowa:
+                case HardwareType_Hoag:
+                case HardwareType_Calcio:
+                case HardwareType_Aula:
+                    g_soc_type = SocType_Mariko;
+                    break;
+                default:
+                    g_soc_type = SocType_Undefined;
+                    break;
+            }
+
+            return g_soc_type;
         }
     }
 
     int GetExpectedFuseVersion(TargetFirmware target_fw) {
         return GetExpectedFuseVersionImpl(target_fw);
+    }
+
+    int GetFuseVersion() {
+        return util::PopCount(GetCommonOdmWord(7));
     }
 
     bool HasRcmVulnerabilityPatch() {
@@ -430,6 +445,19 @@ namespace ams::fuse {
 
     bool IsOdmProductionMode() {
         return reg::HasValue(GetChipRegistersCommon().FUSE_SECURITY_MODE, FUSE_REG_BITS_ENUM(SECURITY_MODE_SECURITY_MODE, ENABLED));
+    }
+
+    bool GetSecureBootKey(void *dst) {
+        /* Get the sbk from fuse data. */
+        bool valid = false;
+        for (size_t i = 0; i < 4; ++i) {
+            const u32 key_word = GetChipRegistersCommon().FUSE_PRIVATE_KEY[i];
+
+            static_cast<u32 *>(dst)[i] = key_word;
+            valid |= key_word != 0xFFFFFFFF;
+        }
+
+        return valid;
     }
 
     void ConfigureFuseBypass() {

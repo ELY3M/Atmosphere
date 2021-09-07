@@ -17,7 +17,7 @@ CXXFLAGS    := $(CFLAGS) $(ATMOSPHERE_CXXFLAGS) -fno-use-cxa-atexit
 ASFLAGS     := $(ATMOSPHERE_ASFLAGS) $(SETTINGS)
 else ifeq ($(strip $(ATMOSPHERE_ARCH_NAME)),arm)
 DEFINES     := $(ATMOSPHERE_DEFINES) -DATMOSPHERE_IS_EXOSPHERE
-SETTINGS    := $(ATMOSPHERE_SETTINGS) -Os -Werror -fno-non-call-exceptions \
+SETTINGS    := $(ATMOSPHERE_SETTINGS) -O2 -Werror -fno-non-call-exceptions \
                -Wno-array-bounds \
                -Wno-stringop-overflow \
                -Wno-stringop-overread
@@ -43,7 +43,7 @@ export CXXWRAPS := -Wl,--wrap,__cxa_pure_virtual \
 			-Wl,--wrap,_ZSt20__throw_length_errorPKc \
 			-Wl,--wrap,_ZNSt11logic_errorC2EPKc
 
-export LIBS := -l$(LIBEXOSPHERE_NAME)
+export LIBS := -l$(LIBEXOSPHERE_NAME) -lgcc
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing

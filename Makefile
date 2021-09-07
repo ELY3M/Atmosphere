@@ -13,9 +13,29 @@ ifneq (, $(strip $(shell git status --porcelain 2>/dev/null)))
     AMSREV := $(AMSREV)-dirty
 endif
 
-COMPONENTS := fusee stratosphere mesosphere exosphere thermosphere troposphere libraries
+COMPONENTS := fusee stratosphere mesosphere exosphere emummc thermosphere troposphere libraries
 
 all: $(COMPONENTS)
+	$(eval MAJORVER = $(shell grep 'define ATMOSPHERE_RELEASE_VERSION_MAJOR\b' libraries/libvapours/include/vapours/ams/ams_api_version.h \
+		| tr -s [:blank:] \
+		| cut -d' ' -f3))
+	$(eval MINORVER = $(shell grep 'define ATMOSPHERE_RELEASE_VERSION_MINOR\b' libraries/libvapours/include/vapours/ams/ams_api_version.h \
+		| tr -s [:blank:] \
+		| cut -d' ' -f3))
+	$(eval MICROVER = $(shell grep 'define ATMOSPHERE_RELEASE_VERSION_MICRO\b' libraries/libvapours/include/vapours/ams/ams_api_version.h \
+		| tr -s [:blank:] \
+		| cut -d' ' -f3))
+	$(eval S_MAJORVER = $(shell grep 'define ATMOSPHERE_SUPPORTED_HOS_VERSION_MAJOR\b' libraries/libvapours/include/vapours/ams/ams_api_version.h \
+		| tr -s [:blank:] \
+		| cut -d' ' -f3))
+	$(eval S_MINORVER = $(shell grep 'define ATMOSPHERE_SUPPORTED_HOS_VERSION_MINOR\b' libraries/libvapours/include/vapours/ams/ams_api_version.h \
+		| tr -s [:blank:] \
+		| cut -d' ' -f3))
+	$(eval S_MICROVER = $(shell grep 'define ATMOSPHERE_SUPPORTED_HOS_VERSION_MICRO\b' libraries/libvapours/include/vapours/ams/ams_api_version.h \
+		| tr -s [:blank:] \
+		| cut -d' ' -f3))
+	@python fusee/build_package3.py $(CURDIR) release $(AMSHASH) $(MAJORVER) $(MINORVER) $(MICROVER) 0 $(S_MAJORVER) $(S_MINORVER) $(S_MICROVER) 0
+	@echo "Built package3!"
 
 thermosphere:
 	$(MAKE) -C thermosphere all
@@ -32,6 +52,9 @@ mesosphere: exosphere libraries
 troposphere: stratosphere
 	$(MAKE) -C troposphere all
 
+emummc:
+	$(MAKE) -C emummc all
+
 fusee: exosphere mesosphere stratosphere
 	$(MAKE) -C $@ all
 
@@ -41,6 +64,11 @@ libraries:
 clean:
 	$(MAKE) -C fusee clean
 	$(MAKE) -C emummc clean
+	$(MAKE) -C libraries clean
+	$(MAKE) -C exosphere clean
+	$(MAKE) -C thermosphere clean
+	$(MAKE) -C mesosphere clean
+	$(MAKE) -C stratosphere clean
 	rm -rf out
 
 dist-no-debug: all
@@ -63,13 +91,13 @@ dist-no-debug: all
 	mkdir -p atmosphere-$(AMSVER)/atmosphere/config_templates
 	mkdir -p atmosphere-$(AMSVER)/atmosphere/config
 	mkdir -p atmosphere-$(AMSVER)/atmosphere/flags
-	touch atmosphere-$(AMSVER)/atmosphere/flags/clean_stratosphere_for_0.19.0.flag
-	cp fusee/fusee-primary/fusee-primary.bin atmosphere-$(AMSVER)/atmosphere/reboot_payload.bin
-	cp fusee/fusee-secondary/fusee-secondary-experimental.bin atmosphere-$(AMSVER)/atmosphere/fusee-secondary.bin
-	cp config_templates/BCT.ini atmosphere-$(AMSVER)/atmosphere/config_templates/BCT.ini
+	cp fusee/fusee.bin atmosphere-$(AMSVER)/atmosphere/reboot_payload.bin
+	cp fusee/package3 atmosphere-$(AMSVER)/atmosphere/package3
+	cp config_templates/stratosphere.ini atmosphere-$(AMSVER)/atmosphere/config_templates/stratosphere.ini
 	cp config_templates/override_config.ini atmosphere-$(AMSVER)/atmosphere/config_templates/override_config.ini
 	cp config_templates/system_settings.ini atmosphere-$(AMSVER)/atmosphere/config_templates/system_settings.ini
 	cp config_templates/exosphere.ini atmosphere-$(AMSVER)/atmosphere/config_templates/exosphere.ini
+	mkdir config_templates/kip_patches
 	cp -r config_templates/kip_patches atmosphere-$(AMSVER)/atmosphere/kip_patches
 	cp -r config_templates/hbl_html atmosphere-$(AMSVER)/atmosphere/hbl_html
 	mkdir -p atmosphere-$(AMSVER)/stratosphere_romfs/atmosphere/contents/0100000000000008
@@ -94,16 +122,12 @@ dist-no-debug: all
 	@build_romfs atmosphere-$(AMSVER)/stratosphere_romfs atmosphere-$(AMSVER)/atmosphere/stratosphere.romfs
 	rm -r atmosphere-$(AMSVER)/stratosphere_romfs
 	cp troposphere/reboot_to_payload/reboot_to_payload.nro atmosphere-$(AMSVER)/switch/reboot_to_payload.nro
-	cp troposphere/reboot_to_hekate/reboot_to_hekate.nro atmosphere-$(AMSVER)/switch/reboot_to_hekate.nro
 	cp troposphere/daybreak/daybreak.nro atmosphere-$(AMSVER)/switch/daybreak.nro
 	cd atmosphere-$(AMSVER); zip -r ../atmosphere-$(AMSVER).zip ./*; cd ../;
-	cp fusee/fusee-secondary/fusee-secondary.bin atmosphere-$(AMSVER)/atmosphere/fusee-secondary.bin
-	cd atmosphere-$(AMSVER); zip -r ../atmosphere-$(AMSVER)-WITHOUT_MESOSPHERE.zip ./*; cd ../;
-	rm -r atmosphere-$(AMSVER)
+	rm -rf atmosphere-$(AMSVER)
 	mkdir out
 	mv atmosphere-$(AMSVER).zip out/atmosphere-$(AMSVER).zip
-	mv atmosphere-$(AMSVER)-WITHOUT_MESOSPHERE.zip out/atmosphere-$(AMSVER)-WITHOUT_MESOSPHERE.zip
-	cp fusee/fusee-primary/fusee-primary.bin out/fusee-primary.bin
+	cp fusee/fusee.bin out/fusee.bin
 
 dist: dist-no-debug
 	$(eval MAJORVER = $(shell grep 'define ATMOSPHERE_RELEASE_VERSION_MAJOR\b' libraries/libvapours/include/vapours/ams/ams_api_version.h \
@@ -118,8 +142,8 @@ dist: dist-no-debug
 	$(eval AMSVER = $(MAJORVER).$(MINORVER).$(MICROVER)-$(AMSREV))
 	rm -rf atmosphere-$(AMSVER)-debug
 	mkdir atmosphere-$(AMSVER)-debug
-	cp fusee/fusee-primary/fusee-primary.elf atmosphere-$(AMSVER)-debug/fusee-primary.elf
-	cp fusee/fusee-secondary/fusee-secondary-experimental.elf atmosphere-$(AMSVER)-debug/fusee-secondary.elf
+	cp fusee/loader_stub/loader_stub.elf atmosphere-$(AMSVER)-debug/fusee-loader-stub.elf
+	cp fusee/program/program.elf atmosphere-$(AMSVER)-debug/fusee-program.elf
 	cp exosphere/loader_stub/loader_stub.elf atmosphere-$(AMSVER)-debug/exosphere-loader-stub.elf
 	cp exosphere/program/program.elf atmosphere-$(AMSVER)-debug/exosphere-program.elf
 	cp exosphere/warmboot/warmboot.elf atmosphere-$(AMSVER)-debug/exosphere-warmboot.elf

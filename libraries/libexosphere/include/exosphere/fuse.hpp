@@ -100,6 +100,8 @@ namespace ams::fuse {
 
     DramId GetDramId();
 
+    bool GetSecureBootKey(void *dst);
+
     void            GetEcid(br::BootEcid *out);
     HardwareType    GetHardwareType();
     HardwareState   GetHardwareState();
@@ -111,6 +113,7 @@ namespace ams::fuse {
 
     SocType         GetSocType();
     int             GetExpectedFuseVersion(TargetFirmware target_fw);
+    int             GetFuseVersion();
     bool            HasRcmVulnerabilityPatch();
 
     bool IsOdmProductionMode();

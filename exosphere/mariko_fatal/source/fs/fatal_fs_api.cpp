@@ -104,13 +104,13 @@ namespace ams::fs {
 
     bool MountSdCard() {
         AMS_ASSERT(!g_is_sd_mounted);
-        g_is_sd_mounted = f_mount(std::addressof(g_sd_fs), "", 1) == FR_OK;
+        g_is_sd_mounted = f_mount(std::addressof(g_sd_fs), "sdmc", 1) == FR_OK;
         return g_is_sd_mounted;
     }
 
     void UnmountSdCard() {
         AMS_ASSERT(g_is_sd_mounted);
-        f_unmount("");
+        f_unmount("sdmc");
         g_is_sd_mounted = false;
     }
 

@@ -16,7 +16,7 @@ include  $(dir $(abspath $(lastword $(MAKEFILE_LIST))))/../config/common.mk
 #---------------------------------------------------------------------------------
 
 DEFINES     := $(ATMOSPHERE_DEFINES) -DATMOSPHERE_IS_EXOSPHERE
-SETTINGS    := $(ATMOSPHERE_SETTINGS) -Os -Wextra -Werror -flto -fno-non-call-exceptions \
+SETTINGS    := $(ATMOSPHERE_SETTINGS) -O2 -Wextra -Werror -flto -fno-non-call-exceptions \
                -Wno-array-bounds \
                -Wno-stringop-overflow \
                -Wno-stringop-overread
@@ -149,7 +149,7 @@ $(OFILES)	:	$(GCH_FILES)
 $(OFILES_SRC)	: $(HFILES_BIN)
 
 libc.o: CFLAGS += -fno-builtin -fno-lto
-libgcc_division.arch.arm.o: CFLAGS += -fno-builtin -fno-lto
+util_api.o: CXXFLAGS += -fno-lto
 
 #---------------------------------------------------------------------------------
 %_bin.h %.bin.o	:	%.bin
