@@ -17,14 +17,14 @@
 #include <mesosphere/kern_common.hpp>
 #include <mesosphere/kern_k_auto_object.hpp>
 #include <mesosphere/kern_slab_helpers.hpp>
-#include <mesosphere/kern_k_writable_event.hpp>
+#include <mesosphere/kern_k_event.hpp>
 #include <mesosphere/kern_k_thread.hpp>
 #include <mesosphere/kern_k_process.hpp>
 #include <mesosphere/kern_k_memory_block.hpp>
 
 namespace ams::kern {
 
-    class KSessionRequest final : public KSlabAllocated<KSessionRequest>, public KAutoObject, public util::IntrusiveListBaseNode<KSessionRequest> {
+    class KSessionRequest final : public KSlabAllocated<KSessionRequest, true>, public KAutoObject, public util::IntrusiveListBaseNode<KSessionRequest> {
         MESOSPHERE_AUTOOBJECT_TRAITS(KSessionRequest, KAutoObject);
         public:
             class SessionMappings {
@@ -126,15 +126,22 @@ namespace ams::kern {
             SessionMappings m_mappings;
             KThread *m_thread;
             KProcess *m_server;
-            KWritableEvent *m_event;
+            KEvent *m_event;
             uintptr_t m_address;
             size_t m_size;
         public:
             constexpr KSessionRequest() : m_mappings(), m_thread(), m_server(), m_event(), m_address(), m_size() { /* ... */ }
-            virtual ~KSessionRequest() { /* ... */ }
 
             static KSessionRequest *Create() {
                 KSessionRequest *req = KSessionRequest::Allocate();
+                if (req != nullptr) {
+                    KAutoObject::Create(req);
+                }
+                return req;
+            }
+
+            static KSessionRequest *CreateFromUnusedSlabMemory() {
+                KSessionRequest *req = KSessionRequest::AllocateFromUnusedSlabMemory();
                 if (req != nullptr) {
                     KAutoObject::Create(req);
                 }
@@ -146,7 +153,7 @@ namespace ams::kern {
                 KSessionRequest::Free(this);
             }
 
-            void Initialize(KWritableEvent *event, uintptr_t address, size_t size) {
+            void Initialize(KEvent *event, uintptr_t address, size_t size) {
                 m_mappings.Initialize();
 
                 m_thread  = std::addressof(GetCurrentThread());
@@ -177,7 +184,7 @@ namespace ams::kern {
             static void PostDestroy(uintptr_t arg) { MESOSPHERE_UNUSED(arg); /* ... */ }
 
             constexpr ALWAYS_INLINE KThread *GetThread() const { return m_thread; }
-            constexpr ALWAYS_INLINE KWritableEvent *GetEvent() const { return m_event; }
+            constexpr ALWAYS_INLINE KEvent *GetEvent() const { return m_event; }
             constexpr ALWAYS_INLINE uintptr_t GetAddress() const { return m_address; }
             constexpr ALWAYS_INLINE size_t GetSize() const { return m_size; }
             constexpr ALWAYS_INLINE KProcess *GetServerProcess() const { return m_server; }

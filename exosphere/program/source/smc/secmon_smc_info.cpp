@@ -33,14 +33,15 @@ namespace ams::secmon::smc {
             using PhysicalMemorySize = util::BitPack32::Field<16, 2>;
 
             /* Kernel view, from libmesosphere. */
-            using DebugFillMemory             = util::BitPack32::Field<0,                                 1, bool>;
-            using EnableUserExceptionHandlers = util::BitPack32::Field<DebugFillMemory::Next,             1, bool>;
-            using EnableUserPmuAccess         = util::BitPack32::Field<EnableUserExceptionHandlers::Next, 1, bool>;
-            using IncreaseThreadResourceLimit = util::BitPack32::Field<EnableUserPmuAccess::Next,         1, bool>;
-            using Reserved4                   = util::BitPack32::Field<IncreaseThreadResourceLimit::Next, 4, u32>;
-            using UseSecureMonitorPanicCall   = util::BitPack32::Field<Reserved4::Next,                   1, bool>;
-            using Reserved9                   = util::BitPack32::Field<UseSecureMonitorPanicCall::Next,   7, u32>;
-            using MemorySize                  = util::BitPack32::Field<Reserved9::Next,                   2, u32>; /* smc::MemorySize = pkg1::MemorySize */
+            using DebugFillMemory              = util::BitPack32::Field<0,                                  1, bool>;
+            using EnableUserExceptionHandlers  = util::BitPack32::Field<DebugFillMemory::Next,              1, bool>;
+            using EnableUserPmuAccess          = util::BitPack32::Field<EnableUserExceptionHandlers::Next,  1, bool>;
+            using IncreaseThreadResourceLimit  = util::BitPack32::Field<EnableUserPmuAccess::Next,          1, bool>;
+            using DisableDynamicResourceLimits = util::BitPack32::Field<IncreaseThreadResourceLimit::Next,  1, bool>;
+            using Reserved5                    = util::BitPack32::Field<DisableDynamicResourceLimits::Next, 3, u32>;
+            using UseSecureMonitorPanicCall    = util::BitPack32::Field<Reserved5::Next,                    1, bool>;
+            using Reserved9                    = util::BitPack32::Field<UseSecureMonitorPanicCall::Next,    7, u32>;
+            using MemorySize                   = util::BitPack32::Field<Reserved9::Next,                    2, u32>; /* smc::MemorySize = pkg1::MemorySize */
         };
 
         constexpr const pkg1::MemorySize DramIdToMemorySize[fuse::DramId_Count] = {
@@ -50,7 +51,7 @@ namespace ams::secmon::smc {
             [fuse::DramId_IowaHynix1y4GB]     = pkg1::MemorySize_4GB,
             [fuse::DramId_IcosaSamsung6GB]    = pkg1::MemorySize_6GB,
             [fuse::DramId_HoagHynix1y4GB]     = pkg1::MemorySize_4GB,
-            [fuse::DramId_CopperMicron4GB]    = pkg1::MemorySize_4GB,
+            [fuse::DramId_AulaHynix1y4GB]     = pkg1::MemorySize_4GB,
             [fuse::DramId_IowaX1X2Samsung4GB] = pkg1::MemorySize_4GB,
             [fuse::DramId_IowaSansung4GB]     = pkg1::MemorySize_4GB,
             [fuse::DramId_IowaSamsung8GB]     = pkg1::MemorySize_8GB,

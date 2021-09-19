@@ -89,6 +89,12 @@ _ZN3ams4kern3svc14RestoreContextEm:
     ldp     x30, x8,  [sp, #(EXCEPTION_CONTEXT_X30_SP)]
     ldp     x9,  x10, [sp, #(EXCEPTION_CONTEXT_PC_PSR)]
     ldr     x11,      [sp, #(EXCEPTION_CONTEXT_TPIDR)]
+
+    #if defined(MESOSPHERE_ENABLE_HARDWARE_SINGLE_STEP)
+    /* Since we're returning from an exception, set SPSR.SS so that we advance an instruction if single-stepping. */
+    orr x10, x10, #(1 << 21)
+    #endif
+
     msr     sp_el0, x8
     msr     elr_el1, x9
     msr     spsr_el1, x10

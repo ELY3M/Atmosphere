@@ -94,6 +94,7 @@ namespace ams::svc {
         MemoryState_Kernel           = 0x13,
         MemoryState_GeneratedCode    = 0x14,
         MemoryState_CodeOut          = 0x15,
+        MemoryState_Coverage         = 0x16,
     };
 
     enum MemoryPermission : u32 {
@@ -114,6 +115,12 @@ namespace ams::svc {
         MemoryAttribute_IpcLocked    = (1 << 1),
         MemoryAttribute_DeviceShared = (1 << 2),
         MemoryAttribute_Uncached     = (1 << 3),
+    };
+
+    enum MemoryMapping : u32 {
+        MemoryMapping_IoRegister = 0,
+        MemoryMapping_Uncached   = 1,
+        MemoryMapping_Memory     = 2,
     };
 
     constexpr inline size_t HeapSizeAlignment = 2_MB;
@@ -157,11 +164,10 @@ namespace ams::svc {
         InfoType_UsedNonSystemMemorySize        = 22,
         InfoType_IsApplication                  = 23,
         InfoType_FreeThreadCount                = 24,
+        InfoType_ThreadTickCount                = 25,
 
         InfoType_MesosphereMeta                 = 65000,
         InfoType_MesosphereCurrentProcess       = 65001,
-
-        InfoType_ThreadTickCount                = 0xF0000002,
     };
 
     enum TickCountInfo : u64 {
@@ -174,8 +180,9 @@ namespace ams::svc {
     };
 
     enum MesosphereMetaInfo : u64 {
-        MesosphereMetaInfo_KernelVersion   = 0,
-        MesosphereMetaInfo_IsKTraceEnabled = 1,
+        MesosphereMetaInfo_KernelVersion       = 0,
+        MesosphereMetaInfo_IsKTraceEnabled     = 1,
+        MesosphereMetaInfo_IsSingleStepEnabled = 2,
     };
 
     enum SystemInfoType : u32 {
@@ -299,6 +306,9 @@ namespace ams::svc {
         ThreadContextFlag_FpuControl = (1 << 3),
 
         ThreadContextFlag_All = (ThreadContextFlag_General | ThreadContextFlag_Control | ThreadContextFlag_Fpu | ThreadContextFlag_FpuControl),
+
+        ThreadContextFlag_SetSingleStep   = (1u << 30),
+        ThreadContextFlag_ClearSingleStep = (1u << 31),
     };
 
     enum ContinueFlag : u32 {

@@ -40,7 +40,7 @@ namespace ams::boot2 {
             ncm::SystemProgramId::Vi,          /* vi */
             ncm::SystemProgramId::Pgl,         /* pgl */
             ncm::SystemProgramId::Ns,          /* ns */
-            ncm::SystemProgramId::LogManager,  /* lm */
+            //ncm::SystemProgramId::LogManager,  /* lm */
             ncm::SystemProgramId::Ppc,         /* ppc */
             ncm::SystemProgramId::Ptm,         /* ptm */
             ncm::SystemProgramId::Hid,         /* hid */
@@ -83,7 +83,7 @@ namespace ams::boot2 {
             ncm::SystemProgramId::Vi,          /* vi */
             ncm::SystemProgramId::Pgl,         /* pgl */
             ncm::SystemProgramId::Ns,          /* ns */
-            ncm::SystemProgramId::LogManager,  /* lm */
+            //ncm::SystemProgramId::LogManager,  /* lm */
             ncm::SystemProgramId::Ppc,         /* ppc */
             ncm::SystemProgramId::Ptm,         /* ptm */
             ncm::SystemProgramId::Hid,         /* hid */
@@ -183,9 +183,20 @@ namespace ams::boot2 {
         }
 
         bool IsHtcEnabled() {
-            u8 enable_htc = 1;
+            u8 enable_htc = 0;
             settings::fwdbg::GetSettingsItemValue(&enable_htc, sizeof(enable_htc), "atmosphere", "enable_htc");
             return enable_htc != 0;
+        }
+
+        bool IsAtmosphereLogManagerEnabled() {
+            /* If htc is enabled, ams log manager is enabled. */
+            if (IsHtcEnabled()) {
+                return true;
+            }
+
+            u8 enable_ams_lm = 0;
+            settings::fwdbg::GetSettingsItemValue(&enable_ams_lm, sizeof(enable_ams_lm), "atmosphere", "enable_log_manager");
+            return enable_ams_lm != 0;
         }
 
         bool IsMaintenanceMode() {
@@ -384,18 +395,24 @@ namespace ams::boot2 {
             pm::bm::SetMaintenanceBoot();
         }
 
-        /* Launch Atmosphere dmnt, using NcmStorageId_None to force SD card boot. */
-        LaunchProgram(nullptr, ncm::ProgramLocation::Make(ncm::SystemProgramId::Dmnt, ncm::StorageId::None), 0);
-
         /* Check for and forward declare non-atmosphere mitm modules. */
         DetectAndDeclareFutureMitms();
 
-        /* Device whether to launch tma or htc. */
+        /* Decide whether to launch tma or htc. */
         if (IsHtcEnabled()) {
-            LaunchProgram(nullptr, ncm::ProgramLocation::Make(ncm::SystemProgramId::Htc, ncm::StorageId::None), 0);
-            LaunchProgram(nullptr, ncm::ProgramLocation::Make(ncm::SystemProgramId::Cs,  ncm::StorageId::None), 0);
+            LaunchProgram(nullptr, ncm::ProgramLocation::Make(ncm::SystemProgramId::Htc,      ncm::StorageId::None), 0);
+            LaunchProgram(nullptr, ncm::ProgramLocation::Make(ncm::SystemProgramId::Cs,       ncm::StorageId::None), 0);
+            LaunchProgram(nullptr, ncm::ProgramLocation::Make(ncm::SystemProgramId::DmntGen2, ncm::StorageId::None), 0);
         } else {
-            LaunchProgram(nullptr, ncm::ProgramLocation::Make(ncm::SystemProgramId::Tma, ncm::StorageId::BuiltInSystem), 0);
+            LaunchProgram(nullptr, ncm::ProgramLocation::Make(ncm::SystemProgramId::Dmnt, ncm::StorageId::None), 0);
+            LaunchProgram(nullptr, ncm::ProgramLocation::Make(ncm::SystemProgramId::Tma,  ncm::StorageId::BuiltInSystem), 0);
+        }
+
+        /* Decide whether to launch atmosphere or nintendo's log manager. */
+        if (IsAtmosphereLogManagerEnabled()) {
+            LaunchProgram(nullptr, ncm::ProgramLocation::Make(ncm::AtmosphereProgramId::AtmosphereLogManager, ncm::StorageId::None), 0);
+        } else {
+            LaunchProgram(nullptr, ncm::ProgramLocation::Make(ncm::SystemProgramId::LogManager, ncm::StorageId::BuiltInSystem), 0);
         }
 
         /* Launch additional programs. */

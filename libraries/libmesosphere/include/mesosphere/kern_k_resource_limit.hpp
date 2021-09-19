@@ -34,7 +34,6 @@ namespace ams::kern {
             KLightConditionVariable m_cond_var;
         public:
             constexpr ALWAYS_INLINE KResourceLimit() : m_limit_values(), m_current_values(), m_current_hints(), m_peak_values(), m_lock(), m_waiter_count(), m_cond_var() { /* ... */ }
-            virtual ~KResourceLimit() { /* ... */ }
 
             static void PostDestroy(uintptr_t arg) { MESOSPHERE_UNUSED(arg); /* ... */ }
 
@@ -47,6 +46,8 @@ namespace ams::kern {
             s64 GetFreeValue(ams::svc::LimitableResource which) const;
 
             Result SetLimitValue(ams::svc::LimitableResource which, s64 value);
+
+            void Add(ams::svc::LimitableResource which, s64 value);
 
             bool Reserve(ams::svc::LimitableResource which, s64 value);
             bool Reserve(ams::svc::LimitableResource which, s64 value, s64 timeout);

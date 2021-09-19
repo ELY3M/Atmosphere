@@ -186,7 +186,24 @@ namespace ams::kern::svc {
             R_UNLESS(KTargetSystem::IsDebugMode(), svc::ResultNotImplemented());
 
             /* Validate the context flags. */
-            R_UNLESS((context_flags | ams::svc::ThreadContextFlag_All) == ams::svc::ThreadContextFlag_All, svc::ResultInvalidEnumValue());
+            #if defined(MESOSPHERE_ENABLE_HARDWARE_SINGLE_STEP)
+            {
+                /* Check that the flags are a subset of the allowable. */
+                constexpr u32 AllFlagsMask = ams::svc::ThreadContextFlag_All | ams::svc::ThreadContextFlag_SetSingleStep | ams::svc::ThreadContextFlag_ClearSingleStep;
+                R_UNLESS((context_flags | AllFlagsMask) == AllFlagsMask, svc::ResultInvalidEnumValue());
+
+                /* Check that thread isn't both setting and clearing single step. */
+                const bool set_ss   = (context_flags & ams::svc::ThreadContextFlag_SetSingleStep) != 0;
+                const bool clear_ss = (context_flags & ams::svc::ThreadContextFlag_ClearSingleStep) != 0;
+
+                R_UNLESS(!(set_ss && clear_ss), svc::ResultInvalidEnumValue());
+            }
+            #else
+            {
+                /* Check that the flags are a subset of the allowable. */
+                R_UNLESS((context_flags | ams::svc::ThreadContextFlag_All) == ams::svc::ThreadContextFlag_All, svc::ResultInvalidEnumValue());
+            }
+            #endif
 
             /* Copy the thread context from userspace. */
             ams::svc::ThreadContext context;
@@ -296,11 +313,17 @@ namespace ams::kern::svc {
             ON_SCOPE_EXIT { thread->Close(); };
 
             /* Get the process from the debug object. */
-            KScopedAutoObject process = debug->GetProcess();
-            R_UNLESS(process.IsNotNull(), svc::ResultProcessTerminated());
+            R_UNLESS(debug->IsAttached(),  svc::ResultProcessTerminated());
+            R_UNLESS(debug->OpenProcess(), svc::ResultProcessTerminated());
+
+            /* Close the process when we're done. */
+            ON_SCOPE_EXIT { debug->CloseProcess(); };
+
+            /* Get the proces. */
+            KProcess * const process = debug->GetProcessUnsafe();
 
             /* Verify that the process is the thread's parent. */
-            R_UNLESS(process.GetPointerUnsafe() == thread->GetOwnerProcess(), svc::ResultInvalidThreadId());
+            R_UNLESS(process == thread->GetOwnerProcess(), svc::ResultInvalidThreadId());
 
             /* Get the parameter. */
             switch (param) {

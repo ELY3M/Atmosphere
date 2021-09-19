@@ -70,7 +70,7 @@ namespace ams::cs {
 
         alignas(os::MemoryPageSize) constinit u8 g_heap_memory[32_KB];
 
-        alignas(0x40) constinit u8 g_htcs_buffer[1_KB];
+        alignas(0x40) constinit u8 g_htcs_buffer[2_KB];
 
         constinit os::SdkMutex g_heap_mutex;
         constinit lmem::HeapHandle g_heap_handle;
@@ -120,6 +120,7 @@ void __appInit(void) {
     lr::Initialize();
     R_ABORT_UNLESS(ldr::InitializeForShell());
     R_ABORT_UNLESS(pgl::Initialize());
+    R_ABORT_UNLESS(setsysInitialize());
     /* TODO: Other services? */
 
     ams::CheckApiVersion();
@@ -127,6 +128,7 @@ void __appInit(void) {
 
 void __appExit(void) {
     /* TODO: Other services? */
+    setsysExit();
     pgl::Finalize();
     ldr::FinalizeForShell();
     lr::Finalize();

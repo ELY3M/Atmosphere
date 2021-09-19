@@ -109,6 +109,11 @@ namespace ams::kern::arch::arm64 {
                     break;
             }
 
+            /* In the event that we return from this exception, we want SPSR.SS set so that we advance an instruction if single-stepping. */
+            #if defined(MESOSPHERE_ENABLE_HARDWARE_SINGLE_STEP)
+            context->psr |= (1ul << 21);
+            #endif
+
             /* If we should process the user exception (and it's not a breakpoint), try to enter. */
             const bool is_software_break = (ec == EsrEc_Unknown || ec == EsrEc_IllegalExecution || ec == EsrEc_BkptInstruction || ec == EsrEc_BrkInstruction);
             const bool is_breakpoint     = (ec == EsrEc_BreakPointEl0 || ec == EsrEc_SoftwareStepEl0 || ec == EsrEc_WatchPointEl0);
@@ -215,6 +220,15 @@ namespace ams::kern::arch::arm64 {
                 }
             }
 
+            /* If we should, clear the thread's state as single-step. */
+            #if defined(MESOSPHERE_ENABLE_HARDWARE_SINGLE_STEP)
+            if (AMS_UNLIKELY(GetCurrentThread().IsSingleStep())) {
+                GetCurrentThread().ClearSingleStep();
+                cpu::MonitorDebugSystemControlRegisterAccessor().SetSoftwareStep(false).Store();
+                cpu::EnsureInstructionConsistency();
+            }
+            #endif
+
             {
                 /* Collect additional information based on the ec. */
                 ams::svc::DebugException exception;
@@ -290,16 +304,40 @@ namespace ams::kern::arch::arm64 {
                     return;
                 }
 
-                /* Print that an exception occurred. */
-                MESOSPHERE_RELEASE_LOG("Exception occurred. %016lx\n", GetCurrentProcess().GetProgramId());
-
+                #if defined(MESOSPHERE_ENABLE_HARDWARE_SINGLE_STEP)
                 {
-                    /* Print the current thread's registers. */
-                    KDebug::PrintRegister();
+                    if (ec != EsrEc_SoftwareStepEl0) {
+                        /* If the exception wasn't single-step, print details. */
+                        MESOSPHERE_EXCEPTION_LOG("Exception occurred. ");
 
-                    /* Print a backtrace. */
-                    KDebug::PrintBacktrace();
+                        {
+                            /* Print the current thread's registers. */
+                            KDebug::PrintRegister();
+
+                            /* Print a backtrace. */
+                            KDebug::PrintBacktrace();
+                        }
+                    } else {
+                        /* If the exception was single-step and we have no debug object, we should just return. */
+                        if (AMS_UNLIKELY(!cur_process.IsAttachedToDebugger())) {
+                            return;
+                        }
+                    }
                 }
+                #else
+                {
+                    /* Print that an exception occurred. */
+                    MESOSPHERE_EXCEPTION_LOG("Exception occurred. ");
+
+                    {
+                        /* Print the current thread's registers. */
+                        KDebug::PrintRegister();
+
+                        /* Print a backtrace. */
+                        KDebug::PrintBacktrace();
+                    }
+                }
+                #endif
 
                 /* If the SVC is handled, handle it. */
                 if (!svc::ResultNotHandled::Includes(result)) {
@@ -458,7 +496,7 @@ namespace ams::kern::arch::arm64 {
         }
 
         /* Print that an exception occurred. */
-        MESOSPHERE_RELEASE_LOG("Exception occurred. %016lx\n", GetCurrentProcess().GetProgramId());
+        MESOSPHERE_EXCEPTION_LOG("Exception occurred. ");
 
         /* Exit the current process. */
         GetCurrentProcess().Exit();
@@ -559,6 +597,7 @@ namespace ams::kern::arch::arm64 {
                 KDpcManager::HandleDpc();
             }
         }
+
         /* Note that we're no longer in an exception handler. */
         GetCurrentThread().ClearInExceptionHandler();
     }

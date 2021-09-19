@@ -99,7 +99,6 @@ namespace ams::kern {
         DoOnEachCoreInOrder(core_id, [=]() ALWAYS_INLINE_LAMBDA {
             KThread::Register(std::addressof(Kernel::GetMainThread(core_id)));
             KThread::Register(std::addressof(Kernel::GetIdleThread(core_id)));
-            Kernel::GetInterruptTaskManager().Initialize();
         });
 
         /* Activate the scheduler and enable interrupts. */
@@ -118,7 +117,7 @@ namespace ams::kern {
         /* Perform more core-0 specific initialization. */
         if (core_id == 0) {
             /* Initialize the exit worker manager, so that threads and processes may exit cleanly. */
-            Kernel::GetWorkerTaskManager(KWorkerTaskManager::WorkerType_Exit).Initialize(KWorkerTaskManager::WorkerType_Exit, KWorkerTaskManager::ExitWorkerPriority);
+            Kernel::GetWorkerTaskManager(KWorkerTaskManager::WorkerType_Exit).Initialize(KWorkerTaskManager::ExitWorkerPriority);
 
             /* Setup so that we may sleep later, and reserve memory for secure applets. */
             KSystemControl::InitializePhase2();

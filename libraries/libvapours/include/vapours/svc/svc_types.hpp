@@ -23,3 +23,4 @@
 #include <vapours/svc/svc_types_dd.hpp>
 #include <vapours/svc/svc_types_dmnt.hpp>
 #include <vapours/svc/svc_types_priv.hpp>
+#include <vapours/svc/svc_select_io_pool_type.hpp>

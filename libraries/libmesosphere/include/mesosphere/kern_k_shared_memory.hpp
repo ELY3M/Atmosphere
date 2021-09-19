@@ -35,13 +35,11 @@ namespace ams::kern {
             bool m_is_initialized;
         public:
             explicit KSharedMemory()
-                : m_page_group(std::addressof(Kernel::GetBlockInfoManager())), m_resource_limit(nullptr), m_owner_process_id(std::numeric_limits<u64>::max()),
+                : m_page_group(std::addressof(Kernel::GetSystemBlockInfoManager())), m_resource_limit(nullptr), m_owner_process_id(std::numeric_limits<u64>::max()),
                   m_owner_perm(ams::svc::MemoryPermission_None), m_remote_perm(ams::svc::MemoryPermission_None), m_is_initialized(false)
             {
                 /* ... */
             }
-
-            virtual ~KSharedMemory() { /* ... */ }
 
             Result Initialize(KProcess *owner, size_t size, ams::svc::MemoryPermission own_perm, ams::svc::MemoryPermission rem_perm);
             virtual void Finalize() override;

@@ -32,7 +32,6 @@ namespace ams::kern {
             bool m_is_initialized;
         public:
             constexpr KInterruptEvent() : m_interrupt_id(-1), m_core_id(-1), m_is_initialized(false) { /* ... */ }
-            virtual ~KInterruptEvent() { /* ... */ }
 
             Result Initialize(int32_t interrupt_name, ams::svc::InterruptType type);
             virtual void Finalize() override;
@@ -49,12 +48,9 @@ namespace ams::kern {
     class KInterruptEventTask : public KSlabAllocated<KInterruptEventTask>, public KInterruptTask {
         private:
             KInterruptEvent *m_event;
-            KLightLock m_lock;
         public:
-            constexpr KInterruptEventTask() : m_event(nullptr), m_lock() { /* ... */ }
+            constexpr KInterruptEventTask() : m_event(nullptr) { /* ... */ }
             ~KInterruptEventTask() { /* ... */ }
-
-            KLightLock &GetLock() { return m_lock; }
 
             virtual KInterruptTask *OnInterrupt(s32 interrupt_id) override;
             virtual void DoTask() override;

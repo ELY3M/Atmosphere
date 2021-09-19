@@ -22,14 +22,14 @@
 #include <mesosphere/kern_k_thread.hpp>
 #include <mesosphere/kern_k_thread_local_page.hpp>
 #include <mesosphere/kern_k_shared_memory_info.hpp>
-#include <mesosphere/kern_k_beta.hpp>
+#include <mesosphere/kern_k_io_region.hpp>
 #include <mesosphere/kern_k_worker_task.hpp>
 #include <mesosphere/kern_select_page_table.hpp>
 #include <mesosphere/kern_k_condition_variable.hpp>
 #include <mesosphere/kern_k_address_arbiter.hpp>
 #include <mesosphere/kern_k_capabilities.hpp>
 #include <mesosphere/kern_k_wait_object.hpp>
-#include <mesosphere/kern_k_dynamic_slab_heap.hpp>
+#include <mesosphere/kern_k_dynamic_resource_manager.hpp>
 #include <mesosphere/kern_k_page_table_manager.hpp>
 
 namespace ams::kern {
@@ -53,7 +53,7 @@ namespace ams::kern {
             static constexpr size_t AslrAlignment = KernelAslrAlignment;
         private:
             using SharedMemoryInfoList = util::IntrusiveListBaseTraits<KSharedMemoryInfo>::ListType;
-            using BetaList = util::IntrusiveListMemberTraits<&KBeta::m_process_list_node>::ListType;
+            using IoRegionList = util::IntrusiveListMemberTraits<&KIoRegion::m_process_list_node>::ListType;
             using TLPTree = util::IntrusiveRedBlackTreeBaseTraits<KThreadLocalPage>::TreeType<KThreadLocalPage>;
             using TLPIterator = TLPTree::iterator;
         private:
@@ -96,7 +96,7 @@ namespace ams::kern {
             KThread                    *m_exception_thread{};
             ThreadList                  m_thread_list{};
             SharedMemoryInfoList        m_shared_memory_list{};
-            BetaList                    m_beta_list{};
+            IoRegionList                m_io_region_list{};
             bool                        m_is_suspended{};
             bool                        m_is_immortal{};
             bool                        m_is_jit_debug{};
@@ -121,6 +121,9 @@ namespace ams::kern {
             KMemoryBlockSlabManager     m_memory_block_slab_manager{};
             KBlockInfoManager           m_block_info_manager{};
             KPageTableManager           m_page_table_manager{};
+            KMemoryBlockSlabHeap        m_memory_block_heap{};
+            KBlockInfoSlabHeap          m_block_info_heap{};
+            KPageTableSlabHeap          m_page_table_heap{};
         private:
             Result Initialize(const ams::svc::CreateProcessParameter &params);
 
@@ -143,7 +146,6 @@ namespace ams::kern {
             }
         public:
             KProcess() { /* ... */ }
-            virtual ~KProcess() { /* ... */ }
 
             Result Initialize(const ams::svc::CreateProcessParameter &params, const KPageGroup &pg, const u32 *caps, s32 num_caps, KResourceLimit *res_limit, KMemoryManager::Pool pool, bool immortal);
             Result Initialize(const ams::svc::CreateProcessParameter &params, svc::KUserPointer<const u32 *> caps, s32 num_caps, KResourceLimit *res_limit, KMemoryManager::Pool pool);
@@ -273,6 +275,9 @@ namespace ams::kern {
             Result AddSharedMemory(KSharedMemory *shmem, KProcessAddress address, size_t size);
             void RemoveSharedMemory(KSharedMemory *shmem, KProcessAddress address, size_t size);
 
+            void AddIoRegion(KIoRegion *io_region);
+            void RemoveIoRegion(KIoRegion *io_region);
+
             Result CreateThreadLocalRegion(KProcessAddress *out);
             Result DeleteThreadLocalRegion(KProcessAddress addr);
             void *GetThreadLocalRegionPointer(KProcessAddress addr);
@@ -341,14 +346,6 @@ namespace ams::kern {
             void PinCurrentThread();
             void UnpinCurrentThread();
             void UnpinThread(KThread *thread);
-
-            Result SignalToAddress(KProcessAddress address) {
-                return m_cond_var.SignalToAddress(address);
-            }
-
-            Result WaitForAddress(ams::svc::Handle handle, KProcessAddress address, u32 tag) {
-                return m_cond_var.WaitForAddress(handle, address, tag);
-            }
 
             void SignalConditionVariable(uintptr_t cv_key, int32_t count) {
                 return m_cond_var.Signal(cv_key, count);

@@ -32,9 +32,7 @@ namespace ams::kern {
         private:
             KWorkerTask *m_head_task;
             KWorkerTask *m_tail_task;
-            KThread *m_thread;
-            WorkerType m_type;
-            bool m_active;
+            KThread *m_waiting_thread;
         private:
             static void ThreadFunction(uintptr_t arg);
             void ThreadFunctionImpl();
@@ -42,9 +40,9 @@ namespace ams::kern {
             KWorkerTask *GetTask();
             void AddTask(KWorkerTask *task);
         public:
-            constexpr KWorkerTaskManager() : m_head_task(), m_tail_task(), m_thread(), m_type(WorkerType_Count), m_active() { /* ... */ }
+            constexpr KWorkerTaskManager() : m_head_task(), m_tail_task(), m_waiting_thread() { /* ... */ }
 
-            NOINLINE void Initialize(WorkerType wt, s32 priority);
+            NOINLINE void Initialize(s32 priority);
             static void AddTask(WorkerType type, KWorkerTask *task);
     };
 

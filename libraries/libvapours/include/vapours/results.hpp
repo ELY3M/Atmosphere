@@ -49,6 +49,7 @@
 #include <vapours/results/nim_results.hpp>
 #include <vapours/results/ns_results.hpp>
 #include <vapours/results/os_results.hpp>
+#include <vapours/results/osdbg_results.hpp>
 #include <vapours/results/pcv_results.hpp>
 #include <vapours/results/pgl_results.hpp>
 #include <vapours/results/pm_results.hpp>
@@ -63,6 +64,7 @@
 #include <vapours/results/sm_results.hpp>
 #include <vapours/results/socket_results.hpp>
 #include <vapours/results/spl_results.hpp>
+#include <vapours/results/sprofile_results.hpp>
 #include <vapours/results/svc_results.hpp>
 #include <vapours/results/time_results.hpp>
 #include <vapours/results/tipc_results.hpp>

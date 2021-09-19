@@ -104,17 +104,14 @@ namespace ams::kern {
                 KSession,
                 KSharedMemory,
                 KEvent,
-                KWritableEvent,
                 KLightClientSession,
                 KLightServerSession,
                 KTransferMemory,
                 KDeviceAddressSpace,
                 KSessionRequest,
                 KCodeMemory,
-
-                /* NOTE: True order for these has not been determined yet. */
-                KAlpha,
-                KBeta,
+                KIoPool,
+                KIoRegion,
 
                 FinalClassesEnd = FinalClassesStart + NumFinalClasses,
             };

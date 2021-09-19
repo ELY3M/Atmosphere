@@ -154,6 +154,12 @@ _ZN3ams4kern4arch5arm6412SvcHandler64Ev:
     ldp     x30, x8,  [sp, #(EXCEPTION_CONTEXT_X30_SP)]
     ldp     x9,  x10, [sp, #(EXCEPTION_CONTEXT_PC_PSR)]
     ldr     x11,      [sp, #(EXCEPTION_CONTEXT_TPIDR)]
+
+    #if defined(MESOSPHERE_ENABLE_HARDWARE_SINGLE_STEP)
+    /* Since we're returning from an SVC, make sure SPSR.SS is cleared so that if we're single-stepping we break instantly on the instruction after the SVC. */
+    bic     x10, x10, #(1 << 21)
+    #endif
+
     msr     sp_el0, x8
     msr     elr_el1, x9
     msr     spsr_el1, x10
@@ -203,6 +209,12 @@ _ZN3ams4kern4arch5arm6412SvcHandler64Ev:
     ldp     x9,  x10, [sp, #(EXCEPTION_CONTEXT_PC_PSR)]
     ldr     x11,      [sp, #(EXCEPTION_CONTEXT_TPIDR)]
     ldr     x18,      [sp, #(EXCEPTION_CONTEXT_X18)]
+
+    #if defined(MESOSPHERE_ENABLE_HARDWARE_SINGLE_STEP)
+    /* Since we're returning from an SVC, make sure SPSR.SS is cleared so that if we're single-stepping we break instantly on the instruction after the SVC. */
+    bic     x10, x10, #(1 << 21)
+    #endif
+
     msr     sp_el0, x8
     msr     elr_el1, x9
     msr     spsr_el1, x10
@@ -359,6 +371,12 @@ _ZN3ams4kern4arch5arm6412SvcHandler32Ev:
     /* Restore registers. */
     ldp     x17, x20, [sp, #(EXCEPTION_CONTEXT_PC_PSR)]
     ldr     x19,      [sp, #(EXCEPTION_CONTEXT_TPIDR)]
+
+    #if defined(MESOSPHERE_ENABLE_HARDWARE_SINGLE_STEP)
+    /* Since we're returning from an SVC, make sure SPSR.SS is cleared so that if we're single-stepping we break instantly on the instruction after the SVC. */
+    bic     x20, x20, #(1 << 21)
+    #endif
+
     msr     elr_el1, x17
     msr     spsr_el1, x20
     msr     tpidr_el0, x19
@@ -402,6 +420,12 @@ _ZN3ams4kern4arch5arm6412SvcHandler32Ev:
     ldp     x14, xzr, [sp, #(EXCEPTION_CONTEXT_X14_X15)]
     ldp     x17, x20, [sp, #(EXCEPTION_CONTEXT_PC_PSR)]
     ldr     x19,      [sp, #(EXCEPTION_CONTEXT_TPIDR)]
+
+    #if defined(MESOSPHERE_ENABLE_HARDWARE_SINGLE_STEP)
+    /* Since we're returning from an SVC, make sure SPSR.SS is cleared so that if we're single-stepping we break instantly on the instruction after the SVC. */
+    bic     x20, x20, #(1 << 21)
+    #endif
+
     msr     elr_el1, x17
     msr     spsr_el1, x20
     msr     tpidr_el0, x19

@@ -13,28 +13,21 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <mesosphere.hpp>
+#pragma once
+#include <stratosphere.hpp>
 
-namespace ams::kern {
+namespace ams::cs {
 
-    void KWritableEvent::Initialize(KEvent *p) {
-        /* Set parent, open a reference to the readable event. */
-        m_parent = p;
-        m_parent->GetReadableEvent().Open();
-    }
+    struct CommandDataTakeScreenShot {
+        vi::LayerStack layer_stack;
+        std::function<void (s32, s32, s32)> send_header;
+        std::function<void (u8 *, size_t)> send_data;
+        u8 *buffer;
+        size_t buffer_size;
+    };
 
-    Result KWritableEvent::Signal() {
-        return m_parent->GetReadableEvent().Signal();
-    }
+    Result DoGetFirmwareVersionCommand(settings::system::FirmwareVersion *out);
 
-    Result KWritableEvent::Clear() {
-        return m_parent->GetReadableEvent().Clear();
-    }
-
-    void KWritableEvent::Destroy() {
-        /* Close our references. */
-        m_parent->GetReadableEvent().Close();
-        m_parent->Close();
-    }
+    Result DoTakeScreenShotCommand(const CommandDataTakeScreenShot &params);
 
 }

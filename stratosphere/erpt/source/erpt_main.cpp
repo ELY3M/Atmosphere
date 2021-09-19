@@ -201,6 +201,15 @@ int main(int argc, char **argv)
     /* Start the erpt server. */
     R_ABORT_UNLESS(erpt::srv::InitializeAndStartService());
 
+    /* Launch sprofile on 13.0.0+ */
+    if (hos::GetVersion() >= hos::Version_13_0_0) {
+        /* Initialize the sprofile server. */
+        sprofile::srv::Initialize();
+
+        /* Start the sprofile ipc server. */
+        sprofile::srv::StartIpcServer();
+    }
+
     /* Wait forever. */
     erpt::srv::Wait();
 

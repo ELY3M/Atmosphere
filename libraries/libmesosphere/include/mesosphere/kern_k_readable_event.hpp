@@ -28,21 +28,16 @@ namespace ams::kern {
             KEvent *m_parent;
         public:
             constexpr explicit KReadableEvent() : KSynchronizationObject(), m_is_signaled(), m_parent() { MESOSPHERE_ASSERT_THIS(); }
-            virtual ~KReadableEvent() { MESOSPHERE_ASSERT_THIS(); }
 
-            constexpr void Initialize(KEvent *parent) {
-                MESOSPHERE_ASSERT_THIS();
-                m_is_signaled  = false;
-                m_parent       = parent;
-            }
+            void Initialize(KEvent *parent);
 
             constexpr KEvent *GetParent() const { return m_parent; }
 
+            Result Signal();
+            Result Clear();
+
             virtual bool IsSignaled() const override;
             virtual void Destroy() override;
-
-            virtual Result Signal();
-            virtual Result Clear();
             virtual Result Reset();
     };
 

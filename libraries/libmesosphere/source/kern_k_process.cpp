@@ -87,6 +87,29 @@ namespace ams::kern {
             return ResultSuccess();
         }
 
+        class ThreadQueueImplForKProcessEnterUserException final : public KThreadQueue {
+            private:
+                KThread **m_exception_thread;
+            public:
+                constexpr ThreadQueueImplForKProcessEnterUserException(KThread **t) : KThreadQueue(), m_exception_thread(t) { /* ... */ }
+
+                virtual void EndWait(KThread *waiting_thread, Result wait_result) override {
+                    /* Set the exception thread. */
+                    *m_exception_thread = waiting_thread;
+
+                    /* Invoke the base end wait handler. */
+                    KThreadQueue::EndWait(waiting_thread, wait_result);
+                }
+
+                virtual void CancelWait(KThread *waiting_thread, Result wait_result, bool cancel_timer_task) override {
+                    /* Remove the thread as a waiter on its mutex owner. */
+                    waiting_thread->GetLockOwner()->RemoveWaiter(waiting_thread);
+
+                    /* Invoke the base cancel wait handler. */
+                    KThreadQueue::CancelWait(waiting_thread, wait_result, cancel_timer_task);
+                }
+        };
+
     }
 
     void KProcess::Finalize() {
@@ -141,14 +164,14 @@ namespace ams::kern {
             }
         }
 
-        /* Close all references to our betas. */
+        /* Close all references to our io regions. */
         {
-            auto it = m_beta_list.begin();
-            while (it != m_beta_list.end()) {
-                KBeta *beta = std::addressof(*it);
-                it = m_beta_list.erase(it);
+            auto it = m_io_region_list.begin();
+            while (it != m_io_region_list.end()) {
+                KIoRegion *io_region = std::addressof(*it);
+                it = m_io_region_list.erase(it);
 
-                beta->Close();
+                io_region->Close();
             }
         }
 
@@ -260,8 +283,8 @@ namespace ams::kern {
             const bool enable_das_merge = (params.flags & ams::svc::CreateProcessFlag_DisableDeviceAddressSpaceMerge) == 0;
             const bool is_app           = (params.flags & ams::svc::CreateProcessFlag_IsApplication) != 0;
             auto *mem_block_manager     = std::addressof(is_app ? Kernel::GetApplicationMemoryBlockManager() : Kernel::GetSystemMemoryBlockManager());
-            auto *block_info_manager    = std::addressof(Kernel::GetBlockInfoManager());
-            auto *pt_manager            = std::addressof(Kernel::GetPageTableManager());
+            auto *block_info_manager    = std::addressof(is_app ? Kernel::GetApplicationBlockInfoManager() : Kernel::GetSystemBlockInfoManager());
+            auto *pt_manager            = std::addressof(is_app ? Kernel::GetApplicationPageTableManager() : Kernel::GetSystemPageTableManager());
             R_TRY(m_page_table.Initialize(m_process_id, as_type, enable_aslr, enable_das_merge, !enable_aslr, pool, params.code_address, params.code_num_pages * PageSize, mem_block_manager, block_info_manager, pt_manager, res_limit));
         }
         auto pt_guard = SCOPE_GUARD { m_page_table.Finalize(); };
@@ -326,12 +349,17 @@ namespace ams::kern {
             MESOSPHERE_ASSERT(m_system_resource_address != Null<KVirtualAddress>);
             m_system_resource_num_pages = system_resource_num_pages;
 
-            /* Initialize managers. */
-            const size_t rc_size = util::AlignUp(KPageTableManager::CalculateReferenceCountSize(system_resource_size), PageSize);
+            /* Initialize slab heaps. */
+            const size_t rc_size = util::AlignUp(KPageTableSlabHeap::CalculateReferenceCountSize(system_resource_size), PageSize);
             m_dynamic_page_manager.Initialize(m_system_resource_address + rc_size, system_resource_size - rc_size);
-            m_page_table_manager.Initialize(std::addressof(m_dynamic_page_manager), GetPointer<KPageTableManager::RefCount>(m_system_resource_address));
-            m_memory_block_slab_manager.Initialize(std::addressof(m_dynamic_page_manager));
-            m_block_info_manager.Initialize(std::addressof(m_dynamic_page_manager));
+            m_page_table_heap.Initialize(std::addressof(m_dynamic_page_manager), 0, GetPointer<KPageTableManager::RefCount>(m_system_resource_address));
+            m_memory_block_heap.Initialize(std::addressof(m_dynamic_page_manager), 0);
+            m_block_info_heap.Initialize(std::addressof(m_dynamic_page_manager), 0);
+
+            /* Initialize managers. */
+            m_page_table_manager.Initialize(std::addressof(m_dynamic_page_manager), std::addressof(m_page_table_heap));
+            m_memory_block_slab_manager.Initialize(std::addressof(m_dynamic_page_manager), std::addressof(m_memory_block_heap));
+            m_block_info_manager.Initialize(std::addressof(m_dynamic_page_manager), std::addressof(m_block_info_heap));
 
             mem_block_manager  = std::addressof(m_memory_block_slab_manager);
             block_info_manager = std::addressof(m_block_info_manager);
@@ -339,8 +367,8 @@ namespace ams::kern {
         } else {
             const bool is_app  = (params.flags & ams::svc::CreateProcessFlag_IsApplication);
             mem_block_manager  = std::addressof(is_app ? Kernel::GetApplicationMemoryBlockManager() : Kernel::GetSystemMemoryBlockManager());
-            block_info_manager = std::addressof(Kernel::GetBlockInfoManager());
-            pt_manager         = std::addressof(Kernel::GetPageTableManager());
+            block_info_manager = std::addressof(is_app ? Kernel::GetApplicationBlockInfoManager() : Kernel::GetSystemBlockInfoManager());
+            pt_manager         = std::addressof(is_app ? Kernel::GetApplicationPageTableManager() : Kernel::GetSystemPageTableManager());
         }
 
         /* Ensure we don't leak any secure memory we allocated. */
@@ -592,6 +620,32 @@ namespace ams::kern {
         shmem->Close();
     }
 
+    void KProcess::AddIoRegion(KIoRegion *io_region) {
+        /* Lock ourselves, to prevent concurrent access. */
+        KScopedLightLock lk(m_state_lock);
+
+        /* Open a reference to the region. */
+        io_region->Open();
+
+        /* Add the region to our list. */
+        m_io_region_list.push_back(*io_region);
+
+    }
+
+    void KProcess::RemoveIoRegion(KIoRegion *io_region) {
+        /* Remove the region from our list. */
+        {
+            /* Lock ourselves, to prevent concurrent access. */
+            KScopedLightLock lk(m_state_lock);
+
+            /* Remove the region from our list. */
+            m_io_region_list.erase(m_io_region_list.iterator_to(*io_region));
+        }
+
+        /* Close our reference to the io region. */
+        io_region->Close();
+    }
+
     Result KProcess::CreateThreadLocalRegion(KProcessAddress *out) {
         KThreadLocalPage *tlp = nullptr;
         KProcessAddress   tlr = Null<KProcessAddress>;
@@ -753,43 +807,43 @@ namespace ams::kern {
         KThread *cur_thread = GetCurrentThreadPointer();
         MESOSPHERE_ASSERT(this == cur_thread->GetOwnerProcess());
 
-        /* Try to claim the exception thread. */
-        if (m_exception_thread != cur_thread) {
-            const uintptr_t address_key = reinterpret_cast<uintptr_t>(std::addressof(m_exception_thread));
-            while (true) {
-                {
-                    KScopedSchedulerLock sl;
-
-                    /* If the thread is terminating, it can't enter. */
-                    if (cur_thread->IsTerminationRequested()) {
-                        return false;
-                    }
-
-                    /* If we have no exception thread, we succeeded. */
-                    if (m_exception_thread == nullptr) {
-                        m_exception_thread = cur_thread;
-                        KScheduler::SetSchedulerUpdateNeeded();
-                        return true;
-                    }
-
-                    /* Otherwise, wait for us to not have an exception thread. */
-                    cur_thread->SetAddressKey(address_key | 1);
-                    m_exception_thread->AddWaiter(cur_thread);
-                    cur_thread->SetState(KThread::ThreadState_Waiting);
-                }
-
-                /* Remove the thread as a waiter from the lock owner. */
-                {
-                    KScopedSchedulerLock sl;
-
-                    if (KThread *owner_thread = cur_thread->GetLockOwner(); owner_thread != nullptr) {
-                        owner_thread->RemoveWaiter(cur_thread);
-                    }
-                }
-            }
-        } else {
+        /* Check that we haven't already claimed the exception thread. */
+        if (m_exception_thread == cur_thread) {
             return false;
         }
+
+        /* Create the wait queue we'll be using. */
+        ThreadQueueImplForKProcessEnterUserException wait_queue(std::addressof(m_exception_thread));
+
+        /* Claim the exception thread. */
+        {
+            /* Lock the scheduler. */
+            KScopedSchedulerLock sl;
+
+            /* Check that we're not terminating. */
+            if (cur_thread->IsTerminationRequested()) {
+                return false;
+            }
+
+            /* If we don't have an exception thread, we can just claim it directly. */
+            if (m_exception_thread == nullptr) {
+                m_exception_thread = cur_thread;
+                KScheduler::SetSchedulerUpdateNeeded();
+                return true;
+            }
+
+            /* Otherwise, we need to wait until we don't have an exception thread. */
+
+            /* Add the current thread as a waiter on the current exception thread. */
+            cur_thread->SetAddressKey(reinterpret_cast<uintptr_t>(std::addressof(m_exception_thread)) | 1);
+            m_exception_thread->AddWaiter(cur_thread);
+
+            /* Wait to claim the exception thread. */
+            cur_thread->BeginWait(std::addressof(wait_queue));
+        }
+
+        /* If our wait didn't end due to thread termination, we succeeded. */
+        return !svc::ResultTerminationRequested::Includes(cur_thread->GetWaitResult());
     }
 
     bool KProcess::LeaveUserException() {
@@ -805,7 +859,7 @@ namespace ams::kern {
             /* Remove waiter thread. */
             s32 num_waiters;
             if (KThread *next = thread->RemoveWaiterByKey(std::addressof(num_waiters), reinterpret_cast<uintptr_t>(std::addressof(m_exception_thread)) | 1); next != nullptr) {
-                next->SetState(KThread::ThreadState_Runnable);
+                next->EndWait(ResultSuccess());
             }
 
             KScheduler::SetSchedulerUpdateNeeded();

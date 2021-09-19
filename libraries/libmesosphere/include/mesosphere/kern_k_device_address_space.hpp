@@ -31,7 +31,6 @@ namespace ams::kern {
             bool m_is_initialized;
         public:
             constexpr KDeviceAddressSpace() : m_lock(), m_table(), m_space_address(), m_space_size(), m_is_initialized() { /* ... */ }
-            virtual ~KDeviceAddressSpace() { /* ... */ }
 
             Result Initialize(u64 address, u64 size);
             virtual void Finalize() override;
@@ -42,18 +41,17 @@ namespace ams::kern {
             Result Attach(ams::svc::DeviceName device_name);
             Result Detach(ams::svc::DeviceName device_name);
 
-            Result Map(size_t *out_mapped_size, KProcessPageTable *page_table, KProcessAddress process_address, size_t size, u64 device_address, ams::svc::MemoryPermission device_perm, bool refresh_mappings) {
-                return this->Map(out_mapped_size, page_table, process_address, size, device_address, device_perm, false, refresh_mappings);
+            Result MapByForce(KProcessPageTable *page_table, KProcessAddress process_address, size_t size, u64 device_address, ams::svc::MemoryPermission device_perm) {
+                return this->Map(page_table, process_address, size, device_address, device_perm, false);
             }
 
             Result MapAligned(KProcessPageTable *page_table, KProcessAddress process_address, size_t size, u64 device_address, ams::svc::MemoryPermission device_perm) {
-                size_t dummy;
-                return this->Map(std::addressof(dummy), page_table, process_address, size, device_address, device_perm, true, false);
+                return this->Map(page_table, process_address, size, device_address, device_perm, true);
             }
 
             Result Unmap(KProcessPageTable *page_table, KProcessAddress process_address, size_t size, u64 device_address);
         private:
-            Result Map(size_t *out_mapped_size, KProcessPageTable *page_table, KProcessAddress process_address, size_t size, u64 device_address, ams::svc::MemoryPermission device_perm, bool is_aligned, bool refresh_mappings);
+            Result Map(KProcessPageTable *page_table, KProcessAddress process_address, size_t size, u64 device_address, ams::svc::MemoryPermission device_perm, bool is_aligned);
         public:
             static void Initialize();
     };

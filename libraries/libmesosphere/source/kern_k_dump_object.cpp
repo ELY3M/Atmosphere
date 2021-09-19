@@ -99,15 +99,11 @@ namespace ams::kern::KDumpObject {
                         MESOSPHERE_RELEASE_LOG("Handle %08x Obj=%p Ref=%d Type=%s OwnerPID=%d (%s) OwnerAddress=%lx Size=%zu KB\n", handle, obj.GetPointerUnsafe(), obj->GetReferenceCount() - 1, obj->GetTypeName(), static_cast<s32>(target_owner->GetId()), target_owner->GetName(), GetInteger(target->GetSourceAddress()), target->GetSize() / 1_KB);
                     } else if (auto *target = obj->DynamicCast<KInterruptEvent *>(); target != nullptr) {
                         MESOSPHERE_RELEASE_LOG("Handle %08x Obj=%p Ref=%d Type=%s irq=%d\n", handle, obj.GetPointerUnsafe(), obj->GetReferenceCount() - 1, obj->GetTypeName(), target->GetInterruptId());
-                    } else if (auto *target = obj->DynamicCast<KWritableEvent *>(); target != nullptr) {
-                        if (KEvent *event = target->GetParent(); event != nullptr) {
-                            MESOSPHERE_RELEASE_LOG("Handle %08x Obj=%p Ref=%d Type=%s Pair=%p\n", handle, obj.GetPointerUnsafe(), obj->GetReferenceCount() - 1, obj->GetTypeName(), std::addressof(event->GetReadableEvent()));
-                        } else {
-                            MESOSPHERE_RELEASE_LOG("Handle %08x Obj=%p Ref=%d Type=%s\n", handle, obj.GetPointerUnsafe(), obj->GetReferenceCount() - 1, obj->GetTypeName());
-                        }
+                    } else if (auto *target = obj->DynamicCast<KEvent *>(); target != nullptr) {
+                        MESOSPHERE_RELEASE_LOG("Handle %08x Obj=%p Ref=%d Type=%s\n", handle, obj.GetPointerUnsafe(), obj->GetReferenceCount() - 1, obj->GetTypeName());
                     } else if (auto *target = obj->DynamicCast<KReadableEvent *>(); target != nullptr) {
                         if (KEvent *event = target->GetParent(); event != nullptr) {
-                            MESOSPHERE_RELEASE_LOG("Handle %08x Obj=%p Ref=%d Type=%s Pair=%p\n", handle, obj.GetPointerUnsafe(), obj->GetReferenceCount() - 1, obj->GetTypeName(), std::addressof(event->GetWritableEvent()));
+                            MESOSPHERE_RELEASE_LOG("Handle %08x Obj=%p Ref=%d Type=%s Parent=%p\n", handle, obj.GetPointerUnsafe(), obj->GetReferenceCount() - 1, obj->GetTypeName(), event);
                         } else {
                             MESOSPHERE_RELEASE_LOG("Handle %08x Obj=%p Ref=%d Type=%s\n", handle, obj.GetPointerUnsafe(), obj->GetReferenceCount() - 1, obj->GetTypeName());
                         }
@@ -350,8 +346,8 @@ namespace ams::kern::KDumpObject {
                 DUMP_KSLABOBJ(KEventInfo);
                 DUMP_KSLABOBJ(KSessionRequest);
                 DUMP_KSLABOBJ(KResourceLimit);
-                DUMP_KSLABOBJ(KAlpha);
-                DUMP_KSLABOBJ(KBeta);
+                DUMP_KSLABOBJ(KIoPool);
+                DUMP_KSLABOBJ(KIoRegion);
 
                 #undef DUMP_KSLABOBJ
 
@@ -373,14 +369,14 @@ namespace ams::kern::KDumpObject {
                 /* KBlockInfo slab. */
                 {
                     MESOSPHERE_RELEASE_LOG("KBlockInfo\n");
-                    auto &manager = Kernel::GetBlockInfoManager();
+                    auto &manager = Kernel::GetSystemBlockInfoManager();
                     MESOSPHERE_RELEASE_LOG("    Cur=%6zu Peak=%6zu Max=%6zu\n", manager.GetUsed(), manager.GetPeak(), manager.GetCount());
                 }
 
                 /* Page Table slab. */
                 {
                     MESOSPHERE_RELEASE_LOG("Page Table\n");
-                    auto &manager = Kernel::GetPageTableManager();
+                    auto &manager = Kernel::GetSystemPageTableManager();
                     MESOSPHERE_RELEASE_LOG("    Cur=%6zu Peak=%6zu Max=%6zu\n", manager.GetUsed(), manager.GetPeak(), manager.GetCount());
                 }
             }
