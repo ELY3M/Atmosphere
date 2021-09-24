@@ -11,7 +11,8 @@ Ely's Changes
 =====
 * increased limit for cheats size....  I needed to run bigger cheats instead of split txts and reloading....    
 * error/crash screens have my name in it to show that it is not official build.    
-* Added reboot to hekate payload - Thanks to __tomvita__ for this code and idea.       
+* Added reboot to hekate payload - Thanks to __tomvita__ for this code and idea. 
+* my own favorite splash screen haha        
 
 Components
 =====
