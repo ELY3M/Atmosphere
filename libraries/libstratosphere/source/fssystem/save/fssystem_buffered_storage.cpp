@@ -192,6 +192,7 @@ namespace ams::fssystem::save {
                 const auto cache_buffer        = reinterpret_cast<u8 *>(this->memory_range.first) + read_offset;
                 AMS_ASSERT(read_offset >= 0);
                 AMS_ASSERT(static_cast<size_t>(read_offset) <= readable_offset_max);
+                AMS_UNUSED(readable_offset_max);
 
                 std::memcpy(buffer, cache_buffer, size);
             }
@@ -209,6 +210,7 @@ namespace ams::fssystem::save {
                 const auto cache_buffer        = reinterpret_cast<u8 *>(this->memory_range.first) + write_offset;
                 AMS_ASSERT(write_offset >= 0);
                 AMS_ASSERT(static_cast<size_t>(write_offset) <= writable_offset_max);
+                AMS_UNUSED(writable_offset_max);
 
                 std::memcpy(cache_buffer, buffer, size);
                 this->is_dirty = true;
@@ -580,7 +582,7 @@ namespace ams::fssystem::save {
             }
     };
 
-    BufferedStorage::BufferedStorage() : base_storage(), buffer_manager(), block_size(), base_storage_size(), caches(), cache_count(), next_acquire_cache(), next_fetch_cache(), mutex(false), bulk_read_enabled() {
+    BufferedStorage::BufferedStorage() : base_storage(), buffer_manager(), block_size(), base_storage_size(), caches(), cache_count(), next_acquire_cache(), next_fetch_cache(), mutex(), bulk_read_enabled() {
         /* ... */
     }
 
@@ -673,7 +675,7 @@ namespace ams::fssystem::save {
                     R_TRY(cache.Flush());
                     cache.Invalidate();
                 }
-                /* AMS_ASSERT(!cache.AcquireNextOverlappedCache(invalidate_offset, invalidate_size)); */
+                AMS_ASSERT(!cache.AcquireNextOverlappedCache(invalidate_offset, invalidate_size));
             }
         } else if (size < prev_size) {
             /* Prepare to do a shrink. */
