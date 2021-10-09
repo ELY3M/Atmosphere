@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -52,7 +52,7 @@ namespace ams::mem::impl::heap {
             this->use_virtual_memory = false;
         } else {
             /* We were not provided with a region to use as backing. */
-            void *mem;
+            void *mem = nullptr;
             if (auto err = AllocateVirtualMemory(std::addressof(mem), size); err != 0) {
                 return err;
             }
@@ -185,7 +185,7 @@ namespace ams::mem::impl::heap {
         if (cls_from_ptr) {
             if (cls_from_ptr <= 0) {
                 return EFAULT;
-            } else if (cls_from_size && cls_from_size <= cls_from_ptr) {
+            } else if (cls_from_size && static_cast<s32>(cls_from_size) <= cls_from_ptr) {
                 *p = ptr;
                 return 0;
             } else {
@@ -225,7 +225,7 @@ namespace ams::mem::impl::heap {
         if (cls_from_ptr) {
             if (cls_from_ptr <= 0) {
                 return EFAULT;
-            } else if (cls_from_size && cls_from_size <= cls_from_ptr) {
+            } else if (cls_from_size && static_cast<s32>(cls_from_size) <= cls_from_ptr) {
                 return 0;
             } else {
                 return EINVAL;

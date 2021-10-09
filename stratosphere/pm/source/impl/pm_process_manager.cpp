@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -118,7 +118,7 @@ namespace ams::pm::impl {
         };
 
         /* Process Tracking globals. */
-        void ProcessTrackingMain(void *arg);
+        void ProcessTrackingMain(void *);
 
         constinit os::ThreadType g_process_track_thread;
         alignas(os::ThreadStackAlignment) constinit u8 g_process_track_thread_stack[16_KB];
@@ -150,33 +150,33 @@ namespace ams::pm::impl {
         constinit std::atomic<bool> g_application_hook;
 
         /* Forward declarations. */
-        Result LaunchProcess(os::WaitableManagerType &waitable_manager, const LaunchProcessArgs &args);
+        Result LaunchProcess(os::MultiWaitType &multi_wait, const LaunchProcessArgs &args);
         void   OnProcessSignaled(ProcessListAccessor &list, ProcessInfo *process_info);
 
         /* Helpers. */
-        void ProcessTrackingMain(void *arg) {
+        void ProcessTrackingMain(void *) {
             /* This is the main loop of the process tracking thread. */
 
-            /* Setup waitable manager. */
-            os::WaitableManagerType process_waitable_manager;
-            os::WaitableHolderType start_event_holder;
-            os::InitializeWaitableManager(std::addressof(process_waitable_manager));
-            os::InitializeWaitableHolder(std::addressof(start_event_holder), g_process_launch_start_event.GetBase());
-            os::LinkWaitableHolder(std::addressof(process_waitable_manager), std::addressof(start_event_holder));
+            /* Setup multi wait/holders. */
+            os::MultiWaitType process_multi_wait;
+            os::MultiWaitHolderType start_event_holder;
+            os::InitializeMultiWait(std::addressof(process_multi_wait));
+            os::InitializeMultiWaitHolder(std::addressof(start_event_holder), g_process_launch_start_event.GetBase());
+            os::LinkMultiWaitHolder(std::addressof(process_multi_wait), std::addressof(start_event_holder));
 
             while (true) {
-                auto signaled_holder = os::WaitAny(std::addressof(process_waitable_manager));
+                auto signaled_holder = os::WaitAny(std::addressof(process_multi_wait));
                 if (signaled_holder == &start_event_holder) {
                     /* Launch start event signaled. */
                     /* TryWait will clear signaled, preventing duplicate notifications. */
                     if (g_process_launch_start_event.TryWait()) {
-                        g_process_launch_result = LaunchProcess(process_waitable_manager, g_process_launch_args);
+                        g_process_launch_result = LaunchProcess(process_multi_wait, g_process_launch_args);
                         g_process_launch_finish_event.Signal();
                     }
                 } else {
                     /* Some process was signaled. */
                     ProcessListAccessor list(g_process_list);
-                    OnProcessSignaled(list, reinterpret_cast<ProcessInfo *>(os::GetWaitableHolderUserData(signaled_holder)));
+                    OnProcessSignaled(list, reinterpret_cast<ProcessInfo *>(os::GetMultiWaitHolderUserData(signaled_holder)));
                 }
             }
         }
@@ -207,7 +207,7 @@ namespace ams::pm::impl {
         }
 
         Result StartProcess(ProcessInfo *process_info, const ldr::ProgramInfo *program_info) {
-            R_TRY(svcStartProcess(process_info->GetHandle(), program_info->main_thread_priority, program_info->default_cpu_id, program_info->main_thread_stack_size));
+            R_TRY(svc::StartProcess(process_info->GetHandle(), program_info->main_thread_priority, program_info->default_cpu_id, program_info->main_thread_stack_size));
             process_info->SetState(svc::ProcessState_Running);
             return ResultSuccess();
         }
@@ -220,7 +220,7 @@ namespace ams::pm::impl {
             g_process_info_allocator.FreeProcessInfo(process_info);
         }
 
-        Result LaunchProcess(os::WaitableManagerType &waitable_manager, const LaunchProcessArgs &args) {
+        Result LaunchProcess(os::MultiWaitType &multi_wait, const LaunchProcessArgs &args) {
             /* Get Program Info. */
             ldr::ProgramInfo program_info;
             cfg::OverrideStatus override_status;
@@ -242,7 +242,7 @@ namespace ams::pm::impl {
             resource::WaitResourceAvailable(&program_info);
 
             /* Actually create the process. */
-            Handle process_handle;
+            os::NativeHandle process_handle;
             {
                 auto pin_guard = SCOPE_GUARD { ldr::pm::UnpinProgram(pin_id); };
                 R_TRY(ldr::pm::CreateProcess(&process_handle, pin_id, GetLoaderCreateProcessFlags(args.flags), resource::GetResourceLimitHandle(&program_info)));
@@ -260,7 +260,7 @@ namespace ams::pm::impl {
             {
                 ProcessListAccessor list(g_process_list);
                 list->push_back(*process_info);
-                process_info->LinkToWaitableManager(waitable_manager);
+                process_info->LinkToMultiWait(multi_wait);
             }
 
             /* Prevent resource leakage if register fails. */
@@ -313,7 +313,7 @@ namespace ams::pm::impl {
 
         void OnProcessSignaled(ProcessListAccessor &list, ProcessInfo *process_info) {
             /* Reset the process's signal. */
-            svcResetSignal(process_info->GetHandle());
+            svc::ResetSignal(process_info->GetHandle());
 
             /* Update the process's state. */
             const svc::ProcessState old_state = process_info->GetState();
@@ -362,7 +362,7 @@ namespace ams::pm::impl {
                     process_info->ClearUnhandledException();
                     break;
                 case svc::ProcessState_Terminated:
-                    /* Free process resources, unlink from waitable manager. */
+                    /* Free process resources, unlink from multi wait. */
                     process_info->Cleanup();
 
                     if (hos::GetVersion() < hos::Version_5_0_0 && process_info->ShouldSignalOnExit()) {
@@ -455,7 +455,7 @@ namespace ams::pm::impl {
         auto process_info = list->Find(process_id);
         R_UNLESS(process_info != nullptr, pm::ResultProcessNotFound());
 
-        return svcTerminateProcess(process_info->GetHandle());
+        return svc::TerminateProcess(process_info->GetHandle());
     }
 
     Result TerminateProgram(ncm::ProgramId program_id) {
@@ -464,10 +464,10 @@ namespace ams::pm::impl {
         auto process_info = list->Find(program_id);
         R_UNLESS(process_info != nullptr, pm::ResultProcessNotFound());
 
-        return svcTerminateProcess(process_info->GetHandle());
+        return svc::TerminateProcess(process_info->GetHandle());
     }
 
-    Result GetProcessEventHandle(Handle *out) {
+    Result GetProcessEventHandle(os::NativeHandle *out) {
         *out = os::GetReadableHandleOfSystemEvent(std::addressof(g_process_event));
         return ResultSuccess();
     }
@@ -552,6 +552,7 @@ namespace ams::pm::impl {
     /* Information Getters. */
     Result GetModuleIdList(u32 *out_count, u8 *out_buf, size_t max_out_count, u64 unused) {
         /* This function was always stubbed... */
+        AMS_UNUSED(out_buf, max_out_count, unused);
         *out_count = 0;
         return ResultSuccess();
     }
@@ -560,11 +561,19 @@ namespace ams::pm::impl {
         ProcessListAccessor list(g_process_list);
 
         size_t count = 0;
-        for (auto &process : *list) {
-            if (process.HasExceptionWaitingAttach()) {
-                out_process_ids[count++] = process.GetProcessId();
+
+        if (max_out_count > 0) {
+            for (auto &process : *list) {
+                if (process.HasExceptionWaitingAttach()) {
+                    out_process_ids[count++] = process.GetProcessId();
+
+                    if (count >= max_out_count) {
+                        break;
+                    }
+                }
             }
         }
+
         *out_count = static_cast<u32>(count);
         return ResultSuccess();
     }
@@ -602,7 +611,7 @@ namespace ams::pm::impl {
         return pm::ResultProcessNotFound();
     }
 
-    Result AtmosphereGetProcessInfo(Handle *out_process_handle, ncm::ProgramLocation *out_loc, cfg::OverrideStatus *out_status, os::ProcessId process_id) {
+    Result AtmosphereGetProcessInfo(os::NativeHandle *out_process_handle, ncm::ProgramLocation *out_loc, cfg::OverrideStatus *out_status, os::ProcessId process_id) {
         ProcessListAccessor list(g_process_list);
 
         auto process_info = list->Find(process_id);
@@ -615,8 +624,8 @@ namespace ams::pm::impl {
     }
 
     /* Hook API. */
-    Result HookToCreateProcess(Handle *out_hook, ncm::ProgramId program_id) {
-        *out_hook = INVALID_HANDLE;
+    Result HookToCreateProcess(os::NativeHandle *out_hook, ncm::ProgramId program_id) {
+        *out_hook = os::InvalidNativeHandle;
 
         {
             ncm::ProgramId old_value = ncm::InvalidProgramId;
@@ -627,8 +636,8 @@ namespace ams::pm::impl {
         return ResultSuccess();
     }
 
-    Result HookToCreateApplicationProcess(Handle *out_hook) {
-        *out_hook = INVALID_HANDLE;
+    Result HookToCreateApplicationProcess(os::NativeHandle *out_hook) {
+        *out_hook = os::InvalidNativeHandle;
 
         {
             bool old_value = false;
@@ -670,7 +679,7 @@ namespace ams::pm::impl {
         return ResultSuccess();
     }
 
-    Result GetBootFinishedEventHandle(Handle *out) {
+    Result GetBootFinishedEventHandle(os::NativeHandle *out) {
         /* In 8.0.0, Nintendo added this command, which signals that the boot sysmodule has finished. */
         /* Nintendo only signals it in safe mode FIRM, and this function aborts on normal FIRM. */
         /* We will signal it always, but only allow this function to succeed on safe mode. */

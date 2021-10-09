@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -131,6 +131,7 @@ namespace ams::fssystem {
 
                             /* Operate on our entries. */
                             R_TRY(this->OperatePerEntry<false>(offset, size,  [=](fs::IStorage *storage, s64 data_offset, s64 cur_offset, s64 cur_size) -> Result {
+                                AMS_UNUSED(cur_offset);
                                 R_TRY(storage->OperateRange(dst, dst_size, op_id, data_offset, cur_size, src, src_size));
                                 return ResultSuccess();
                             }));
@@ -155,6 +156,8 @@ namespace ams::fssystem {
 
                             /* Operate on our entries. */
                             R_TRY(this->OperatePerEntry<false>(offset, size,  [=, &merged_info](fs::IStorage *storage, s64 data_offset, s64 cur_offset, s64 cur_size) -> Result {
+                                AMS_UNUSED(cur_offset);
+
                                 fs::QueryRangeInfo cur_info;
                                 R_TRY(storage->OperateRange(std::addressof(cur_info), sizeof(cur_info), op_id, data_offset, cur_size, src, src_size));
                                 merged_info.Merge(cur_info);

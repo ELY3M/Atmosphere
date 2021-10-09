@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -222,17 +222,17 @@ namespace ams::spl::impl {
 
         class DeviceAddressSpaceMapHelper {
             private:
-                Handle das_hnd;
+                os::NativeHandle das_hnd;
                 u64 dst_addr;
                 u64 src_addr;
                 size_t size;
-                u32 perm;
+                svc::MemoryPermission perm;
             public:
-                DeviceAddressSpaceMapHelper(Handle h, u64 dst, u64 src, size_t sz, u32 p) : das_hnd(h), dst_addr(dst), src_addr(src), size(sz), perm(p) {
-                    R_ABORT_UNLESS(svcMapDeviceAddressSpaceAligned(this->das_hnd, dd::GetCurrentProcessHandle(), this->src_addr, this->size, this->dst_addr, this->perm));
+                DeviceAddressSpaceMapHelper(os::NativeHandle h, u64 dst, u64 src, size_t sz, svc::MemoryPermission p) : das_hnd(h), dst_addr(dst), src_addr(src), size(sz), perm(p) {
+                    R_ABORT_UNLESS(svc::MapDeviceAddressSpaceAligned(this->das_hnd, dd::GetCurrentProcessHandle(), this->src_addr, this->size, this->dst_addr, this->perm));
                 }
                 ~DeviceAddressSpaceMapHelper() {
-                    R_ABORT_UNLESS(svcUnmapDeviceAddressSpace(this->das_hnd, dd::GetCurrentProcessHandle(), this->src_addr, this->size, this->dst_addr));
+                    R_ABORT_UNLESS(svc::UnmapDeviceAddressSpace(this->das_hnd, dd::GetCurrentProcessHandle(), this->src_addr, this->size, this->dst_addr));
                 }
         };
 
@@ -241,7 +241,7 @@ namespace ams::spl::impl {
         constinit os::InterruptEventType g_se_event;
         constinit os::SystemEventType g_se_keyslot_available_event;
 
-        constinit Handle g_se_das_hnd;
+        constinit os::NativeHandle g_se_das_hnd = os::InvalidNativeHandle;
         constinit u32 g_se_mapped_work_buffer_addr;
         alignas(os::MemoryPageSize) constinit u8 g_work_buffer[2 * WorkBufferSizeMax];
 
@@ -279,16 +279,16 @@ namespace ams::spl::impl {
         void InitializeDeviceAddressSpace() {
 
             /* Create Address Space. */
-            R_ABORT_UNLESS(svcCreateDeviceAddressSpace(&g_se_das_hnd, 0, (1ul << 32)));
+            R_ABORT_UNLESS(svc::CreateDeviceAddressSpace(&g_se_das_hnd, 0, (1ul << 32)));
 
             /* Attach it to the SE. */
-            R_ABORT_UNLESS(svcAttachDeviceAddressSpace(svc::DeviceName_Se, g_se_das_hnd));
+            R_ABORT_UNLESS(svc::AttachDeviceAddressSpace(svc::DeviceName_Se, g_se_das_hnd));
 
             const u64 work_buffer_addr = reinterpret_cast<u64>(g_work_buffer);
             g_se_mapped_work_buffer_addr = WorkBufferMapBase + (work_buffer_addr % DeviceAddressSpaceAlign);
 
             /* Map the work buffer for the SE. */
-            R_ABORT_UNLESS(svcMapDeviceAddressSpaceAligned(g_se_das_hnd, dd::GetCurrentProcessHandle(), work_buffer_addr, sizeof(g_work_buffer), g_se_mapped_work_buffer_addr, 3));
+            R_ABORT_UNLESS(svc::MapDeviceAddressSpaceAligned(g_se_das_hnd, dd::GetCurrentProcessHandle(), work_buffer_addr, sizeof(g_work_buffer), g_se_mapped_work_buffer_addr, svc::MemoryPermission_ReadWrite));
         }
 
         /* Internal RNG functionality. */
@@ -689,8 +689,8 @@ namespace ams::spl::impl {
         R_UNLESS(dst_size_page_aligned <= ComputeAesSizeMax, spl::ResultInvalidSize());
 
         /* Helpers for mapping/unmapping. */
-        DeviceAddressSpaceMapHelper in_mapper(g_se_das_hnd,  src_se_map_addr, src_addr_page_aligned, src_size_page_aligned, 1);
-        DeviceAddressSpaceMapHelper out_mapper(g_se_das_hnd, dst_se_map_addr, dst_addr_page_aligned, dst_size_page_aligned, 2);
+        DeviceAddressSpaceMapHelper in_mapper(g_se_das_hnd,  src_se_map_addr, src_addr_page_aligned, src_size_page_aligned, svc::MemoryPermission_Read);
+        DeviceAddressSpaceMapHelper out_mapper(g_se_das_hnd, dst_se_map_addr, dst_addr_page_aligned, dst_size_page_aligned, svc::MemoryPermission_Write);
 
         /* Setup SE linked list entries. */
         SeCryptContext *crypt_ctx = reinterpret_cast<SeCryptContext *>(g_work_buffer);
@@ -937,7 +937,7 @@ namespace ams::spl::impl {
         return ResultSuccess();
     }
 
-    Handle GetAesKeySlotAvailableEventHandle() {
+    os::NativeHandle GetAesKeySlotAvailableEventHandle() {
         return os::GetReadableHandleOfSystemEvent(std::addressof(g_se_keyslot_available_event));
     }
 

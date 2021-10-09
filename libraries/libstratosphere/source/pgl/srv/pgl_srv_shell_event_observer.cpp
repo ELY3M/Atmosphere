@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -66,7 +66,7 @@ namespace ams::pgl::srv {
     }
 
     Result ShellEventObserverCmif::GetProcessEventHandle(ams::sf::OutCopyHandle out) {
-        out.SetValue(this->GetEvent().GetReadableHandle());
+        out.SetValue(this->GetEvent().GetReadableHandle(), false);
         return ResultSuccess();
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -90,6 +90,10 @@ namespace ams::lm::srv {
                     /* Put the message to uart. */
                     diag::impl::PutImpl(meta, txt, size);
                 }, const_cast<diag::LogMetaData *>(std::addressof(log_meta)));
+            }
+            #else
+            {
+                AMS_UNUSED(message);
             }
             #endif
         }

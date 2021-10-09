@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -28,7 +28,7 @@ namespace ams::dmnt::cheat {
     }
 
     void CheatService::GetCheatProcessEvent(sf::OutCopyHandle out_event) {
-        out_event.SetValue(dmnt::cheat::impl::GetCheatProcessEventHandle());
+        out_event.SetValue(dmnt::cheat::impl::GetCheatProcessEventHandle(), false);
     }
 
     Result CheatService::GetCheatProcessMetadata(sf::Out<CheatProcessMetadata> out_metadata) {
@@ -60,7 +60,7 @@ namespace ams::dmnt::cheat {
         return dmnt::cheat::impl::GetCheatProcessMappingCount(out_count.GetPointer());
     }
 
-    Result CheatService::GetCheatProcessMappings(const sf::OutArray<MemoryInfo> &mappings, sf::Out<u64> out_count, u64 offset) {
+    Result CheatService::GetCheatProcessMappings(const sf::OutArray<svc::MemoryInfo> &mappings, sf::Out<u64> out_count, u64 offset) {
         R_UNLESS(mappings.GetPointer() != nullptr, ResultCheatNullBuffer());
         return dmnt::cheat::impl::GetCheatProcessMappings(mappings.GetPointer(), mappings.GetSize(), out_count.GetPointer(), offset);
     }
@@ -75,7 +75,7 @@ namespace ams::dmnt::cheat {
         return dmnt::cheat::impl::WriteCheatProcessMemory(address, buffer.GetPointer(), std::min(in_size, buffer.GetSize()));
     }
 
-    Result CheatService::QueryCheatProcessMemory(sf::Out<MemoryInfo> mapping, u64 address) {
+    Result CheatService::QueryCheatProcessMemory(sf::Out<svc::MemoryInfo> mapping, u64 address) {
         return dmnt::cheat::impl::QueryCheatProcessMemory(mapping.GetPointer(), address);
     }
 

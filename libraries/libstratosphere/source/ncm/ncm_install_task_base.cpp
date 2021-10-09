@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Adubbz, Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -648,7 +648,7 @@ namespace ams::ncm {
 
                 /* Automatically choose a suitable storage id. */
                 auto reader = content_meta.GetReader();
-                StorageId storage_id;
+                StorageId storage_id = StorageId::None;
                 if (reader.GetStorageId() != StorageId::None) {
                     storage_id = reader.GetStorageId();
                 } else {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -222,7 +222,6 @@ namespace ams::kern {
             }
 
             constexpr bool SetInterruptPermitted(u32 id) {
-                constexpr size_t BitsPerWord = BITSIZEOF(m_irq_access_flags[0]);
                 if (AMS_LIKELY(id < m_irq_access_flags.GetCount())) {
                     m_irq_access_flags[id] = true;
                     return true;

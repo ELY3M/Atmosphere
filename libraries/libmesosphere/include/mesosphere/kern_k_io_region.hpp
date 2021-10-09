@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -34,7 +34,7 @@ namespace ams::kern {
             KPhysicalAddress m_physical_address;
             size_t m_size;
             ams::svc::MemoryMapping m_mapping;
-            ams::svc::MemoryPermission m_perm;
+            ams::svc::MemoryPermission m_permission;
             bool m_is_initialized;
             bool m_is_mapped;
             util::IntrusiveListNode m_process_list_node;

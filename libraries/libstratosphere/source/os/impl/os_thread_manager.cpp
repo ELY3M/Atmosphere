@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -15,10 +15,10 @@
  */
 #include <stratosphere.hpp>
 #include "os_thread_manager.hpp"
-#include "os_waitable_manager_impl.hpp"
-#include "os_waitable_holder_base.hpp"
-#include "os_waitable_holder_impl.hpp"
-#include "os_waitable_object_list.hpp"
+#include "os_multiple_wait_impl.hpp"
+#include "os_multiple_wait_holder_base.hpp"
+#include "os_multiple_wait_holder_impl.hpp"
+#include "os_multiple_wait_object_list.hpp"
 #include "os_utility.hpp"
 
 namespace ams::os::impl {
@@ -213,14 +213,19 @@ namespace ams::os::impl {
 
     /* TODO void ThreadManager::GetThreadContext(ThreadContextInfo *out_context, const ThreadType *thread); */
 
+    namespace {
+
+        constexpr inline const char MainThreadName[] = "MainThread";
+        constexpr inline const char ThreadNamePrefix[] = "Thread_0x";
+
+    }
+
     void ThreadManager::SetInitialThreadNameUnsafe(ThreadType *thread) {
         if (thread == std::addressof(this->main_thread)) {
-            constexpr const char MainThreadName[] = "MainThread";
             static_assert(sizeof(thread->name_buffer) >= sizeof(MainThreadName));
             static_assert(MainThreadName[sizeof(MainThreadName) - 1] == '\x00');
             std::memcpy(thread->name_buffer, MainThreadName, sizeof(MainThreadName));
         } else {
-            constexpr const char ThreadNamePrefix[] = "Thread_0x";
             constexpr size_t ThreadNamePrefixSize = sizeof(ThreadNamePrefix) - 1;
             const u64 func = reinterpret_cast<u64>(thread->function);
             static_assert(ThreadNamePrefixSize + sizeof(func) * 2 + 1 <= sizeof(thread->name_buffer));

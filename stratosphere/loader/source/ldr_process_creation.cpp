@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -14,6 +14,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <stratosphere.hpp>
+#include "ldr_auto_close.hpp"
 #include "ldr_capabilities.hpp"
 #include "ldr_content_management.hpp"
 #include "ldr_development_manager.hpp"
@@ -70,7 +71,7 @@ namespace ams::ldr {
         }
 
         struct ProcessInfo {
-            os::ManagedHandle process_handle;
+            os::NativeHandle process_handle;
             uintptr_t args_address;
             size_t    args_size;
             uintptr_t nso_address[Nso_Count];
@@ -122,6 +123,8 @@ namespace ams::ldr {
                     R_UNLESS(entries[i].version <= version, ResultInvalidVersion());
                 }
             }
+#else
+            AMS_UNUSED(program_id, version);
 #endif
             return ResultSuccess();
         }
@@ -332,7 +335,7 @@ namespace ams::ldr {
             return ResultSuccess();
         }
 
-        Result GetCreateProcessParameter(svc::CreateProcessParameter *out, const Meta *meta, u32 flags, Handle reslimit_h) {
+        Result GetCreateProcessParameter(svc::CreateProcessParameter *out, const Meta *meta, u32 flags, os::NativeHandle reslimit_h) {
             /* Clear output. */
             std::memset(out, 0, sizeof(*out));
 
@@ -365,6 +368,63 @@ namespace ams::ldr {
             }
 
             return ResultSuccess();
+        }
+
+        ALWAYS_INLINE u64 GetCurrentProcessInfo(svc::InfoType info_type) {
+            u64 value;
+            R_ABORT_UNLESS(svc::GetInfo(std::addressof(value), info_type, svc::PseudoHandle::CurrentProcess, 0));
+            return value;
+        }
+
+        Result SearchFreeRegion(uintptr_t *out, size_t mapping_size) {
+            /* Get address space extents. */
+            const uintptr_t heap_start  = GetCurrentProcessInfo(svc::InfoType_HeapRegionAddress);
+            const size_t    heap_size   = GetCurrentProcessInfo(svc::InfoType_HeapRegionSize);
+            const uintptr_t alias_start = GetCurrentProcessInfo(svc::InfoType_AliasRegionAddress);
+            const size_t    alias_size  = GetCurrentProcessInfo(svc::InfoType_AliasRegionSize);
+            const uintptr_t aslr_start  = GetCurrentProcessInfo(svc::InfoType_AslrRegionAddress);
+            const size_t    aslr_size   = GetCurrentProcessInfo(svc::InfoType_AslrRegionSize);
+
+            /* Iterate upwards to find a free region. */
+            uintptr_t address = aslr_start;
+            while (true) {
+                /* Declare variables for memory querying. */
+                svc::MemoryInfo mem_info;
+                svc::PageInfo page_info;
+
+                /* Check that we're still within bounds. */
+                R_UNLESS(address < address + mapping_size, svc::ResultOutOfMemory());
+
+                /* If we're within the heap region, skip to the end of the heap region. */
+                if (heap_size != 0 && !(address + mapping_size - 1 < heap_start || heap_start + heap_size - 1 < address)) {
+                    R_UNLESS(address < heap_start + heap_size, svc::ResultOutOfMemory());
+                    address = heap_start + heap_size;
+                    continue;
+                }
+
+                /* If we're within the alias region, skip to the end of the alias region. */
+                if (alias_size != 0 && !(address + mapping_size - 1 < alias_start || alias_start + alias_size - 1 < address)) {
+                    R_UNLESS(address < alias_start + alias_size, svc::ResultOutOfMemory());
+                    address = alias_start + alias_size;
+                    continue;
+                }
+
+                /* Get the current memory range. */
+                R_ABORT_UNLESS(svc::QueryMemory(std::addressof(mem_info), std::addressof(page_info), address));
+
+                /* If the memory range is free and big enough, use it. */
+                if (mem_info.state == svc::MemoryState_Free && mapping_size <= ((mem_info.base_address + mem_info.size) - address)) {
+                    *out = address;
+                    return ResultSuccess();
+                }
+
+                /* Check that we can advance. */
+                R_UNLESS(address < mem_info.base_address + mem_info.size,                        svc::ResultOutOfMemory());
+                R_UNLESS(mem_info.base_address + mem_info.size - 1 < aslr_start + aslr_size - 1, svc::ResultOutOfMemory());
+
+                /* Advance. */
+                address = mem_info.base_address + mem_info.size;
+            }
         }
 
         Result DecideAddressSpaceLayout(ProcessInfo *out, svc::CreateProcessParameter *out_param, const NsoHeader *nso_headers, const bool *has_nso, const args::ArgumentInfo *arg_info) {
@@ -401,39 +461,39 @@ namespace ams::ldr {
 
             /* Calculate ASLR. */
             uintptr_t aslr_start = 0;
-            uintptr_t aslr_size  = 0;
+            size_t aslr_size     = 0;
             if (hos::GetVersion() >= hos::Version_2_0_0) {
                 switch (out_param->flags & svc::CreateProcessFlag_AddressSpaceMask) {
                     case svc::CreateProcessFlag_AddressSpace32Bit:
                     case svc::CreateProcessFlag_AddressSpace32BitWithoutAlias:
-                        aslr_start = map::AslrBase32Bit;
-                        aslr_size  = map::AslrSize32Bit;
+                        aslr_start = svc::AddressSmallMap32Start;
+                        aslr_size  = svc::AddressSmallMap32Size;
                         break;
                     case svc::CreateProcessFlag_AddressSpace64BitDeprecated:
-                        aslr_start = map::AslrBase64BitDeprecated;
-                        aslr_size  = map::AslrSize64BitDeprecated;
+                        aslr_start = svc::AddressSmallMap36Start;
+                        aslr_size  = svc::AddressSmallMap36Size;
                         break;
                     case svc::CreateProcessFlag_AddressSpace64Bit:
-                        aslr_start = map::AslrBase64Bit;
-                        aslr_size  = map::AslrSize64Bit;
+                        aslr_start = svc::AddressMap39Start;
+                        aslr_size  = svc::AddressMap39Size;
                         break;
                     AMS_UNREACHABLE_DEFAULT_CASE();
                 }
             } else {
                 /* On 1.0.0, only 2 address space types existed. */
                 if (out_param->flags & svc::CreateProcessFlag_AddressSpace64BitDeprecated) {
-                    aslr_start = map::AslrBase64BitDeprecated;
-                    aslr_size  = map::AslrSize64BitDeprecated;
+                    aslr_start = svc::AddressSmallMap36Start;
+                    aslr_size  = svc::AddressSmallMap36Size;
                 } else {
-                    aslr_start = map::AslrBase32Bit;
-                    aslr_size  = map::AslrSize32Bit;
+                    aslr_start = svc::AddressSmallMap32Start;
+                    aslr_size  = svc::AddressSmallMap32Size;
                 }
             }
             R_UNLESS(total_size <= aslr_size, svc::ResultOutOfMemory());
 
             /* Set Create Process output. */
             uintptr_t aslr_slide = 0;
-            uintptr_t free_size = (aslr_size - total_size);
+            size_t free_size     = (aslr_size - total_size);
             if (out_param->flags & svc::CreateProcessFlag_EnableAslr) {
                 /* Nintendo uses MT19937 (not os::GenerateRandomBytes), but we'll just use TinyMT for now. */
                 aslr_slide = os::GenerateRandomU64(free_size / os::MemoryBlockUnitSize) * os::MemoryBlockUnitSize;
@@ -450,13 +510,13 @@ namespace ams::ldr {
                 out->args_address += aslr_start;
             }
 
-            out_param->code_address = aslr_start;
+            out_param->code_address   = aslr_start;
             out_param->code_num_pages = total_size >> 12;
 
             return ResultSuccess();
         }
 
-        Result CreateProcessImpl(ProcessInfo *out, const Meta *meta, const NsoHeader *nso_headers, const bool *has_nso, const args::ArgumentInfo *arg_info, u32 flags, Handle reslimit_h) {
+        Result CreateProcessImpl(ProcessInfo *out, const Meta *meta, const NsoHeader *nso_headers, const bool *has_nso, const args::ArgumentInfo *arg_info, u32 flags, os::NativeHandle reslimit_h) {
             /* Get CreateProcessParameter. */
             svc::CreateProcessParameter param;
             R_TRY(GetCreateProcessParameter(std::addressof(param), meta, flags, reslimit_h));
@@ -465,11 +525,12 @@ namespace ams::ldr {
             R_TRY(DecideAddressSpaceLayout(out, std::addressof(param), nso_headers, has_nso, arg_info));
 
             /* Actually create process. */
-            Handle process_handle;
+            svc::Handle process_handle;
             R_TRY(svc::CreateProcess(std::addressof(process_handle), std::addressof(param), static_cast<const u32 *>(meta->aci_kac), meta->aci->kac_size / sizeof(u32)));
 
             /* Set the output handle. */
-            *out->process_handle.GetPointer() = process_handle;
+            out->process_handle = process_handle;
+
             return ResultSuccess();
         }
 
@@ -506,11 +567,11 @@ namespace ams::ldr {
             return ResultSuccess();
         }
 
-        Result LoadNsoIntoProcessMemory(Handle process_handle, fs::FileHandle file, uintptr_t map_address, const NsoHeader *nso_header, uintptr_t nso_address, size_t nso_size) {
+        Result LoadNsoIntoProcessMemory(os::NativeHandle process_handle, fs::FileHandle file, uintptr_t map_address, const NsoHeader *nso_header, uintptr_t nso_address, size_t nso_size) {
             /* Map and read data from file. */
             {
-                map::AutoCloseMap mapper(map_address, process_handle, nso_address, nso_size);
-                R_TRY(mapper.GetResult());
+                AutoCloseMap map(map_address, process_handle, nso_address, nso_size);
+                R_TRY(map.GetResult());
 
                 /* Load NSO segments. */
                 R_TRY(LoadNsoSegment(file, &nso_header->segments[NsoHeader::Segment_Text], nso_header->text_compressed_size, nso_header->text_hash, (nso_header->flags & NsoHeader::Flag_CompressedText) != 0,
@@ -541,21 +602,19 @@ namespace ams::ldr {
             const size_t ro_size = (static_cast<size_t>(nso_header->ro_size)   + size_t(0xFFFul)) & ~size_t(0xFFFul);
             const size_t rw_size = (static_cast<size_t>(nso_header->rw_size + nso_header->bss_size) + size_t(0xFFFul)) & ~size_t(0xFFFul);
             if (text_size) {
-                R_TRY(svcSetProcessMemoryPermission(process_handle, nso_address + nso_header->text_dst_offset, text_size, Perm_Rx));
+                R_TRY(svc::SetProcessMemoryPermission(process_handle, nso_address + nso_header->text_dst_offset, text_size, svc::MemoryPermission_ReadExecute));
             }
             if (ro_size) {
-                R_TRY(svcSetProcessMemoryPermission(process_handle, nso_address + nso_header->ro_dst_offset,   ro_size,   Perm_R));
+                R_TRY(svc::SetProcessMemoryPermission(process_handle, nso_address + nso_header->ro_dst_offset,   ro_size,   svc::MemoryPermission_Read));
             }
             if (rw_size) {
-                R_TRY(svcSetProcessMemoryPermission(process_handle, nso_address + nso_header->rw_dst_offset,   rw_size,   Perm_Rw));
+                R_TRY(svc::SetProcessMemoryPermission(process_handle, nso_address + nso_header->rw_dst_offset,   rw_size,   svc::MemoryPermission_ReadWrite));
             }
 
             return ResultSuccess();
         }
 
         Result LoadNsosIntoProcessMemory(const ProcessInfo *process_info, const NsoHeader *nso_headers, const bool *has_nso, const args::ArgumentInfo *arg_info) {
-            const Handle process_handle = process_info->process_handle.Get();
-
             /* Load each NSO. */
             for (size_t i = 0; i < Nso_Count; i++) {
                 if (has_nso[i]) {
@@ -563,10 +622,10 @@ namespace ams::ldr {
                     R_TRY(fs::OpenFile(std::addressof(file), GetNsoPath(i), fs::OpenMode_Read));
                     ON_SCOPE_EXIT { fs::CloseFile(file); };
 
-                    uintptr_t map_address = 0;
-                    R_TRY(map::LocateMappableSpace(&map_address, process_info->nso_size[i]));
+                    uintptr_t map_address;
+                    R_TRY(SearchFreeRegion(std::addressof(map_address), process_info->nso_size[i]));
 
-                    R_TRY(LoadNsoIntoProcessMemory(process_handle, file, map_address, nso_headers + i, process_info->nso_address[i], process_info->nso_size[i]));
+                    R_TRY(LoadNsoIntoProcessMemory(process_info->process_handle, file, map_address, nso_headers + i, process_info->nso_address[i], process_info->nso_size[i]));
                 }
             }
 
@@ -574,11 +633,11 @@ namespace ams::ldr {
             if (arg_info != nullptr) {
                 /* Write argument data into memory. */
                 {
-                    uintptr_t map_address = 0;
-                    R_TRY(map::LocateMappableSpace(&map_address, process_info->args_size));
+                    uintptr_t map_address;
+                    R_TRY(SearchFreeRegion(std::addressof(map_address), process_info->args_size));
 
-                    map::AutoCloseMap mapper(map_address, process_handle, process_info->args_address, process_info->args_size);
-                    R_TRY(mapper.GetResult());
+                    AutoCloseMap map(map_address, process_info->process_handle, process_info->args_address, process_info->args_size);
+                    R_TRY(map.GetResult());
 
                     ProgramArguments *args = reinterpret_cast<ProgramArguments *>(map_address);
                     std::memset(args, 0, sizeof(*args));
@@ -588,7 +647,7 @@ namespace ams::ldr {
                 }
 
                 /* Set argument region permissions. */
-                R_TRY(svcSetProcessMemoryPermission(process_handle, process_info->args_address, process_info->args_size, Perm_Rw));
+                R_TRY(svc::SetProcessMemoryPermission(process_info->process_handle, process_info->args_address, process_info->args_size, svc::MemoryPermission_ReadWrite));
             }
 
             return ResultSuccess();
@@ -597,7 +656,7 @@ namespace ams::ldr {
     }
 
     /* Process Creation API. */
-    Result CreateProcess(Handle *out, PinId pin_id, const ncm::ProgramLocation &loc, const cfg::OverrideStatus &override_status, const char *path, u32 flags, Handle reslimit_h) {
+    Result CreateProcess(os::NativeHandle *out, PinId pin_id, const ncm::ProgramLocation &loc, const cfg::OverrideStatus &override_status, const char *path, u32 flags, os::NativeHandle reslimit_h) {
         /* Use global storage for NSOs. */
         NsoHeader *nso_headers = g_nso_headers;
         bool *has_nso = g_has_nso;
@@ -605,6 +664,7 @@ namespace ams::ldr {
 
         {
             /* Mount code. */
+            AMS_UNUSED(path);
             ScopedCodeMount mount(loc, override_status);
             R_TRY(mount.GetResult());
 
@@ -623,13 +683,16 @@ namespace ams::ldr {
             ProcessInfo info;
             R_TRY(CreateProcessImpl(&info, &meta, nso_headers, has_nso, arg_info, flags, reslimit_h));
 
+            /* Ensure we close the process handle, if we fail. */
+            ON_SCOPE_EXIT { os::CloseNativeHandle(info.process_handle); };
+
             /* Load NSOs into process memory. */
             R_TRY(LoadNsosIntoProcessMemory(&info, nso_headers, has_nso, arg_info));
 
             /* Register NSOs with ro manager. */
             {
                 /* Nintendo doesn't validate this get, but we do. */
-                os::ProcessId process_id = os::GetProcessId(info.process_handle.Get());
+                os::ProcessId process_id = os::GetProcessId(info.process_handle);
 
                 /* Register new process. */
                 ldr::ro::RegisterProcess(pin_id, process_id, loc.program_id);
@@ -655,7 +718,8 @@ namespace ams::ldr {
             SetLaunchedBootProgram(loc.program_id);
 
             /* Move the process handle to output. */
-            *out = info.process_handle.Move();
+            *out = info.process_handle;
+            info.process_handle = os::InvalidNativeHandle;
         }
 
         return ResultSuccess();

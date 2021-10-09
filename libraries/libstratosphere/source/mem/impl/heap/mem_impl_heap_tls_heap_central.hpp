@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -221,6 +221,8 @@ namespace ams::mem::impl::heap {
             void CalculateHeapHash(HeapHash *out);
 
             errno_t AddThreadCache(TlsHeapCache *cache) {
+                AMS_UNUSED(cache);
+
                 std::scoped_lock lk(this->lock);
 
                 /* Add thread and recalculate. */
@@ -231,6 +233,8 @@ namespace ams::mem::impl::heap {
             }
 
             errno_t RemoveThreadCache(TlsHeapCache *cache) {
+                AMS_UNUSED(cache);
+
                 std::scoped_lock lk(this->lock);
 
                 /* Remove thread and recalculate. */
@@ -290,7 +294,7 @@ namespace ams::mem::impl::heap {
                     getcpu(std::addressof(cpu_id));
                 }
 
-                return this->CacheSmallMemoryListImpl(cache, cls, count, p, cpu_id, 0);
+                return this->CacheSmallMemoryListImpl(cache, cls, count, p, cpu_id, align);
             }
 
             bool CheckCachedSize(s32 size) const {
@@ -321,7 +325,7 @@ namespace ams::mem::impl::heap {
                 }
             }
 
-            size_t GetClassFromPointer(const void *ptr) {
+            s32 GetClassFromPointer(const void *ptr) {
                 std::atomic_thread_fence(std::memory_order_acquire);
 
                 const size_t idx = (reinterpret_cast<uintptr_t>(ptr) - reinterpret_cast<uintptr_t>(this)) / TlsHeapStatic::PageSize;
@@ -338,7 +342,7 @@ namespace ams::mem::impl::heap {
                     return this->span_table.pageclass_cache[idx];
                 } else {
                     /* TODO: Handle error? */
-                    return 0xFFFFFFFF;
+                    return -1;
                 }
             }
 
@@ -349,7 +353,7 @@ namespace ams::mem::impl::heap {
 
                 std::scoped_lock lk(this->lock);
                 if (Span *span = GetSpanFromPointer(std::addressof(this->span_table), ptr); span != nullptr && !span->page_class) {
-                    *out = (span->aux.large.color[0] << 0) | (span->aux.large.color[1] << 0) | (span->aux.large.color[2] << 16);
+                    *out = (span->aux.large.color[0] << 0) | (span->aux.large.color[1] << 8) | (span->aux.large.color[2] << 16);
                     return 0;
                 } else {
                     return EINVAL;
@@ -383,7 +387,7 @@ namespace ams::mem::impl::heap {
             errno_t GetName(const void *ptr, char *dst, size_t dst_size) {
                 std::scoped_lock lk(this->lock);
                 if (Span *span = GetSpanFromPointer(std::addressof(this->span_table), ptr); span != nullptr && !span->page_class) {
-                    strlcpy(dst, span->aux.large.name, dst_size);
+                    util::Strlcpy(dst, span->aux.large.name, dst_size);
                     return 0;
                 } else {
                     return EINVAL;
@@ -393,7 +397,7 @@ namespace ams::mem::impl::heap {
             errno_t SetName(const void *ptr, const char *name) {
                 std::scoped_lock lk(this->lock);
                 if (Span *span = GetSpanFromPointer(std::addressof(this->span_table), ptr); span != nullptr && !span->page_class) {
-                    strlcpy(span->aux.large.name, name, sizeof(span->aux.large.name));
+                    util::Strlcpy(span->aux.large.name, name, sizeof(span->aux.large.name));
                     return 0;
                 } else {
                     return EINVAL;

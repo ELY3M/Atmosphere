@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -81,6 +81,8 @@ namespace ams::dmnt::cheat::impl {
         }
 
         fs::WriteFile(this->debug_log_file, this->debug_log_offset, this->debug_log_format_buf, fmt_len, fs::WriteOption::Flush);
+        #else
+        AMS_UNUSED(format);
         #endif
     }
 

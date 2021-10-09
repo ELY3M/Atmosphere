@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Adubbz, Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -68,11 +68,13 @@ namespace ams::lr {
 
     Result OpenAddOnContentLocationResolver(AddOnContentLocationResolver *out) {
         /* TODO: libnx binding */
+        AMS_UNUSED(out);
         AMS_ABORT();
     }
 
     Result RefreshLocationResolver(ncm::StorageId storage_id) {
         /* TODO: libnx binding */
+        AMS_UNUSED(storage_id);
         AMS_ABORT();
     }
 }

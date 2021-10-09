@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -173,7 +173,7 @@ namespace ams::sdmmc::impl {
         this->EnsureControl();
 
         /* Wait for the interrupt to be signaled. */
-        os::WaitableHolderType *signaled_holder = os::TimedWaitAny(std::addressof(this->waitable_manager), TimeSpan::FromMilliSeconds(timeout_ms));
+        os::MultiWaitHolderType *signaled_holder = os::TimedWaitAny(std::addressof(this->multi_wait), TimeSpan::FromMilliSeconds(timeout_ms));
         if (signaled_holder == std::addressof(this->interrupt_event_holder)) {
             /* We received the interrupt. */
             return ResultSuccess();
@@ -781,15 +781,15 @@ namespace ams::sdmmc::impl {
     void SdHostStandardController::Initialize() {
         #if defined(AMS_SDMMC_USE_OS_EVENTS)
         {
-            os::InitializeWaitableManager(std::addressof(this->waitable_manager));
+            os::InitializeMultiWait(std::addressof(this->multi_wait));
 
             AMS_ABORT_UNLESS(this->interrupt_event != nullptr);
-            os::InitializeWaitableHolder(std::addressof(this->interrupt_event_holder), this->interrupt_event);
-            os::LinkWaitableHolder(std::addressof(this->waitable_manager), std::addressof(this->interrupt_event_holder));
+            os::InitializeMultiWaitHolder(std::addressof(this->interrupt_event_holder), this->interrupt_event);
+            os::LinkMultiWaitHolder(std::addressof(this->multi_wait), std::addressof(this->interrupt_event_holder));
 
             if (this->removed_event != nullptr) {
-                os::InitializeWaitableHolder(std::addressof(this->removed_event_holder), this->removed_event);
-                os::LinkWaitableHolder(std::addressof(this->waitable_manager), std::addressof(this->removed_event_holder));
+                os::InitializeMultiWaitHolder(std::addressof(this->removed_event_holder), this->removed_event);
+                os::LinkMultiWaitHolder(std::addressof(this->multi_wait), std::addressof(this->removed_event_holder));
             }
         }
         #endif
@@ -799,14 +799,14 @@ namespace ams::sdmmc::impl {
         #if defined(AMS_SDMMC_USE_OS_EVENTS)
         {
             if (this->removed_event != nullptr) {
-                os::UnlinkWaitableHolder(std::addressof(this->removed_event_holder));
-                os::FinalizeWaitableHolder(std::addressof(this->removed_event_holder));
+                os::UnlinkMultiWaitHolder(std::addressof(this->removed_event_holder));
+                os::FinalizeMultiWaitHolder(std::addressof(this->removed_event_holder));
             }
 
-            os::UnlinkWaitableHolder(std::addressof(this->interrupt_event_holder));
-            os::FinalizeWaitableHolder(std::addressof(this->interrupt_event_holder));
+            os::UnlinkMultiWaitHolder(std::addressof(this->interrupt_event_holder));
+            os::FinalizeMultiWaitHolder(std::addressof(this->interrupt_event_holder));
 
-            os::FinalizeWaitableManager(std::addressof(this->waitable_manager));
+            os::FinalizeMultiWait(std::addressof(this->multi_wait));
         }
         #endif
     }
@@ -831,7 +831,7 @@ namespace ams::sdmmc::impl {
     void SdHostStandardController::UnregisterDeviceVirtualAddress(uintptr_t buffer, size_t buffer_size, ams::dd::DeviceVirtualAddress buffer_device_virtual_address) {
         /* Find and clear the buffer info. */
         for (auto &info : this->buffer_infos) {
-            if (info.buffer_address == 0) {
+            if (info.buffer_address == buffer) {
                 AMS_ABORT_UNLESS(info.buffer_size == buffer_size);
                 AMS_ABORT_UNLESS(info.buffer_device_virtual_address == buffer_device_virtual_address);
 

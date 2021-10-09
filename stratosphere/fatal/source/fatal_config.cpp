@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -21,30 +21,47 @@ namespace ams::fatal::srv {
     namespace {
 
         /* Global config. */
-        FatalConfig g_config;
+        constinit os::SdkMutex g_config_mutex;
+        constinit bool g_initialized_config;
+        constinit util::TypedStorage<FatalConfig> g_config;
+
+        FatalConfig &GetFatalConfigImpl() {
+            if (AMS_UNLIKELY(!g_initialized_config)) {
+                std::scoped_lock lk(g_config_mutex);
+
+                if (AMS_LIKELY(!g_initialized_config)) {
+                    util::ConstructAt(g_config);
+
+                    g_initialized_config = true;
+                }
+            }
+
+            return util::GetReference(g_config);
+        }
+
 
         /* Event creator. */
-        Handle GetFatalDirtyEventReadableHandle() {
+        os::NativeHandle GetFatalDirtyEventReadableHandle() {
             Event evt;
             R_ABORT_UNLESS(setsysAcquireFatalDirtyFlagEventHandle(&evt));
             return evt.revent;
         }
 
         /* Global event. */
-        os::SystemEventType g_fatal_dirty_event;
-        os::WaitableHolderType g_fatal_dirty_waitable_holder;
-        bool g_initialized;
+        constinit os::SystemEventType g_fatal_dirty_event;
+        constinit os::MultiWaitHolderType g_fatal_dirty_multi_wait_holder;
+        constinit bool g_initialized_fatal_dirty_event;
 
     }
 
-    os::WaitableHolderType *GetFatalDirtyWaitableHolder() {
-        if (AMS_UNLIKELY(!g_initialized)) {
+    os::MultiWaitHolderType *GetFatalDirtyMultiWaitHolder() {
+        if (AMS_UNLIKELY(!g_initialized_fatal_dirty_event)) {
             os::AttachReadableHandleToSystemEvent(std::addressof(g_fatal_dirty_event), GetFatalDirtyEventReadableHandle(), true, os::EventClearMode_ManualClear);
-            os::InitializeWaitableHolder(std::addressof(g_fatal_dirty_waitable_holder), std::addressof(g_fatal_dirty_event));
-            os::SetWaitableHolderUserData(std::addressof(g_fatal_dirty_waitable_holder), reinterpret_cast<uintptr_t>(std::addressof(g_fatal_dirty_waitable_holder)));
-            g_initialized = true;
+            os::InitializeMultiWaitHolder(std::addressof(g_fatal_dirty_multi_wait_holder), std::addressof(g_fatal_dirty_event));
+            os::SetMultiWaitHolderUserData(std::addressof(g_fatal_dirty_multi_wait_holder), reinterpret_cast<uintptr_t>(std::addressof(g_fatal_dirty_multi_wait_holder)));
+            g_initialized_fatal_dirty_event = true;
         }
-        return std::addressof(g_fatal_dirty_waitable_holder);
+        return std::addressof(g_fatal_dirty_multi_wait_holder);
     }
 
     void OnFatalDirtyEvent() {
@@ -52,7 +69,7 @@ namespace ams::fatal::srv {
 
         u64 flags_0, flags_1;
         if (R_SUCCEEDED(setsysGetFatalDirtyFlags(&flags_0, &flags_1)) && (flags_0 & 1)) {
-            g_config.UpdateLanguageCode();
+            GetFatalConfigImpl().UpdateLanguageCode();
         }
     }
 
@@ -103,7 +120,7 @@ namespace ams::fatal::srv {
     }
 
     const FatalConfig &GetFatalConfig() {
-        return g_config;
+        return GetFatalConfigImpl();
     }
 
 }

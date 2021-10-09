@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -34,10 +34,12 @@ namespace ams::ldr {
             R_TRY(ldr::GetProgramInfo(out, &status, loc));
 
             if (loc.storage_id != static_cast<u8>(ncm::StorageId::None) && loc.program_id != out->program_id) {
-                char path[FS_MAX_PATH];
+                char path[fs::EntryNameLengthMax];
                 const ncm::ProgramLocation new_loc = ncm::ProgramLocation::Make(out->program_id, static_cast<ncm::StorageId>(loc.storage_id));
 
                 R_TRY(ResolveContentPath(path, loc));
+                path[sizeof(path) - 1] = '\x00';
+
                 R_TRY(RedirectContentPath(path, new_loc));
 
                 const auto arg_info = args::Get(loc.program_id);
@@ -56,20 +58,28 @@ namespace ams::ldr {
     }
 
     /* Official commands. */
-    Result LoaderService::CreateProcess(sf::OutMoveHandle proc_h, PinId id, u32 flags, sf::CopyHandle reslimit_h) {
-        os::ManagedHandle reslimit_holder(reslimit_h.GetValue());
+    Result LoaderService::CreateProcess(sf::OutMoveHandle out, PinId id, u32 flags, sf::CopyHandle &&reslimit_h) {
         ncm::ProgramLocation loc;
         cfg::OverrideStatus override_status;
-        char path[FS_MAX_PATH];
+        char path[fs::EntryNameLengthMax];
 
         /* Get location and override status. */
         R_TRY(ldr::ro::GetProgramLocationAndStatus(&loc, &override_status, id));
 
         if (loc.storage_id != static_cast<u8>(ncm::StorageId::None)) {
             R_TRY(ResolveContentPath(path, loc));
+            path[sizeof(path) - 1] = '\x00';
+        } else {
+            path[0] = '\x00';
         }
 
-        return ldr::CreateProcess(proc_h.GetHandlePointer(), id, loc, override_status, path, flags, reslimit_holder.Get());
+        /* Create the process. */
+        os::NativeHandle process_handle;
+        R_TRY(ldr::CreateProcess(std::addressof(process_handle), id, loc, override_status, path, flags, reslimit_h.GetOsHandle()));
+
+        /* Set output process handle. */
+        out.SetValue(process_handle, true);
+        return ResultSuccess();
     }
 
     Result LoaderService::GetProgramInfo(sf::Out<ProgramInfo> out, const ncm::ProgramLocation &loc) {
@@ -108,7 +118,11 @@ namespace ams::ldr {
 
     /* Atmosphere commands. */
     Result LoaderService::AtmosphereRegisterExternalCode(sf::OutMoveHandle out, ncm::ProgramId program_id) {
-        return fssystem::CreateExternalCode(out.GetHandlePointer(), program_id);
+        os::NativeHandle handle;
+        R_TRY(fssystem::CreateExternalCode(std::addressof(handle), program_id));
+
+        out.SetValue(handle, true);
+        return ResultSuccess();
     }
 
     void LoaderService::AtmosphereUnregisterExternalCode(ncm::ProgramId program_id) {

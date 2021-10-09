@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Adubbz, Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -14,10 +14,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
-#include "fssystem_partition_file_system_meta.hpp"
-#include "../fs/fsa/fs_ifile.hpp"
-#include "../fs/fsa/fs_idirectory.hpp"
-#include "../fs/fsa/fs_ifilesystem.hpp"
+#include <stratosphere/fssystem/fssystem_partition_file_system_meta.hpp>
+#include <stratosphere/fs/fsa/fs_ifile.hpp>
+#include <stratosphere/fs/fsa/fs_idirectory.hpp>
+#include <stratosphere/fs/fsa/fs_ifilesystem.hpp>
 
 namespace ams::fssystem {
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -59,7 +59,7 @@ namespace ams::i2c {
 
         {
             std::scoped_lock lk(g_i2c_pcv_mutex);
-            g_i2c_pcv_manager = std::move(sp);
+            g_i2c_pcv_manager = std::move(sp_pcv);
             AMS_ABORT_UNLESS(g_i2c_pcv_count == 0);
             g_i2c_pcv_count = 1;
         }

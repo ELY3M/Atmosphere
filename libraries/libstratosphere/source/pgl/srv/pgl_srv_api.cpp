@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -150,6 +150,7 @@ namespace ams::pgl::srv {
     }
 
     void Deallocate(void *p, size_t size) {
+        AMS_UNUSED(size);
         return lmem::FreeToExpHeap(GetHeapHandle(), p);
     }
 
@@ -168,11 +169,11 @@ namespace ams::pgl::srv {
         /* Start the Process Tracking thread. */
         pgl::srv::InitializeProcessControlTask();
 
-        /* TODO: Loop process. */
+        /* Loop process. */
         LoopProcessServer();
     }
 
-    Result AllocateShellEventObserverForTipc(svc::Handle *out) {
+    Result AllocateShellEventObserverForTipc(os::NativeHandle *out) {
         /* Get the shell event observer allocator. */
         auto &allocator = GetGlobalsForTipc().observer_allocator;
 

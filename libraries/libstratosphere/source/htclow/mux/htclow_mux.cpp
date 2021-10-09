@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -157,6 +157,8 @@ namespace ams::htclow::mux {
     }
 
     bool Mux::IsSendable(PacketType packet_type) const {
+        AMS_UNUSED(packet_type);
+
         switch (m_state) {
             case MuxState::Normal:
                 return true;

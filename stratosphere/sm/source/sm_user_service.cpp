@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -52,6 +52,8 @@ namespace ams::sm {
     }
 
     Result UserService::DetachClient(const tipc::ClientProcessId client_process_id) {
+        AMS_UNUSED(client_process_id);
+
         m_initialized = false;
         return ResultSuccess();
     }

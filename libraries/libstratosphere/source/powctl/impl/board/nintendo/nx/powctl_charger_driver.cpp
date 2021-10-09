@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -25,9 +25,20 @@ namespace ams::powctl::impl::board::nintendo::nx {
 
         constinit util::optional<ChargerDevice> g_charger_device;
 
+        constinit util::TypedStorage<Bq24193Driver> g_bq24193_driver;
+        constinit bool g_constructed_bq24193_driver;
+        constinit os::SdkMutex g_bq24193_driver_mutex;
+
         Bq24193Driver &GetBq24193Driver() {
-            static Bq24193Driver s_bq24193_driver;
-            return s_bq24193_driver;
+            if (AMS_UNLIKELY(!g_constructed_bq24193_driver)) {
+                std::scoped_lock lk(g_bq24193_driver_mutex);
+
+                if (AMS_LIKELY(!g_constructed_bq24193_driver)) {
+                    util::ConstructAt(g_bq24193_driver);
+                }
+            }
+
+            return util::GetReference(g_bq24193_driver);
         }
 
     }
@@ -113,11 +124,13 @@ namespace ams::powctl::impl::board::nintendo::nx {
 
     Result ChargerDriver::GetDeviceErrorStatus(u32 *out, IDevice *device) {
         /* TODO */
+        AMS_UNUSED(out, device);
         AMS_ABORT();
     }
 
     Result ChargerDriver::SetDeviceErrorStatus(IDevice *device, u32 status) {
         /* TODO */
+        AMS_UNUSED(device, status);
         AMS_ABORT();
     }
 

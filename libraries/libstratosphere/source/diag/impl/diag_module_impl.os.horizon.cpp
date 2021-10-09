@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -44,7 +44,7 @@ namespace ams::diag::impl {
             if (R_FAILED(svc::QueryMemory(std::addressof(mem_info), std::addressof(page_info), cur_address))) {
                 return 0;
             }
-            if (mem_info.perm != svc::MemoryPermission_ReadExecute) {
+            if (mem_info.permission != svc::MemoryPermission_ReadExecute) {
                 break;
             }
             cur_address += mem_info.size;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -14,8 +14,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
-#include "impl/fs_newable.hpp"
-#include "fs_istorage.hpp"
+#include <stratosphere/fs/impl/fs_newable.hpp>
+#include <stratosphere/fs/fs_istorage.hpp>
 
 namespace ams::fs {
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -160,6 +160,8 @@ namespace ams::sf::cmif {
     }
 
     void DomainServiceObjectProcessor::SetOutObjects(const cmif::ServiceDispatchContext &ctx, const HipcRequest &response, ServiceObjectHolder *out_objects, DomainObjectId *selected_ids) {
+        AMS_UNUSED(ctx, response);
+
         const size_t num_out_objects = this->GetOutObjectCount();
 
         /* Copy input object IDs from command impl (normally these are Invalid, in mitm they should be set). */

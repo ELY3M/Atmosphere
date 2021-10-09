@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -107,7 +107,7 @@ namespace ams::htclow::ctrl {
                 R_UNLESS(header.body_size == 0, htclow::ResultProtocolError());
                 break;
             case HtcctrlPacketType_ReadyFromHost:
-                R_UNLESS(0 <= header.body_size && header.body_size <= sizeof(HtcctrlPacketBody), htclow::ResultProtocolError());
+                R_UNLESS(header.body_size <= sizeof(HtcctrlPacketBody), htclow::ResultProtocolError());
                 break;
             default:
                 return htclow::ResultProtocolError();

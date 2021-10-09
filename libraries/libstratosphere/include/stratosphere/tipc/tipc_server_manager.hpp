@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -36,7 +36,7 @@ namespace ams::tipc {
 
     class PortManagerInterface {
         public:
-            virtual Result ProcessRequest(WaitableObject &object) = 0;
+            virtual Result ProcessRequest(ObjectHolder &object) = 0;
     };
 
     template<typename DeferralManagerType, size_t ThreadStackSize, typename... PortInfos>
@@ -97,18 +97,18 @@ namespace ams::tipc {
                     s32 m_id;
                     std::atomic<s32> m_num_sessions;
                     s32 m_port_number;
-                    os::WaitableManagerType m_waitable_manager;
+                    os::MultiWaitType m_multi_wait;
                     DeferralManagerType m_deferral_manager;
                     os::MessageQueueType m_message_queue;
-                    os::WaitableHolderType m_message_queue_holder;
+                    os::MultiWaitHolderType m_message_queue_holder;
                     uintptr_t m_message_queue_storage[MaxSessions];
                     ObjectManagerBase *m_object_manager;
                     ServerManagerImpl *m_server_manager;
                 public:
-                    PortManagerBase() : m_id(), m_num_sessions(), m_port_number(), m_waitable_manager(), m_deferral_manager(), m_message_queue(), m_message_queue_holder(), m_message_queue_storage(), m_object_manager(), m_server_manager() {
+                    PortManagerBase() : m_id(), m_num_sessions(), m_port_number(), m_multi_wait(), m_deferral_manager(), m_message_queue(), m_message_queue_holder(), m_message_queue_storage(), m_object_manager(), m_server_manager() {
                         /* Setup our message queue. */
                         os::InitializeMessageQueue(std::addressof(m_message_queue), m_message_queue_storage, util::size(m_message_queue_storage));
-                        os::InitializeWaitableHolder(std::addressof(m_message_queue_holder), std::addressof(m_message_queue), os::MessageQueueWaitType::ForNotEmpty);
+                        os::InitializeMultiWaitHolder(std::addressof(m_message_queue_holder), std::addressof(m_message_queue), os::MessageQueueWaitType::ForNotEmpty);
                     }
 
                     constexpr s32 GetPortIndex() const {
@@ -133,20 +133,20 @@ namespace ams::tipc {
                         /* Reset our session count. */
                         m_num_sessions = 0;
 
-                        /* Initialize our waitable manager. */
-                        os::InitializeWaitableManager(std::addressof(m_waitable_manager));
-                        os::LinkWaitableHolder(std::addressof(m_waitable_manager), std::addressof(m_message_queue_holder));
+                        /* Initialize our multi wait. */
+                        os::InitializeMultiWait(std::addressof(m_multi_wait));
+                        os::LinkMultiWaitHolder(std::addressof(m_multi_wait), std::addressof(m_message_queue_holder));
 
                         /* Initialize our object manager. */
                         m_object_manager = manager;
                     }
 
-                    void RegisterPort(s32 index, svc::Handle port_handle) {
+                    void RegisterPort(s32 index, os::NativeHandle port_handle) {
                         /* Set our port number. */
                         this->m_port_number = index;
 
-                        /* Create a waitable object for the port. */
-                        tipc::WaitableObject object;
+                        /* Create an object holder for the port. */
+                        tipc::ObjectHolder object;
 
                         /* Setup the object. */
                         object.InitializeAsPort(port_handle);
@@ -155,7 +155,7 @@ namespace ams::tipc {
                         m_object_manager->AddObject(object);
                     }
 
-                    virtual Result ProcessRequest(WaitableObject &object) override {
+                    virtual Result ProcessRequest(ObjectHolder &object) override {
                         /* Process the request, this must succeed because we succeeded when deferring earlier. */
                         R_ABORT_UNLESS(m_object_manager->ProcessRequest(object));
 
@@ -168,13 +168,13 @@ namespace ams::tipc {
                         return m_object_manager->Reply(object.GetHandle());
                     }
 
-                    Result ReplyAndReceive(os::WaitableHolderType **out_holder, WaitableObject *out_object, svc::Handle reply_target) {
-                        return m_object_manager->ReplyAndReceive(out_holder, out_object, reply_target, std::addressof(m_waitable_manager));
+                    Result ReplyAndReceive(os::MultiWaitHolderType **out_holder, ObjectHolder *out_object, os::NativeHandle reply_target) {
+                        return m_object_manager->ReplyAndReceive(out_holder, out_object, reply_target, std::addressof(m_multi_wait));
                     }
 
-                    void AddSession(svc::Handle session_handle, tipc::ServiceObjectBase *service_object) {
-                        /* Create a waitable object for the session. */
-                        tipc::WaitableObject object;
+                    void AddSession(os::NativeHandle session_handle, tipc::ServiceObjectBase *service_object) {
+                        /* Create an object holder for the session. */
+                        tipc::ObjectHolder object;
 
                         /* Setup the object. */
                         object.InitializeAsSession(session_handle, true, service_object);
@@ -195,7 +195,7 @@ namespace ams::tipc {
                                 case MessageType_AddSession:
                                     {
                                         /* Get the handle from where it's packed into the message type. */
-                                        const svc::Handle session_handle = static_cast<svc::Handle>(message_type >> BITSIZEOF(u32));
+                                        const os::NativeHandle session_handle = static_cast<os::NativeHandle>(message_type >> BITSIZEOF(u32));
 
                                         /* Allocate a service object for the port. */
                                         auto *service_object = m_server_manager->AllocateObject(static_cast<size_t>(message_data));
@@ -219,7 +219,7 @@ namespace ams::tipc {
                         }
                     }
 
-                    void CloseSession(WaitableObject &object) {
+                    void CloseSession(ObjectHolder &object) {
                         /* Get the object's handle. */
                         const auto handle = object.GetHandle();
 
@@ -233,7 +233,7 @@ namespace ams::tipc {
                         --m_num_sessions;
                     }
 
-                    void CloseSessionIfNecessary(WaitableObject &object, bool necessary) {
+                    void CloseSessionIfNecessary(ObjectHolder &object, bool necessary) {
                         if (necessary) {
                             /* Get the object's handle. */
                             const auto handle = object.GetHandle();
@@ -261,7 +261,7 @@ namespace ams::tipc {
                         }
                     }
 
-                    void ProcessRegisterRetry(WaitableObject &object) {
+                    void ProcessRegisterRetry(ObjectHolder &object) {
                         if constexpr (IsDeferralSupported) {
                             /* Acquire exclusive server manager access. */
                             std::scoped_lock lk(m_server_manager->GetMutex());
@@ -292,7 +292,7 @@ namespace ams::tipc {
                         os::SendMessageQueue(std::addressof(m_message_queue), ConvertKeyToMessage(key));
                     }
 
-                    void TriggerAddSession(svc::Handle session_handle, size_t port_index) {
+                    void TriggerAddSession(os::NativeHandle session_handle, size_t port_index) {
                         /* Acquire exclusive server manager access. */
                         std::scoped_lock lk(m_server_manager->GetMutex());
 
@@ -342,7 +342,7 @@ namespace ams::tipc {
                         this->InitializeBase(id, sm, std::addressof(m_object_manager_impl));
 
                         /* Initialize our object manager. */
-                        m_object_manager_impl.Initialize(std::addressof(this->m_waitable_manager));
+                        m_object_manager_impl.Initialize(std::addressof(this->m_multi_wait));
                     }
             };
 
@@ -409,14 +409,14 @@ namespace ams::tipc {
             }
 
             template<size_t Ix>
-            void RegisterPort(svc::Handle port_handle) {
+            void RegisterPort(os::NativeHandle port_handle) {
                 this->GetPortManager<Ix>().RegisterPort(static_cast<s32>(Ix), port_handle);
             }
 
             template<size_t Ix>
             void RegisterPort(sm::ServiceName service_name, size_t max_sessions) {
                 /* Register service. */
-                svc::Handle port_handle = svc::InvalidHandle;
+                os::NativeHandle port_handle;
                 R_ABORT_UNLESS(sm::RegisterService(std::addressof(port_handle), service_name, max_sessions, false));
 
                 /* Register the port handle. */
@@ -463,13 +463,13 @@ namespace ams::tipc {
                 }(std::make_index_sequence<NumPorts>());
             }
 
-            Result AddSession(svc::Handle *out, tipc::ServiceObjectBase *object) {
+            Result AddSession(os::NativeHandle *out, tipc::ServiceObjectBase *object) {
                 /* Acquire exclusive access to ourselves. */
                 std::scoped_lock lk(m_mutex);
 
                 /* Create a handle for the session. */
                 svc::Handle session_handle;
-                R_TRY(svc::CreateSession(std::addressof(session_handle), out, false, 0));
+                R_TRY(svc::CreateSession(std::addressof(session_handle), static_cast<svc::Handle *>(out), false, 0));
 
                 /* Select the best port manager. */
                 PortManagerBase *best_manager = nullptr;
@@ -514,18 +514,18 @@ namespace ams::tipc {
                 std::memset(svc::ipc::GetMessageBuffer(), 0, svc::ipc::MessageBufferSize);
 
                 /* Process requests forever. */
-                svc::Handle reply_target = svc::InvalidHandle;
+                os::NativeHandle reply_target = os::InvalidNativeHandle;
                 while (true) {
                     /* Reply to our pending request, and receive a new one. */
-                    os::WaitableHolderType *signaled_holder = nullptr;
-                    tipc::WaitableObject signaled_object{};
+                    os::MultiWaitHolderType *signaled_holder = nullptr;
+                    tipc::ObjectHolder signaled_object{};
                     R_TRY_CATCH(port_manager.ReplyAndReceive(std::addressof(signaled_holder), std::addressof(signaled_object), reply_target)) {
                         R_CATCH(os::ResultSessionClosedForReceive, os::ResultReceiveListBroken) {
                             /* Close the object and continue. */
                             port_manager.CloseSession(signaled_object);
 
                             /* We have nothing to reply to. */
-                            reply_target = svc::InvalidHandle;
+                            reply_target = os::InvalidNativeHandle;
                             continue;
                         }
                     } R_END_TRY_CATCH;
@@ -533,7 +533,7 @@ namespace ams::tipc {
                     if (signaled_holder == nullptr) {
                         /* A session was signaled, accessible via signaled_object. */
                         switch (signaled_object.GetType()) {
-                            case WaitableObject::ObjectType_Port:
+                            case ObjectHolder::ObjectType_Port:
                                 {
                                     /* Try to accept a new session */
                                     svc::Handle session_handle;
@@ -542,10 +542,10 @@ namespace ams::tipc {
                                     }
 
                                     /* We have nothing to reply to. */
-                                    reply_target = svc::InvalidHandle;
+                                    reply_target = os::InvalidNativeHandle;
                                 }
                                 break;
-                            case WaitableObject::ObjectType_Session:
+                            case ObjectHolder::ObjectType_Session:
                                 {
                                     /* Process the request */
                                     const Result process_result = port_manager.GetObjectManager()->ProcessRequest(signaled_object);
@@ -557,7 +557,7 @@ namespace ams::tipc {
                                                 port_manager.ProcessRegisterRetry(signaled_object);
 
                                                 /* We have nothing to reply to. */
-                                                reply_target = svc::InvalidHandle;
+                                                reply_target = os::InvalidNativeHandle;
                                             } else {
                                                 /* We're done processing, so we should reply. */
                                                 reply_target = signaled_object.GetHandle();
@@ -571,7 +571,7 @@ namespace ams::tipc {
                                         port_manager.CloseSessionIfNecessary(signaled_object, !tipc::ResultSessionClosed::Includes(process_result));
 
                                         /* We have nothing to reply to. */
-                                        reply_target = svc::InvalidHandle;
+                                        reply_target = os::InvalidNativeHandle;
                                     }
                                 }
                                 break;
@@ -582,12 +582,12 @@ namespace ams::tipc {
                         port_manager.ProcessMessages();
 
                         /* We have nothing to reply to. */
-                        reply_target = svc::InvalidHandle;
+                        reply_target = os::InvalidNativeHandle;
                     }
                 }
             }
 
-            void TriggerAddSession(svc::Handle session_handle, size_t port_index) {
+            void TriggerAddSession(os::NativeHandle session_handle, size_t port_index) {
                 /* Acquire exclusive access to ourselves. */
                 std::scoped_lock lk(m_mutex);
 

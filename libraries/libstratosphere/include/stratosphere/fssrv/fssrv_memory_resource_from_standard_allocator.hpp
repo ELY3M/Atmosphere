@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -44,6 +44,7 @@ namespace ams::fssrv {
             virtual void *AllocateImpl(size_t size, size_t align) override;
             virtual void DeallocateImpl(void *p, size_t size, size_t align) override;
             virtual bool IsEqualImpl(const MemoryResource &rhs) const override {
+                AMS_UNUSED(rhs);
                 return false;
             }
     };

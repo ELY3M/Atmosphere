@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -44,6 +44,8 @@ namespace ams::fssrv {
     }
 
     void MemoryResourceFromStandardAllocator::DeallocateImpl(void *p, size_t size, size_t align) {
+        AMS_UNUSED(size, align);
+
         std::scoped_lock lk(this->mutex);
 
         this->current_free_size += this->allocator->GetSizeOf(p);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -38,6 +38,7 @@ namespace ams::fssystem {
         AMS_ASSERT(layer_count == LayerCount);
         AMS_ASSERT(util::IsPowerOfTwo(htbs));
         AMS_ASSERT(hash_buf != nullptr);
+        AMS_UNUSED(layer_count);
 
         /* Set size tracking members. */
         this->hash_target_block_size = htbs;

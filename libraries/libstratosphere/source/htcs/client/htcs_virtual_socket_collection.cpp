@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -602,7 +602,7 @@ namespace ams::htcs::client {
     }
 
     void VirtualSocketCollection::SetSize(s32 size) {
-        /* ... */
+        AMS_UNUSED(size);
     }
 
     s32 VirtualSocketCollection::Find(s32 id, s32 *error_code) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -174,8 +174,11 @@ namespace ams::erpt::srv {
 
     JournalRecord<ReportInfo> *JournalForReports::RetrieveRecord(ReportId report_id) {
         for (auto it = s_record_list.begin(); it != s_record_list.end(); it++) {
-            return std::addressof(*it);
+            if (auto *record = std::addressof(*it); record->info.id == report_id) {
+                return record;
+            }
         }
+
         return nullptr;
     }
 

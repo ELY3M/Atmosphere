@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -29,6 +29,7 @@ namespace ams::pwm::server {
 
     Result ManagerImpl::OpenSessionForDev(ams::sf::Out<ams::sf::SharedPointer<pwm::sf::IChannelSession>> out, int channel) {
         /* TODO */
+        AMS_UNUSED(out, channel);
         AMS_ABORT();
     }
 

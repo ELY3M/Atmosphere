@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -23,7 +23,7 @@
 
 namespace ams::osdbg {
 
-    Result InitializeThreadInfo(ThreadInfo *thread_info, svc::Handle debug_handle, const svc::DebugInfoCreateProcess *create_process, const svc::DebugInfoCreateThread *create_thread) {
+    Result InitializeThreadInfo(ThreadInfo *thread_info, os::NativeHandle debug_handle, const svc::DebugInfoCreateProcess *create_process, const svc::DebugInfoCreateThread *create_thread) {
         /* Set basic fields. */
         thread_info->_thread_type               = nullptr;
         thread_info->_thread_type_type          = ThreadTypeType_Unknown;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -33,8 +33,6 @@ namespace ams {
 
     }
 
-    extern ncm::ProgramId CurrentProgramId;
-
     void InitializeForBoot() {
         R_ABORT_UNLESS(amsBpcInitialize());
     }
@@ -56,7 +54,7 @@ namespace ams {
         {
             ams_ctx.magic = FatalErrorContext::Magic;
             ams_ctx.error_desc = ctx->error_desc;
-            ams_ctx.program_id = static_cast<u64>(CurrentProgramId);
+            ams_ctx.program_id = os::GetCurrentProgramId().value;
             for (size_t i = 0; i < FatalErrorContext::NumGprs; i++) {
                 ams_ctx.gprs[i] = ctx->cpu_gprs[i].x;
             }
@@ -97,7 +95,7 @@ namespace ams {
                 svc::lp64::MemoryInfo mem_info;
                 svc::PageInfo page_info;
                 if (R_SUCCEEDED(svc::QueryMemory(std::addressof(mem_info), std::addressof(page_info), GetPc()))) {
-                    ams_ctx.module_base = mem_info.addr;
+                    ams_ctx.module_base = mem_info.base_address;
                 } else {
                     ams_ctx.module_base = 0;
                 }
@@ -114,7 +112,7 @@ namespace ams {
                 StackFrame cur_frame;
                 svc::lp64::MemoryInfo mem_info;
                 svc::PageInfo page_info;
-                if (R_SUCCEEDED(svc::QueryMemory(std::addressof(mem_info), std::addressof(page_info), cur_fp)) && (mem_info.perm & svc::MemoryPermission_Read) == svc::MemoryPermission_Read) {
+                if (R_SUCCEEDED(svc::QueryMemory(std::addressof(mem_info), std::addressof(page_info), cur_fp)) && (mem_info.permission & svc::MemoryPermission_Read) == svc::MemoryPermission_Read) {
                     std::memcpy(&cur_frame, reinterpret_cast<void *>(cur_fp), sizeof(cur_frame));
                 } else {
                     break;
@@ -133,8 +131,8 @@ namespace ams {
             {
                 svc::lp64::MemoryInfo mem_info;
                 svc::PageInfo page_info;
-                if (R_SUCCEEDED(svc::QueryMemory(std::addressof(mem_info), std::addressof(page_info), ams_ctx.sp)) && (mem_info.perm & svc::MemoryPermission_Read) == svc::MemoryPermission_Read) {
-                    size_t copy_size = std::min(FatalErrorContext::MaxStackDumpSize, static_cast<size_t>(mem_info.addr + mem_info.size - ams_ctx.sp));
+                if (R_SUCCEEDED(svc::QueryMemory(std::addressof(mem_info), std::addressof(page_info), ams_ctx.sp)) && (mem_info.permission & svc::MemoryPermission_Read) == svc::MemoryPermission_Read) {
+                    size_t copy_size = std::min(FatalErrorContext::MaxStackDumpSize, static_cast<size_t>(mem_info.base_address + mem_info.size - ams_ctx.sp));
                     ams_ctx.stack_dump_size = copy_size;
                     std::memcpy(ams_ctx.stack_dump, reinterpret_cast<void *>(ams_ctx.sp), copy_size);
                 } else {
@@ -143,7 +141,7 @@ namespace ams {
             }
 
             /* Grab 0x100 of tls. */
-            std::memcpy(ams_ctx.tls, armGetTls(), sizeof(ams_ctx.tls));
+            std::memcpy(ams_ctx.tls, svc::GetThreadLocalRegion(), sizeof(ams_ctx.tls));
         }
 
         /* Just call the user exception handler. */

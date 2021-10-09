@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -412,6 +412,9 @@ namespace ams::htc::server::rpc {
     }
 
     s32 RpcClient::GetTaskHandle(u32 task_id) {
+        /* TODO: Why is this necessary to avoid a bogus array-bounds warning? */
+        AMS_ASSUME(task_id < MaxRpcCount);
+
         /* Check pre-conditions. */
         AMS_ASSERT(m_task_active[task_id]);
         AMS_ASSERT(m_is_htcs_task[task_id]);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -74,7 +74,7 @@ namespace ams::gpio {
             Result BindInterrupt(ams::sf::OutCopyHandle out) {
                 ::Event ev;
                 R_TRY(::gpioPadBindInterrupt(std::addressof(this->srv), std::addressof(ev)));
-                out.SetValue(ev.revent);
+                out.SetValue(ev.revent, true);
                 return ResultSuccess();
             }
 
@@ -100,11 +100,13 @@ namespace ams::gpio {
 
             Result SetValueForSleepState(gpio::GpioValue value) {
                 /* TODO: libnx bindings. */
+                AMS_UNUSED(value);
                 AMS_ABORT();
             }
 
             Result GetValueForSleepState(ams::sf::Out<gpio::GpioValue> out) {
                 /* TODO: libnx bindings. */
+                AMS_UNUSED(out);
                 AMS_ABORT();
             }
     };

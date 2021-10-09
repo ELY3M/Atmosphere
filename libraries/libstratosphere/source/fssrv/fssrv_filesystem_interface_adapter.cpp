@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -31,7 +31,7 @@ namespace ams::fssrv::impl {
 
     void FileInterfaceAdapter::InvalidateCache() {
         AMS_ABORT_UNLESS(this->parent_filesystem->IsDeepRetryEnabled());
-        std::scoped_lock<os::ReadWriteLock> scoped_write_lock(this->parent_filesystem->GetReadWriteLockForCacheInvalidation());
+        std::scoped_lock<os::ReaderWriterLock> scoped_write_lock(this->parent_filesystem->GetReaderWriterLockForCacheInvalidation());
         this->base_file->OperateRange(nullptr, 0, fs::OperationId::Invalidate, 0, std::numeric_limits<s64>::max(), nullptr, 0);
     }
 
@@ -123,7 +123,7 @@ namespace ams::fssrv::impl {
     Result DirectoryInterfaceAdapter::Read(ams::sf::Out<s64> out, const ams::sf::OutBuffer &out_entries) {
         auto read_lock = this->parent_filesystem->AcquireCacheInvalidationReadLock();
 
-        const size_t max_num_entries = out_entries.GetSize() / sizeof(fs::DirectoryEntry);
+        const s64 max_num_entries = out_entries.GetSize() / sizeof(fs::DirectoryEntry);
         R_UNLESS(max_num_entries >= 0, fs::ResultInvalidSize());
 
         /* TODO: N retries on ResultDataCorrupted, we may want to eventually. */
@@ -154,15 +154,15 @@ namespace ams::fssrv::impl {
         AMS_ABORT_UNLESS(false);
     }
 
-    util::optional<std::shared_lock<os::ReadWriteLock>> FileSystemInterfaceAdapter::AcquireCacheInvalidationReadLock() {
-        util::optional<std::shared_lock<os::ReadWriteLock>> lock;
+    util::optional<std::shared_lock<os::ReaderWriterLock>> FileSystemInterfaceAdapter::AcquireCacheInvalidationReadLock() {
+        util::optional<std::shared_lock<os::ReaderWriterLock>> lock;
         if (this->deep_retry_enabled) {
             lock.emplace(this->invalidation_lock);
         }
         return lock;
     }
 
-    os::ReadWriteLock &FileSystemInterfaceAdapter::GetReadWriteLockForCacheInvalidation() {
+    os::ReaderWriterLock &FileSystemInterfaceAdapter::GetReaderWriterLockForCacheInvalidation() {
         return this->invalidation_lock;
     }
 

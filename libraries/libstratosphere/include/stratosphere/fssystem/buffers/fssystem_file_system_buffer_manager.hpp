@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -178,10 +178,12 @@ namespace ams::fssystem {
                     AttrInfo *FindAttrInfo(const BufferAttribute &attr);
 
                     s32 GetCacheCountMin(const BufferAttribute &attr) {
+                        AMS_UNUSED(attr);
                         return this->cache_count_min;
                     }
 
                     size_t GetCacheSizeMin(const BufferAttribute &attr) {
+                        AMS_UNUSED(attr);
                         return this->cache_size_min;
                     }
             };

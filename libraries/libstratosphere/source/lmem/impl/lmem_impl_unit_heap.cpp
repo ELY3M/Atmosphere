@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -257,7 +257,7 @@ namespace ams::lmem::impl {
         AMS_ASSERT(static_cast<s32>(MinimumAlignment) <= alignment);
         AMS_ASSERT(unit_size >= sizeof(uintptr_t));
 
-        return (alignment - 1) + util::AlignUp(unit_size, alignment) + (internal_metadata ? sizeof(HeapHead) : 0);
+        return (alignment - 1) + (unit_count * util::AlignUp(unit_size, alignment)) + (internal_metadata ? sizeof(HeapHead) : 0);
     }
 
 }

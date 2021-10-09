@@ -21,7 +21,7 @@ PRECOMPILED_HEADERS := $(CURRENT_DIRECTORY)/include/stratosphere.hpp
 #PRECOMPILED_HEADERS :=
 
 DEFINES	    := $(ATMOSPHERE_DEFINES) -DATMOSPHERE_IS_STRATOSPHERE -D_GNU_SOURCE
-SETTINGS    := $(ATMOSPHERE_SETTINGS) -O2 -flto
+SETTINGS    := $(ATMOSPHERE_SETTINGS) -O2 -Wextra -Werror -Wno-missing-field-initializers -flto
 CFLAGS      := $(ATMOSPHERE_CFLAGS) $(SETTINGS) $(DEFINES) $(INCLUDE)
 CXXFLAGS    := $(CFLAGS) $(ATMOSPHERE_CXXFLAGS)
 ASFLAGS     := $(ATMOSPHERE_ASFLAGS) $(SETTINGS)
@@ -125,6 +125,9 @@ $(OFILES_SRC)	: $(HFILES_BIN)
 ams_environment_weak.o: CXXFLAGS += -fno-lto
 pm_info_api_weak.o: CXXFLAGS += -fno-lto
 hos_stratosphere_api.o: CXXFLAGS += -fno-lto
+
+init_operator_new.o: CXXFLAGS += -fno-lto
+init_libnx_shim.os.horizon.o: CXXFLAGS += -fno-lto
 
 #---------------------------------------------------------------------------------
 %_bin.h %.bin.o	:	%.bin

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -75,7 +75,9 @@ namespace ams::erpt::srv {
         g_heap_handle = lmem::CreateExpHeap(mem, mem_size, lmem::CreateOption_ThreadSafe);
         AMS_ABORT_UNLESS(g_heap_handle != nullptr);
 
+        fs::InitializeForSystem();
         fs::SetAllocator(Allocate, DeallocateWithSize);
+        fs::SetEnabledAutoAbort(false);
 
         R_ABORT_UNLESS(fs::MountSdCardErrorReportDirectoryForAtmosphere(ReportOnSdStoragePath));
 

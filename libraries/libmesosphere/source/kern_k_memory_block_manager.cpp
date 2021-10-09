@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -56,7 +56,7 @@ namespace ams::kern {
             if (info.m_state == KMemoryState_Free) {
                 return "   ";
             } else {
-                switch (info.m_perm) {
+                switch (info.m_permission) {
                     case KMemoryPermission_UserReadExecute:
                         return "r-x";
                     case KMemoryPermission_UserRead:

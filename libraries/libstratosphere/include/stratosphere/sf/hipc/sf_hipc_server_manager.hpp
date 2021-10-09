@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -15,8 +15,8 @@
  */
 
 #pragma once
-#include "sf_hipc_server_domain_session_manager.hpp"
-#include "../../sm.hpp"
+#include <stratosphere/sf/hipc/sf_hipc_server_domain_session_manager.hpp>
+#include <stratosphere/sm.hpp>
 
 namespace ams::sf::hipc {
 
@@ -47,7 +47,7 @@ namespace ams::sf::hipc {
             using ServerDomainSessionManager::DomainEntryStorage;
             using ServerDomainSessionManager::DomainStorage;
         protected:
-            class Server : public os::WaitableHolderType {
+            class Server : public os::MultiWaitHolderType {
                 friend class ServerManagerBase;
                 template<size_t, typename, size_t>
                 friend class ServerManager;
@@ -55,7 +55,7 @@ namespace ams::sf::hipc {
                 NON_MOVEABLE(Server);
                 private:
                     cmif::ServiceObjectHolder static_object;
-                    ::Handle port_handle;
+                    os::NativeHandle port_handle;
                     sm::ServiceName service_name;
                     int index;
                     bool service_managed;
@@ -73,45 +73,45 @@ namespace ams::sf::hipc {
                     }
             };
         private:
-            /* Management of waitables. */
-            os::WaitableManagerType waitable_manager;
+            /* Multiple wait management. */
+            os::MultiWaitType multi_wait;
             os::Event request_stop_event;
-            os::WaitableHolderType request_stop_event_holder;
+            os::MultiWaitHolderType request_stop_event_holder;
             os::Event notify_event;
-            os::WaitableHolderType notify_event_holder;
+            os::MultiWaitHolderType notify_event_holder;
 
-            os::SdkMutex waitable_selection_mutex;
+            os::SdkMutex selection_mutex;
 
-            os::SdkMutex waitlist_mutex;
-            os::WaitableManagerType waitlist;
+            os::SdkMutex deferred_list_mutex;
+            os::MultiWaitType deferred_list;
         private:
-            virtual void RegisterSessionToWaitList(ServerSession *session) override final;
-            void RegisterToWaitList(os::WaitableHolderType *holder);
-            void ProcessWaitList();
+            virtual void RegisterServerSessionToWait(ServerSession *session) override final;
+            void LinkToDeferredList(os::MultiWaitHolderType *holder);
+            void LinkDeferred();
 
             bool WaitAndProcessImpl();
 
-            Result ProcessForServer(os::WaitableHolderType *holder);
-            Result ProcessForMitmServer(os::WaitableHolderType *holder);
-            Result ProcessForSession(os::WaitableHolderType *holder);
+            Result ProcessForServer(os::MultiWaitHolderType *holder);
+            Result ProcessForMitmServer(os::MultiWaitHolderType *holder);
+            Result ProcessForSession(os::MultiWaitHolderType *holder);
 
-            void RegisterServerImpl(Server *server, Handle port_handle, bool is_mitm_server) {
+            void RegisterServerImpl(Server *server, os::NativeHandle port_handle, bool is_mitm_server) {
                 server->port_handle = port_handle;
-                hipc::AttachWaitableHolderForAccept(server, port_handle);
+                hipc::AttachMultiWaitHolderForAccept(server, port_handle);
 
                 server->is_mitm_server = is_mitm_server;
                 if (is_mitm_server) {
                     /* Mitm server. */
-                    os::SetWaitableHolderUserData(server, static_cast<uintptr_t>(UserDataTag::MitmServer));
+                    os::SetMultiWaitHolderUserData(server, static_cast<uintptr_t>(UserDataTag::MitmServer));
                 } else {
                     /* Non-mitm server. */
-                    os::SetWaitableHolderUserData(server, static_cast<uintptr_t>(UserDataTag::Server));
+                    os::SetMultiWaitHolderUserData(server, static_cast<uintptr_t>(UserDataTag::Server));
                 }
 
-                os::LinkWaitableHolder(std::addressof(this->waitable_manager), server);
+                os::LinkMultiWaitHolder(std::addressof(this->multi_wait), server);
             }
 
-            void RegisterServerImpl(int index, cmif::ServiceObjectHolder &&static_holder, Handle port_handle, bool is_mitm_server) {
+            void RegisterServerImpl(int index, cmif::ServiceObjectHolder &&static_holder, os::NativeHandle port_handle, bool is_mitm_server) {
                 /* Allocate server memory. */
                 auto *server = this->AllocateServer();
                 AMS_ABORT_UNLESS(server != nullptr);
@@ -128,7 +128,7 @@ namespace ams::sf::hipc {
 
             Result RegisterServerImpl(int index, cmif::ServiceObjectHolder &&static_holder, sm::ServiceName service_name, size_t max_sessions) {
                 /* Register service. */
-                Handle port_handle;
+                os::NativeHandle port_handle;
                 R_TRY(sm::RegisterService(&port_handle, service_name, max_sessions, false));
 
                 /* Allocate server memory. */
@@ -151,7 +151,7 @@ namespace ams::sf::hipc {
             template<typename Interface>
             Result RegisterMitmServerImpl(int index, cmif::ServiceObjectHolder &&static_holder, sm::ServiceName service_name) {
                 /* Install mitm service. */
-                Handle port_handle;
+                os::NativeHandle port_handle;
                 R_TRY(this->InstallMitmServerImpl(&port_handle, service_name, &Interface::ShouldMitm));
 
                 /* Allocate server memory. */
@@ -171,11 +171,12 @@ namespace ams::sf::hipc {
                 return ResultSuccess();
             }
 
-            Result InstallMitmServerImpl(Handle *out_port_handle, sm::ServiceName service_name, MitmQueryFunction query_func);
+            Result InstallMitmServerImpl(os::NativeHandle *out_port_handle, sm::ServiceName service_name, MitmQueryFunction query_func);
         protected:
             virtual Server *AllocateServer() = 0;
             virtual void DestroyServer(Server *server)  = 0;
             virtual Result OnNeedsToAccept(int port_index, Server *server) {
+                AMS_UNUSED(port_index, server);
                 AMS_ABORT("OnNeedsToAccept must be overridden when using indexed ports");
             }
 
@@ -192,19 +193,20 @@ namespace ams::sf::hipc {
             ServerManagerBase(DomainEntryStorage *entry_storage, size_t entry_count) :
                 ServerDomainSessionManager(entry_storage, entry_count),
                 request_stop_event(os::EventClearMode_ManualClear), notify_event(os::EventClearMode_ManualClear),
-                waitable_selection_mutex(), waitlist_mutex()
+                selection_mutex(), deferred_list_mutex()
             {
-                /* Link waitables. */
-                os::InitializeWaitableManager(std::addressof(this->waitable_manager));
-                os::InitializeWaitableHolder(std::addressof(this->request_stop_event_holder), this->request_stop_event.GetBase());
-                os::LinkWaitableHolder(std::addressof(this->waitable_manager), std::addressof(this->request_stop_event_holder));
-                os::InitializeWaitableHolder(std::addressof(this->notify_event_holder), this->notify_event.GetBase());
-                os::LinkWaitableHolder(std::addressof(this->waitable_manager), std::addressof(this->notify_event_holder));
-                os::InitializeWaitableManager(std::addressof(this->waitlist));
+                /* Link multi-wait holders. */
+                os::InitializeMultiWait(std::addressof(this->multi_wait));
+                os::InitializeMultiWaitHolder(std::addressof(this->request_stop_event_holder), this->request_stop_event.GetBase());
+                os::LinkMultiWaitHolder(std::addressof(this->multi_wait), std::addressof(this->request_stop_event_holder));
+                os::InitializeMultiWaitHolder(std::addressof(this->notify_event_holder), this->notify_event.GetBase());
+                os::LinkMultiWaitHolder(std::addressof(this->multi_wait), std::addressof(this->notify_event_holder));
+
+                os::InitializeMultiWait(std::addressof(this->deferred_list));
             }
 
             template<typename Interface>
-            void RegisterObjectForServer(SharedPointer<Interface> static_object, Handle port_handle) {
+            void RegisterObjectForServer(SharedPointer<Interface> static_object, os::NativeHandle port_handle) {
                 this->RegisterServerImpl(0, cmif::ServiceObjectHolder(std::move(static_object)), port_handle, false);
             }
 
@@ -213,7 +215,7 @@ namespace ams::sf::hipc {
                 return this->RegisterServerImpl(0, cmif::ServiceObjectHolder(std::move(static_object)), service_name, max_sessions);
             }
 
-            void RegisterServer(int port_index, Handle port_handle) {
+            void RegisterServer(int port_index, os::NativeHandle port_handle) {
                 this->RegisterServerImpl(port_index, cmif::ServiceObjectHolder(), port_handle, false);
             }
 
@@ -227,13 +229,13 @@ namespace ams::sf::hipc {
             }
 
             /* Processing. */
-            os::WaitableHolderType *WaitSignaled();
+            os::MultiWaitHolderType *WaitSignaled();
 
             void   ResumeProcessing();
             void   RequestStopProcessing();
-            void   AddUserWaitableHolder(os::WaitableHolderType *waitable);
+            void   AddUserMultiWaitHolder(os::MultiWaitHolderType *holder);
 
-            Result Process(os::WaitableHolderType *waitable);
+            Result Process(os::MultiWaitHolderType *holder);
             void   WaitAndProcess();
             void   LoopProcess();
     };
@@ -291,13 +293,17 @@ namespace ams::sf::hipc {
             }
         protected:
             virtual ServerSession *AllocateSession() override final {
-                std::scoped_lock lk(this->resource_mutex);
-                for (size_t i = 0; i < MaxSessions; i++) {
-                    if (!this->session_allocated[i]) {
-                        this->session_allocated[i] = true;
-                        return GetPointer(this->session_storages[i]);
+                if constexpr (MaxSessions > 0) {
+                    std::scoped_lock lk(this->resource_mutex);
+
+                    for (size_t i = 0; i < MaxSessions; i++) {
+                        if (!this->session_allocated[i]) {
+                            this->session_allocated[i] = true;
+                            return GetPointer(this->session_storages[i]);
+                        }
                     }
                 }
+
                 return nullptr;
             }
 
@@ -309,13 +315,17 @@ namespace ams::sf::hipc {
             }
 
             virtual Server *AllocateServer() override final {
-                std::scoped_lock lk(this->resource_mutex);
-                for (size_t i = 0; i < MaxServers; i++) {
-                    if (!this->server_allocated[i]) {
-                        this->server_allocated[i] = true;
-                        return GetPointer(this->server_storages[i]);
+                if constexpr (MaxServers > 0) {
+                    std::scoped_lock lk(this->resource_mutex);
+
+                    for (size_t i = 0; i < MaxServers; i++) {
+                        if (!this->server_allocated[i]) {
+                            this->server_allocated[i] = true;
+                            return GetPointer(this->server_storages[i]);
+                        }
                     }
                 }
+
                 return nullptr;
             }
 
@@ -324,8 +334,8 @@ namespace ams::sf::hipc {
                 const size_t index = this->GetServerIndex(server);
                 AMS_ABORT_UNLESS(this->server_allocated[index]);
                 {
-                    os::UnlinkWaitableHolder(server);
-                    os::FinalizeWaitableHolder(server);
+                    os::UnlinkMultiWaitHolder(server);
+                    os::FinalizeMultiWaitHolder(server);
                     if (server->service_managed) {
                         if (server->is_mitm_server) {
                             R_ABORT_UNLESS(sm::mitm::UninstallMitm(server->service_name));
@@ -389,16 +399,20 @@ namespace ams::sf::hipc {
 
             ~ServerManager() {
                 /* Close all sessions. */
-                for (size_t i = 0; i < MaxSessions; i++) {
-                    if (this->session_allocated[i]) {
-                        this->CloseSessionImpl(GetPointer(this->session_storages[i]));
+                if constexpr (MaxSessions > 0) {
+                    for (size_t i = 0; i < MaxSessions; i++) {
+                        if (this->session_allocated[i]) {
+                            this->CloseSessionImpl(GetPointer(this->session_storages[i]));
+                        }
                     }
                 }
 
                 /* Close all servers. */
-                for (size_t i = 0; i < MaxServers; i++) {
-                    if (this->server_allocated[i]) {
-                        this->DestroyServer(GetPointer(this->server_storages[i]));
+                if constexpr (MaxServers > 0) {
+                    for (size_t i = 0; i < MaxServers; i++) {
+                        if (this->server_allocated[i]) {
+                            this->DestroyServer(GetPointer(this->server_storages[i]));
+                        }
                     }
                 }
             }

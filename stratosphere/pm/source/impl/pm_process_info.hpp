@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -43,10 +43,10 @@ namespace ams::pm::impl {
             const ldr::PinId pin_id;
             const ncm::ProgramLocation loc;
             const cfg::OverrideStatus status;
-            Handle handle;
+            os::NativeHandle handle;
             svc::ProcessState state;
             u32 flags;
-            os::WaitableHolderType waitable_holder;
+            os::MultiWaitHolderType multi_wait_holder;
         private:
             void SetFlag(Flag flag) {
                 this->flags |= flag;
@@ -60,15 +60,15 @@ namespace ams::pm::impl {
                 return (this->flags & flag);
             }
         public:
-            ProcessInfo(Handle h, os::ProcessId pid, ldr::PinId pin, const ncm::ProgramLocation &l, const cfg::OverrideStatus &s);
+            ProcessInfo(os::NativeHandle h, os::ProcessId pid, ldr::PinId pin, const ncm::ProgramLocation &l, const cfg::OverrideStatus &s);
             ~ProcessInfo();
             void Cleanup();
 
-            void LinkToWaitableManager(os::WaitableManagerType &manager) {
-                os::LinkWaitableHolder(std::addressof(manager), std::addressof(this->waitable_holder));
+            void LinkToMultiWait(os::MultiWaitType &multi_wait) {
+                os::LinkMultiWaitHolder(std::addressof(multi_wait), std::addressof(this->multi_wait_holder));
             }
 
-            Handle GetHandle() const {
+            os::NativeHandle GetHandle() const {
                 return this->handle;
             }
 

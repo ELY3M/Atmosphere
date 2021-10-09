@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -34,7 +34,8 @@ namespace ams::boot {
                 bool present;
                 R_TRY(powctl::IsBatteryPresent(std::addressof(present), this->battery_session));
 
-                return present == false;
+                *out = !present;
+                return ResultSuccess();
             }
 
             Result GetSocRep(float *out) {

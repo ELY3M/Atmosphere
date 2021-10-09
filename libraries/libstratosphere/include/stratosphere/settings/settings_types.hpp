@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -18,6 +18,21 @@
 #include <vapours.hpp>
 
 namespace ams::settings {
+
+    constexpr size_t SettingsNameLengthMax = 0x40;
+    constexpr size_t SettingsItemKeyLengthMax = 0x40;
+
+    struct SettingsName : public sf::LargeData {
+        char value[util::AlignUp(SettingsNameLengthMax + 1, alignof(u64))];
+    };
+
+    static_assert(util::is_pod<SettingsName>::value && sizeof(SettingsName) > SettingsNameLengthMax);
+
+    struct SettingsItemKey : public sf::LargeData {
+        char value[util::AlignUp(SettingsItemKeyLengthMax + 1, alignof(u64))];
+    };
+
+    static_assert(util::is_pod<SettingsItemKey>::value && sizeof(SettingsItemKey) > SettingsItemKeyLengthMax);
 
     enum Language {
         Language_Japanese,

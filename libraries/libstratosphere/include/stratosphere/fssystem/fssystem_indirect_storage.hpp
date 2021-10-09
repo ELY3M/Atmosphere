@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -142,10 +142,12 @@ namespace ams::fssystem {
             }
 
             virtual Result Write(s64 offset, const void *buffer, size_t size) override {
+                AMS_UNUSED(offset, buffer, size);
                 return fs::ResultUnsupportedOperationInIndirectStorageA();
             }
 
             virtual Result SetSize(s64 size) override {
+                AMS_UNUSED(size);
                 return fs::ResultUnsupportedOperationInIndirectStorageB();
             }
         protected:

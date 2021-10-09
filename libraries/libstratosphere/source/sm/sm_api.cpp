@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -49,7 +49,7 @@ namespace ams::sm {
         return smGetServiceWrapper(out, impl::ConvertName(name));
     }
 
-    Result RegisterService(Handle *out, ServiceName name, size_t max_sessions, bool is_light) {
+    Result RegisterService(os::NativeHandle *out, ServiceName name, size_t max_sessions, bool is_light) {
         return smRegisterService(out, impl::ConvertName(name), is_light, static_cast<int>(max_sessions));
     }
 

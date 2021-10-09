@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -54,7 +54,7 @@ namespace ams::sf::hipc::impl {
 
     }
 
-    void RegisterMitmQueryHandle(Handle query_handle, ServerManagerBase::MitmQueryFunction query_func) {
+    void RegisterMitmQueryHandle(os::NativeHandle query_handle, ServerManagerBase::MitmQueryFunction query_func) {
         std::scoped_lock lk(g_query_server_lock);
 
         if (AMS_UNLIKELY(!g_constructed_server)) {

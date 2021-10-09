@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -62,11 +62,11 @@
 #include <stratosphere/htclow.hpp>
 #include <stratosphere/htcs.hpp>
 #include <stratosphere/i2c.hpp>
+#include <stratosphere/init.hpp>
 #include <stratosphere/kvdb.hpp>
 #include <stratosphere/ldr.hpp>
 #include <stratosphere/lr.hpp>
 #include <stratosphere/lm.hpp>
-#include <stratosphere/map.hpp>
 #include <stratosphere/ncm.hpp>
 #include <stratosphere/nim.hpp>
 #include <stratosphere/ns.hpp>

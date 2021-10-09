@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -25,10 +25,16 @@ namespace ams::mem::impl {
         constinit bool g_virt_mem_enabled = false;
 
         void EnsureVirtualAddressMemoryDetected() {
-            std::scoped_lock lk(g_virt_mem_enabled_lock);
             if (AMS_LIKELY(g_virt_mem_enabled_detected)) {
                 return;
             }
+
+            std::scoped_lock lk(g_virt_mem_enabled_lock);
+
+            if (AMS_UNLIKELY(g_virt_mem_enabled_detected)) {
+                return;
+            }
+
             g_virt_mem_enabled = os::IsVirtualAddressMemoryEnabled();
         }
 
@@ -69,8 +75,12 @@ namespace ams::mem::impl {
             if (auto err = ConvertResult(os::AllocateMemoryBlock(std::addressof(addr), util::AlignUp(size, os::MemoryBlockUnitSize))); err != 0) {
                 return err;
             }
+
             os::SetMemoryPermission(addr, size, os::MemoryPermission_None);
         }
+
+        /* Set the output pointer. */
+        *ptr = reinterpret_cast<void *>(addr);
 
         return 0;
     }

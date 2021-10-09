@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -53,6 +53,8 @@ namespace ams::fs {
             }
 
             virtual Result DoOperateRange(void *dst, size_t dst_size, fs::OperationId op_id, s64 offset, s64 size, const void *src, size_t src_size) override final {
+                AMS_UNUSED(src, src_size);
+
                 R_UNLESS(op_id == OperationId::QueryRange,       fs::ResultUnsupportedOperationInFileServiceObjectAdapterA());
                 R_UNLESS(dst_size == sizeof(FileQueryRangeInfo), fs::ResultInvalidSize());
 

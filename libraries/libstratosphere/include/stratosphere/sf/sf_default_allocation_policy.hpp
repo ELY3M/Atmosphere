@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -34,11 +34,13 @@ namespace ams::sf {
             public:
                 void *Allocate(size_t size) {
                     AMS_ASSERT(size == sizeof(T));
+                    AMS_UNUSED(size);
                     return DefaultAllocateImpl(sizeof(Holder), alignof(Holder), offsetof(Holder, storage));
                 }
 
                 void Deallocate(void *ptr, size_t size) {
                     AMS_ASSERT(size == sizeof(T));
+                    AMS_UNUSED(size);
                     return DefaultDeallocateImpl(ptr, sizeof(Holder), alignof(Holder), offsetof(Holder, storage));
                 }
         };

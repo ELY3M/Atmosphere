@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -58,6 +58,12 @@ namespace ams::spl {
         u64 v;
         R_ABORT_UNLESS(::ams::spl::GetConfig(std::addressof(v), ::ams::spl::ConfigItem::HardwareState));
         return static_cast<HardwareState>(v);
+    }
+
+    inline RetailInteractiveDisplayState GetRetailInteractiveDisplayState() {
+        u64 v;
+        R_ABORT_UNLESS(::ams::spl::GetConfig(std::addressof(v), ::ams::spl::ConfigItem::RetailInteractiveDisplayState));
+        return static_cast<RetailInteractiveDisplayState>(v);
     }
 
     inline u64 GetDeviceIdLow() {

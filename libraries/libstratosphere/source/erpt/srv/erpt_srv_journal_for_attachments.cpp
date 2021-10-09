@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -138,7 +138,9 @@ namespace ams::erpt::srv {
 
     JournalRecord<AttachmentInfo> *JournalForAttachments::RetrieveRecord(AttachmentId attachment_id) {
         for (auto it = s_attachment_list.begin(); it != s_attachment_list.end(); it++) {
-            return std::addressof(*it);
+            if (auto *record = std::addressof(*it); record->info.attachment_id == attachment_id) {
+                return record;
+            }
         }
         return nullptr;
     }
@@ -212,6 +214,8 @@ namespace ams::erpt::srv {
             R_TRY(attachment->Write(data, data_size));
             R_TRY(StoreRecord(record));
         }
+
+        *out = info.attachment_id;
 
         return ResultSuccess();
     }

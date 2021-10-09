@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -101,7 +101,7 @@ namespace ams::os::impl {
 
     }
 
-    void InternalReadWriteBusyMutexImpl::AcquireReadLock() {
+    void InternalReaderWriterBusyMutexImpl::AcquireReadLock() {
         /* Get the thread local region. */
         auto * const tlr = svc::GetThreadLocalRegion();
 
@@ -152,7 +152,7 @@ namespace ams::os::impl {
         }
     }
 
-    void InternalReadWriteBusyMutexImpl::ReleaseReadLock() {
+    void InternalReaderWriterBusyMutexImpl::ReleaseReadLock() {
         /* Release the read lock. */
         {
             /* Get pointer to our value. */
@@ -183,7 +183,7 @@ namespace ams::os::impl {
         }
     }
 
-    void InternalReadWriteBusyMutexImpl::AcquireWriteLock() {
+    void InternalReaderWriterBusyMutexImpl::AcquireWriteLock() {
         /* Get the thread local region. */
         auto * const tlr = svc::GetThreadLocalRegion();
 
@@ -247,7 +247,7 @@ namespace ams::os::impl {
         }
     }
 
-    void InternalReadWriteBusyMutexImpl::ReleaseWriteLock() {
+    void InternalReaderWriterBusyMutexImpl::ReleaseWriteLock() {
         /* Check pre-conditions. */
         AMS_ABORT_UNLESS(IsWriteLocked(m_value));
 

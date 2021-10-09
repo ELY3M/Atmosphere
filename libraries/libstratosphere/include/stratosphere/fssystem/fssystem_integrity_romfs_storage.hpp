@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -48,7 +48,7 @@ namespace ams::fssystem {
                 return this->integrity_storage.Write(offset, buffer, size);
             }
 
-            virtual Result SetSize(s64 size) override { return fs::ResultUnsupportedOperationInIntegrityRomFsStorageA(); }
+            virtual Result SetSize(s64 size) override { AMS_UNUSED(size); return fs::ResultUnsupportedOperationInIntegrityRomFsStorageA(); }
 
             virtual Result GetSize(s64 *out) override {
                 return this->integrity_storage.GetSize(out);

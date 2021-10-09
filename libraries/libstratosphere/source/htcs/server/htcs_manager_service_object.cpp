@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -66,11 +66,13 @@ namespace ams::htcs::server {
 
     Result ManagerServiceObject::RegisterProcessId(const sf::ClientProcessId &client_pid) {
         /* NOTE: Nintendo does nothing here. */
+        AMS_UNUSED(client_pid);
         return ResultSuccess();
     }
 
     Result ManagerServiceObject::MonitorManager(const sf::ClientProcessId &client_pid) {
         /* NOTE: Nintendo does nothing here. */
+        AMS_UNUSED(client_pid);
         return ResultSuccess();
     }
 
@@ -79,10 +81,11 @@ namespace ams::htcs::server {
         auto *manager = impl::HtcsManagerHolder::GetHtcsManager();
 
         /* Start the select. */
-        R_TRY(manager->StartSelect(out_task_id.GetPointer(), out_event.GetHandlePointer(), read_handles.ToSpan(), write_handles.ToSpan(), exception_handles.ToSpan(), tv_sec, tv_usec));
+        os::NativeHandle event_handle;
+        R_TRY(manager->StartSelect(out_task_id.GetPointer(), std::addressof(event_handle), read_handles.ToSpan(), write_handles.ToSpan(), exception_handles.ToSpan(), tv_sec, tv_usec));
 
-        /* Mark the output event as managed. */
-        out_event.SetManaged(true);
+        /* Set the output event handle. */
+        out_event.SetValue(event_handle, true);
         return ResultSuccess();
     }
 

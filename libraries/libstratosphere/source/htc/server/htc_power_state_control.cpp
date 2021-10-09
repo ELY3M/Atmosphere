@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -31,6 +31,8 @@ namespace ams::htc::server {
     }
 
     void InitializePowerStateMonitor(htclow::impl::DriverType driver_type, htclow::HtclowManager *htclow_manager) {
+        AMS_UNUSED(driver_type);
+
         /* Set the htclow manager. */
         g_htclow_manager = htclow_manager;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -181,10 +181,11 @@ namespace ams::gpio {
     Result BindInterrupt(os::SystemEventType *event, GpioPadSession *session) {
         AMS_ASSERT(session->_event == nullptr);
 
-        ams::sf::CopyHandle handle;
+        ams::sf::NativeHandle handle;
         R_TRY(GetInterface(session)->BindInterrupt(std::addressof(handle)));
 
-        os::AttachReadableHandleToSystemEvent(event, handle.GetValue(), true, os::EventClearMode_ManualClear);
+        os::AttachReadableHandleToSystemEvent(event, handle.GetOsHandle(), handle.IsManaged(), os::EventClearMode_ManualClear);
+        handle.Detach();
 
         session->_event = event;
         return ResultSuccess();

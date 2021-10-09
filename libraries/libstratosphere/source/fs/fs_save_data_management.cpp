@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -78,6 +78,7 @@ namespace ams::fs {
 
     Result DeleteSaveData(SaveDataId id) {
         /* TODO: Libnx binding for DeleteSaveDataFileSystem */
+        AMS_UNUSED(id);
         AMS_ABORT();
     }
 
@@ -89,7 +90,7 @@ namespace ams::fs {
         const auto attribute = SaveDataAttribute::Make(ncm::InvalidProgramId, SaveDataType::System, user_id, id);
 
         /* TODO: Libnx binding for DeleteSaveDataFileSystemBySaveDataAttribute */
-        AMS_UNUSED(attribute);
+        AMS_UNUSED(space_id, attribute);
         AMS_ABORT();
     }
 

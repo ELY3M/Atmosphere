@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -148,7 +148,7 @@ namespace ams::fatal::srv {
     Result Service::GetFatalEvent(sf::OutCopyHandle out_h) {
         const os::SystemEventType *event;
         R_TRY(g_context.GetEvent(std::addressof(event)));
-        out_h.SetValue(os::GetReadableHandleOfSystemEvent(event));
+        out_h.SetValue(os::GetReadableHandleOfSystemEvent(event), false);
         return ResultSuccess();
     }
 

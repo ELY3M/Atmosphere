@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -19,11 +19,11 @@
 
 namespace ams::os::impl {
 
-    class InternalReadWriteBusyMutexImpl {
+    class InternalReaderWriterBusyMutexImpl {
         private:
             u32 m_value;
         public:
-            constexpr InternalReadWriteBusyMutexImpl() : m_value(0) { /* ... */ }
+            constexpr InternalReaderWriterBusyMutexImpl() : m_value(0) { /* ... */ }
 
             constexpr void Initialize() { m_value = 0; }
 

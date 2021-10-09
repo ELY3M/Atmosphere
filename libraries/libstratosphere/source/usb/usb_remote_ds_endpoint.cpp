@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -35,10 +35,15 @@ namespace ams::usb {
 
     Result RemoteDsEndpoint::GetCompletionEvent(sf::OutCopyHandle out) {
         serviceAssumeDomain(std::addressof(m_srv));
-        return serviceDispatch(std::addressof(m_srv), 2,
+
+        os::NativeHandle event_handle;
+        R_TRY((serviceDispatch(std::addressof(m_srv), 2,
             .out_handle_attrs = { SfOutHandleAttr_HipcCopy },
-            .out_handles = out.GetHandlePointer(),
-        );
+            .out_handles = std::addressof(event_handle),
+        )));
+
+        out.SetValue(event_handle, true);
+        return ResultSuccess();
     }
 
     Result RemoteDsEndpoint::GetUrbReport(sf::Out<usb::UrbReport> out) {

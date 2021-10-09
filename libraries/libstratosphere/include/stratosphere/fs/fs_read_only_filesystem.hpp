@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -46,10 +46,12 @@ namespace ams::fs {
                 }
 
                 virtual Result DoWrite(s64 offset, const void *buffer, size_t size, const fs::WriteOption &option) override final {
+                    AMS_UNUSED(offset, buffer, size, option);
                     return fs::ResultUnsupportedOperationInReadOnlyFileA();
                 }
 
                 virtual Result DoSetSize(s64 size) override final {
+                    AMS_UNUSED(size);
                     return fs::ResultUnsupportedOperationInReadOnlyFileA();
                 }
 
@@ -107,46 +109,57 @@ namespace ams::fs {
             }
 
             virtual Result DoCreateFile(const char *path, s64 size, int flags) override final {
+                AMS_UNUSED(path, size, flags);
                 return fs::ResultUnsupportedOperationInReadOnlyFileSystemTemplateA();
             }
 
             virtual Result DoDeleteFile(const char *path) override final {
+                AMS_UNUSED(path);
                 return fs::ResultUnsupportedOperationInReadOnlyFileSystemTemplateA();
             }
 
             virtual Result DoCreateDirectory(const char *path) override final {
+                AMS_UNUSED(path);
                 return fs::ResultUnsupportedOperationInReadOnlyFileSystemTemplateA();
             }
 
             virtual Result DoDeleteDirectory(const char *path) override final {
+                AMS_UNUSED(path);
                 return fs::ResultUnsupportedOperationInReadOnlyFileSystemTemplateA();
             }
 
             virtual Result DoDeleteDirectoryRecursively(const char *path) override final {
+                AMS_UNUSED(path);
                 return fs::ResultUnsupportedOperationInReadOnlyFileSystemTemplateA();
             }
 
             virtual Result DoRenameFile(const char *old_path, const char *new_path) override final {
+                AMS_UNUSED(old_path, new_path);
                 return fs::ResultUnsupportedOperationInReadOnlyFileSystemTemplateA();
             }
 
             virtual Result DoRenameDirectory(const char *old_path, const char *new_path) override final {
+                AMS_UNUSED(old_path, new_path);
                 return fs::ResultUnsupportedOperationInReadOnlyFileSystemTemplateA();
             }
 
             virtual Result DoCleanDirectoryRecursively(const char *path) override final {
+                AMS_UNUSED(path);
                 return fs::ResultUnsupportedOperationInReadOnlyFileSystemTemplateA();
             }
 
             virtual Result DoGetFreeSpaceSize(s64 *out, const char *path) override final {
+                AMS_UNUSED(out, path);
                 return fs::ResultUnsupportedOperationInReadOnlyFileSystemTemplateB();
             }
 
             virtual Result DoGetTotalSpaceSize(s64 *out, const char *path) override final {
+                AMS_UNUSED(out, path);
                 return fs::ResultUnsupportedOperationInReadOnlyFileSystemTemplateB();
             }
 
             virtual Result DoCommitProvisionally(s64 counter) override final {
+                AMS_UNUSED(counter);
                 return fs::ResultUnsupportedOperationInReadOnlyFileSystemTemplateC();
             }
     };

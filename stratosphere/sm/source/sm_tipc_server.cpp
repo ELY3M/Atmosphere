@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -47,7 +47,7 @@ namespace ams::sm {
             private:
                 struct Entry {
                     sm::ServiceName service_name{sm::InvalidServiceName};
-                    tipc::WaitableObject object{};
+                    tipc::ObjectHolder object{};
                     u8 message_buffer[svc::ipc::MessageBufferSize];
                 };
             private:
@@ -83,7 +83,7 @@ namespace ams::sm {
                     return tipc::ResultRequestDeferred();
                 }
 
-                void ProcessRegisterRetry(tipc::WaitableObject &object) {
+                void ProcessRegisterRetry(tipc::ObjectHolder &object) {
                     /* Verify that we have a processing entry. */
                     AMS_ABORT_UNLESS(m_processing_entry != nullptr);
 
@@ -143,7 +143,7 @@ namespace ams::sm {
         g_server_manager.Initialize();
 
         /* Create the handles for our ports. */
-        svc::Handle user_port_handle = svc::InvalidHandle, manager_port_handle = svc::InvalidHandle;
+        os::NativeHandle user_port_handle, manager_port_handle;
         {
             /* Create the user port handle. */
             R_ABORT_UNLESS(svc::ManageNamedPort(std::addressof(user_port_handle), "sm:", MaxSessionsUser));

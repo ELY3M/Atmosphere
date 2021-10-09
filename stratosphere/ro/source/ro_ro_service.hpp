@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -37,8 +37,8 @@ namespace ams::ro {
             Result UnmapManualLoadModuleMemory(const sf::ClientProcessId &client_pid, u64 nro_address);
             Result RegisterModuleInfo(const sf::ClientProcessId &client_pid, u64 nrr_address, u64 nrr_size);
             Result UnregisterModuleInfo(const sf::ClientProcessId &client_pid, u64 nrr_address);
-            Result RegisterProcessHandle(const sf::ClientProcessId &client_pid, sf::CopyHandle process_h);
-            Result RegisterProcessModuleInfo(const sf::ClientProcessId &client_pid, u64 nrr_address, u64 nrr_size, sf::CopyHandle process_h);
+            Result RegisterProcessHandle(const sf::ClientProcessId &client_pid, sf::CopyHandle &&process_h);
+            Result RegisterProcessModuleInfo(const sf::ClientProcessId &client_pid, u64 nrr_address, u64 nrr_size, sf::CopyHandle &&process_h);
     };
     static_assert(ro::impl::IsIRoInterface<RoService>);
 

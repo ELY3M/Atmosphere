@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -14,9 +14,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
-#include "impl/fs_newable.hpp"
-#include "fs_istorage.hpp"
-#include "fs_query_range.hpp"
+#include <stratosphere/fs/impl/fs_newable.hpp>
+#include <stratosphere/fs/fs_istorage.hpp>
+#include <stratosphere/fs/fs_query_range.hpp>
 
 namespace ams::fs {
 
@@ -63,10 +63,13 @@ namespace ams::fs {
             }
 
             virtual Result SetSize(s64 size) override {
+                AMS_UNUSED(size);
                 return fs::ResultUnsupportedOperationInMemoryStorageA();
             }
 
             virtual Result OperateRange(void *dst, size_t dst_size, OperationId op_id, s64 offset, s64 size, const void *src, size_t src_size) override {
+                AMS_UNUSED(offset, size, src, src_size);
+
                 switch (op_id) {
                     case OperationId::Invalidate:
                         return ResultSuccess();

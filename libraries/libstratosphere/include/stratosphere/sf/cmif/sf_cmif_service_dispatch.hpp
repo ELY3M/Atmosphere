@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -15,9 +15,9 @@
  */
 
 #pragma once
-#include "../sf_service_object.hpp"
-#include "sf_cmif_pointer_and_size.hpp"
-#include "sf_cmif_server_message_processor.hpp"
+#include <stratosphere/sf/sf_service_object.hpp>
+#include <stratosphere/sf/cmif/sf_cmif_pointer_and_size.hpp>
+#include <stratosphere/sf/cmif/sf_cmif_server_message_processor.hpp>
 
 namespace ams::sf::hipc {
 
@@ -31,7 +31,7 @@ namespace ams::sf::cmif {
     class ServerMessageProcessor;
 
     struct HandlesToClose {
-        Handle handles[8];
+        os::NativeHandle handles[8];
         size_t num_handles;
     };
 

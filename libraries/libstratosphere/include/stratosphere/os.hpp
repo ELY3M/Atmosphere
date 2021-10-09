@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -23,8 +23,8 @@
 #include <stratosphere/os/os_memory_permission.hpp>
 #include <stratosphere/os/os_memory_heap_api.hpp>
 #include <stratosphere/os/os_memory_virtual_address_api.hpp>
-#include <stratosphere/os/os_managed_handle.hpp>
-#include <stratosphere/os/os_process_handle.hpp>
+#include <stratosphere/os/os_native_handle.hpp>
+#include <stratosphere/os/os_process_handle_api.hpp>
 #include <stratosphere/os/os_random.hpp>
 #include <stratosphere/os/os_mutex.hpp>
 #include <stratosphere/os/os_condition_variable.hpp>
@@ -34,6 +34,7 @@
 #include <stratosphere/os/os_busy_mutex.hpp>
 #include <stratosphere/os/os_rw_busy_mutex.hpp>
 #include <stratosphere/os/os_rw_lock.hpp>
+#include <stratosphere/os/os_shared_memory.hpp>
 #include <stratosphere/os/os_transfer_memory.hpp>
 #include <stratosphere/os/os_semaphore.hpp>
 #include <stratosphere/os/os_event.hpp>
@@ -49,4 +50,6 @@
 #include <stratosphere/os/os_light_message_queue.hpp>
 #include <stratosphere/os/os_light_semaphore.hpp>
 #include <stratosphere/os/os_barrier.hpp>
-#include <stratosphere/os/os_waitable.hpp>
+#include <stratosphere/os/os_io_region.hpp>
+#include <stratosphere/os/os_multiple_wait.hpp>
+#include <stratosphere/os/os_argument.hpp>

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -20,12 +20,12 @@
 
 namespace ams::os {
 
-    struct ReadWriteBusyMutexType {
+    struct ReaderWriterBusyMutexType {
         union {
-            s32 _arr[sizeof(impl::InternalReadWriteBusyMutexStorage) / sizeof(s32)];
-            impl::InternalReadWriteBusyMutexStorage _storage;
+            s32 _arr[sizeof(impl::InternalReaderWriterBusyMutexStorage) / sizeof(s32)];
+            impl::InternalReaderWriterBusyMutexStorage _storage;
         };
     };
-    static_assert(std::is_trivial<ReadWriteBusyMutexType>::value);
+    static_assert(std::is_trivial<ReaderWriterBusyMutexType>::value);
 
 }

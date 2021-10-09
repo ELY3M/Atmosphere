@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -1096,6 +1096,7 @@ namespace ams::dmnt {
                             reply = true;
                         }
                     }
+                    break;
                 case svc::DebugEvent_ExitThread:
                     {
                         AMS_DMNT2_GDB_LOG_DEBUG("ExitThread %lx\n", thread_id);

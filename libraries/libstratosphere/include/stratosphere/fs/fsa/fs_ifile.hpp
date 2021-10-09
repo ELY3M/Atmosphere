@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -84,6 +84,8 @@ namespace ams::fs::fsa {
             virtual sf::cmif::DomainObjectId GetDomainObjectId() const = 0;
         protected:
             Result DryRead(size_t *out, s64 offset, size_t size, const fs::ReadOption &option, OpenMode open_mode) {
+                AMS_UNUSED(option);
+
                 /* Check that we can read. */
                 R_UNLESS((open_mode & OpenMode_Read) != 0, fs::ResultReadNotPermitted());
 
@@ -101,11 +103,14 @@ namespace ams::fs::fsa {
                 R_UNLESS((open_mode & OpenMode_Write) != 0, fs::ResultWriteNotPermitted());
 
                 AMS_ASSERT(size >= 0);
+                AMS_UNUSED(size);
 
                 return ResultSuccess();
             }
 
             Result DryWrite(bool *out_append, s64 offset, size_t size, const fs::WriteOption &option, fs::OpenMode open_mode) {
+                AMS_UNUSED(option);
+
                 /* Check that we can write. */
                 R_UNLESS((open_mode & OpenMode_Write) != 0, fs::ResultWriteNotPermitted());
 

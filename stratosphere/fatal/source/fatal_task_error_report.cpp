@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -75,7 +75,7 @@ namespace ams::fatal::srv {
             /* Get a timestamp. */
             u64 timestamp;
             if (!TryGetCurrentTimestamp(&timestamp)) {
-                timestamp = svcGetSystemTick();
+                timestamp = os::GetSystemTick().GetInt64Value();
             }
 
             /* Open report file. */

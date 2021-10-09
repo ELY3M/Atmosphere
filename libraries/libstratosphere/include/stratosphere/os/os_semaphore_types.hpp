@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -23,7 +23,7 @@ namespace ams::os {
 
     namespace impl {
 
-        class WaitableObjectList;
+        class MultiWaitObjectList;
 
     }
 
@@ -33,7 +33,7 @@ namespace ams::os {
             State_Initialized    = 1,
         };
 
-        util::TypedStorage<impl::WaitableObjectList, sizeof(util::IntrusiveListNode), alignof(util::IntrusiveListNode)> waitlist;
+        util::TypedStorage<impl::MultiWaitObjectList, sizeof(util::IntrusiveListNode), alignof(util::IntrusiveListNode)> waitlist;
         u8 state;
         s32 count;
         s32 max_count;

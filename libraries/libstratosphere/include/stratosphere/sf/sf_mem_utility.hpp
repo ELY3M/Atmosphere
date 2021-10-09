@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -33,6 +33,7 @@ namespace ams::sf {
             }
 
             virtual void DeallocateImpl(void *buffer, size_t size, size_t alignment) override {
+                AMS_UNUSED(size, alignment);
                 return this->standard_allocator->Free(buffer);
             }
 

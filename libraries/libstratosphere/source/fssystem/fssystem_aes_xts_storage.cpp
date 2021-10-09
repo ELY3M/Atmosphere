@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -25,6 +25,7 @@ namespace ams::fssystem {
         AMS_ASSERT(key_size == KeySize);
         AMS_ASSERT(iv_size  == IvSize);
         AMS_ASSERT(util::IsAligned(this->block_size, AesBlockSize));
+        AMS_UNUSED(key_size, iv_size);
 
         std::memcpy(this->key[0], key1, KeySize);
         std::memcpy(this->key[1], key2, KeySize);

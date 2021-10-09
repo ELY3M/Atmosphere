@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -29,7 +29,7 @@ namespace ams::usb {
             RemoteDsService(Service &srv, sf::ExpHeapAllocator *allocator) : m_srv(srv), m_allocator(allocator) { /* ... */ }
             virtual ~RemoteDsService() { serviceClose(std::addressof(m_srv)); }
         public:
-            Result Bind(usb::ComplexId complex_id, sf::CopyHandle process_h);
+            Result Bind(usb::ComplexId complex_id, sf::CopyHandle &&process_h);
             Result RegisterInterface(sf::Out<sf::SharedPointer<usb::ds::IDsInterface>> out, u8 bInterfaceNumber);
             Result GetStateChangeEvent(sf::OutCopyHandle out);
             Result GetState(sf::Out<usb::UsbState> out);

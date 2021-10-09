@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -19,14 +19,14 @@
 
 namespace ams::os {
 
-    struct ReadWriteBusyMutexType;
+    struct ReaderWriterBusyMutexType;
 
-    void InitalizeReadWriteLockBusyMutex(ReadWriteBusyMutexType *rw_mutex);
+    void InitalizeReaderWriterLockBusyMutex(ReaderWriterBusyMutexType *rw_mutex);
 
-    void AcquireReadLockBusyMutex(ReadWriteBusyMutexType *rw_mutex);
-    void ReleaseReadLockBusyMutex(ReadWriteBusyMutexType *rw_mutex);
+    void AcquireReadLockBusyMutex(ReaderWriterBusyMutexType *rw_mutex);
+    void ReleaseReadLockBusyMutex(ReaderWriterBusyMutexType *rw_mutex);
 
-    void AcquireWriteLockBusyMutex(ReadWriteBusyMutexType *rw_mutex);
-    void ReleaseWriteLockBusyMutex(ReadWriteBusyMutexType *rw_mutex);
+    void AcquireWriteLockBusyMutex(ReaderWriterBusyMutexType *rw_mutex);
+    void ReleaseWriteLockBusyMutex(ReaderWriterBusyMutexType *rw_mutex);
 
 }

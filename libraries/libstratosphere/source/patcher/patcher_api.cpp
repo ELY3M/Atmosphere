@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -112,6 +112,7 @@ namespace ams::patcher {
         }
 
         inline u32 GetIpsPatchSize(bool is_ips32, u8 *buffer) {
+            AMS_UNUSED(is_ips32);
             return (buffer[0] << 8) | (buffer[1]);
         }
 

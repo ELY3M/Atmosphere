@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Adubbz, Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -27,6 +27,7 @@ namespace ams::ncm {
     }
 
     Result PackageInstallTask::GetInstallContentMetaInfo(InstallContentMetaInfo *out_info, const ContentMetaKey &key) {
+        AMS_UNUSED(out_info, key);
         return ncm::ResultContentNotFound();
     }
 
@@ -41,7 +42,7 @@ namespace ams::ncm {
             s64 count;
             fs::DirectoryEntry entry;
             R_TRY(fs::ReadDirectory(std::addressof(count), std::addressof(entry), dir, 1));
-            
+
             /* No more entries remain, we are done. */
             if (count == 0) {
                 break;

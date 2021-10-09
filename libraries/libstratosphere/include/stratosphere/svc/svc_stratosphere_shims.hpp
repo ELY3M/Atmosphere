@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -388,6 +388,10 @@
 
                 ALWAYS_INLINE Result ContinueDebugEvent(::ams::svc::Handle debug_handle, uint32_t flags, ::ams::svc::UserPointer<const uint64_t *> thread_ids, int32_t num_thread_ids) {
                     return ::svcContinueDebugEvent(debug_handle, flags, const_cast<u64 *>(thread_ids.GetPointerUnsafe()), num_thread_ids);
+                }
+
+                ALWAYS_INLINE Result LegacyContinueDebugEvent(::ams::svc::Handle debug_handle, uint32_t flags, uint64_t thread_id) {
+                    return ::svcLegacyContinueDebugEvent(debug_handle, flags, thread_id);
                 }
 
                 ALWAYS_INLINE Result GetProcessList(int32_t *out_num_processes, ::ams::svc::UserPointer<uint64_t *> out_process_ids, int32_t max_out_count) {

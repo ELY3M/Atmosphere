@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -105,7 +105,7 @@ namespace ams::dmnt::cheat::impl {
                 os::Event debug_events_event; /* Autoclear. */
                 os::ThreadType detect_thread, debug_events_thread;
                 os::SystemEvent cheat_process_event;
-                Handle cheat_process_debug_handle = svc::InvalidHandle;
+                os::NativeHandle cheat_process_debug_handle = os::InvalidNativeHandle;
                 CheatProcessMetadata cheat_process_metadata = {};
 
                 os::ThreadType vm_thread;
@@ -192,7 +192,7 @@ namespace ams::dmnt::cheat::impl {
                 }
 
                 void CloseActiveCheatProcess() {
-                    if (this->cheat_process_debug_handle != svc::InvalidHandle) {
+                    if (this->cheat_process_debug_handle != os::InvalidNativeHandle) {
                         /* We don't need to do any unsafe brekaing. */
                         this->broken_unsafe = false;
                         this->unsafe_break_event.Signal();
@@ -202,7 +202,7 @@ namespace ams::dmnt::cheat::impl {
 
                         /* Close resources. */
                         R_ABORT_UNLESS(svc::CloseHandle(this->cheat_process_debug_handle));
-                        this->cheat_process_debug_handle = svc::InvalidHandle;
+                        this->cheat_process_debug_handle = os::InvalidNativeHandle;
 
                         /* Save cheat toggles. */
                         if (this->always_save_cheat_toggles || this->should_save_cheat_toggles) {
@@ -235,8 +235,8 @@ namespace ams::dmnt::cheat::impl {
                 bool HasActiveCheatProcess() {
                     /* Note: This function *MUST* be called only with the cheat lock held. */
                     os::ProcessId pid;
-                    bool has_cheat_process = this->cheat_process_debug_handle != svc::InvalidHandle;
-                    has_cheat_process &= R_SUCCEEDED(os::TryGetProcessId(&pid, this->cheat_process_debug_handle));
+                    bool has_cheat_process = this->cheat_process_debug_handle != os::InvalidNativeHandle;
+                    has_cheat_process &= R_SUCCEEDED(os::GetProcessId(&pid, this->cheat_process_debug_handle));
                     has_cheat_process &= R_SUCCEEDED(pm::dmnt::GetApplicationProcessId(&pid));
                     has_cheat_process &= (pid == this->cheat_process_metadata.process_id);
 
@@ -252,12 +252,12 @@ namespace ams::dmnt::cheat::impl {
                     return ResultSuccess();
                 }
 
-                Handle GetCheatProcessHandle() const {
+                os::NativeHandle GetCheatProcessHandle() const {
                     return this->cheat_process_debug_handle;
                 }
 
-                Handle HookToCreateApplicationProcess() const {
-                    Handle h = svc::InvalidHandle;
+                os::NativeHandle HookToCreateApplicationProcess() const {
+                    os::NativeHandle h;
                     R_ABORT_UNLESS(pm::dmnt::HookToCreateApplicationProcess(&h));
                     return h;
                 }
@@ -301,7 +301,7 @@ namespace ams::dmnt::cheat::impl {
                     return this->HasActiveCheatProcess();
                 }
 
-                Handle GetCheatProcessEventHandle() const {
+                os::NativeHandle GetCheatProcessEventHandle() const {
                     return this->cheat_process_event.GetReadableHandle();
                 }
 
@@ -324,11 +324,11 @@ namespace ams::dmnt::cheat::impl {
                 }
 
                 Result ReadCheatProcessMemoryUnsafe(u64 proc_addr, void *out_data, size_t size) {
-                    return svcReadDebugProcessMemory(out_data, this->GetCheatProcessHandle(), proc_addr, size);
+                    return svc::ReadDebugProcessMemory(reinterpret_cast<uintptr_t>(out_data), this->GetCheatProcessHandle(), proc_addr, size);
                 }
 
                 Result WriteCheatProcessMemoryUnsafe(u64 proc_addr, const void *data, size_t size) {
-                    R_TRY(svcWriteDebugProcessMemory(this->GetCheatProcessHandle(), data, proc_addr, size));
+                    R_TRY(svc::WriteDebugProcessMemory(this->GetCheatProcessHandle(), reinterpret_cast<uintptr_t>(data), proc_addr, size));
 
                     for (auto &entry : this->frozen_addresses_map) {
                         /* Get address/value. */
@@ -354,7 +354,7 @@ namespace ams::dmnt::cheat::impl {
                 Result PauseCheatProcessUnsafe() {
                     this->broken_unsafe = true;
                     this->unsafe_break_event.Clear();
-                    return svcBreakDebugProcess(this->GetCheatProcessHandle());
+                    return svc::BreakDebugProcess(this->GetCheatProcessHandle());
                 }
 
                 Result ResumeCheatProcessUnsafe() {
@@ -369,48 +369,46 @@ namespace ams::dmnt::cheat::impl {
 
                     R_TRY(this->EnsureCheatProcess());
 
-                    MemoryInfo mem_info;
+                    svc::MemoryInfo mem_info;
+                    svc::PageInfo page_info;
                     u64 address = 0, count = 0;
                     do {
-                        mem_info.perm = Perm_None;
-                        u32 tmp;
-                        if (R_FAILED(svcQueryDebugProcessMemory(&mem_info, &tmp, this->GetCheatProcessHandle(), address))) {
+                        if (R_FAILED(svc::QueryDebugProcessMemory(&mem_info, &page_info, this->GetCheatProcessHandle(), address))) {
                             break;
                         }
 
-                        if (mem_info.perm != Perm_None) {
+                        if (mem_info.permission != svc::MemoryPermission_None) {
                             count++;
                         }
 
-                        address = mem_info.addr + mem_info.size;
+                        address = mem_info.base_address + mem_info.size;
                     } while (address != 0);
 
                     *out_count = count;
                     return ResultSuccess();
                 }
 
-                Result GetCheatProcessMappings(MemoryInfo *mappings, size_t max_count, u64 *out_count, u64 offset) {
+                Result GetCheatProcessMappings(svc::MemoryInfo *mappings, size_t max_count, u64 *out_count, u64 offset) {
                     std::scoped_lock lk(this->cheat_lock);
 
                     R_TRY(this->EnsureCheatProcess());
 
-                    MemoryInfo mem_info;
+                    svc::MemoryInfo mem_info;
+                    svc::PageInfo page_info;
                     u64 address = 0, total_count = 0, written_count = 0;
                     do {
-                        mem_info.perm = Perm_None;
-                        u32 tmp;
-                        if (R_FAILED(svcQueryDebugProcessMemory(&mem_info, &tmp, this->GetCheatProcessHandle(), address))) {
+                        if (R_FAILED(svc::QueryDebugProcessMemory(&mem_info, &page_info, this->GetCheatProcessHandle(), address))) {
                             break;
                         }
 
-                        if (mem_info.perm != Perm_None) {
+                        if (mem_info.permission != svc::MemoryPermission_None) {
                             if (offset <= total_count && written_count < max_count) {
                                 mappings[written_count++] = mem_info;
                             }
                             total_count++;
                         }
 
-                        address = mem_info.addr + mem_info.size;
+                        address = mem_info.base_address + mem_info.size;
                     } while (address != 0 && written_count < max_count);
 
                     *out_count = written_count;
@@ -433,13 +431,13 @@ namespace ams::dmnt::cheat::impl {
                     return this->WriteCheatProcessMemoryUnsafe(proc_addr, data, size);
                 }
 
-                Result QueryCheatProcessMemory(MemoryInfo *mapping, u64 address) {
+                Result QueryCheatProcessMemory(svc::MemoryInfo *mapping, u64 address) {
                     std::scoped_lock lk(this->cheat_lock);
 
                     R_TRY(this->EnsureCheatProcess());
 
-                    u32 tmp;
-                    return svcQueryDebugProcessMemory(mapping, &tmp, this->GetCheatProcessHandle(), address);
+                    svc::PageInfo page_info;
+                    return svc::QueryDebugProcessMemory(mapping, &page_info, this->GetCheatProcessHandle(), address);
                 }
 
                 Result PauseCheatProcess() {
@@ -710,8 +708,9 @@ namespace ams::dmnt::cheat::impl {
                 /* Atomically wait (and clear) signal for new process. */
                 this_ptr->debug_events_event.Wait();
                 while (true) {
-                    Handle cheat_process_handle = this_ptr->GetCheatProcessHandle();
-                    while (cheat_process_handle != svc::InvalidHandle && R_SUCCEEDED(svcWaitSynchronizationSingle(this_ptr->GetCheatProcessHandle(), std::numeric_limits<u64>::max()))) {
+                    os::NativeHandle cheat_process_handle = this_ptr->GetCheatProcessHandle();
+                    s32 dummy;
+                    while (cheat_process_handle != os::InvalidNativeHandle && R_SUCCEEDED(svc::WaitSynchronization(std::addressof(dummy), std::addressof(cheat_process_handle), 1, std::numeric_limits<u64>::max()))) {
                         this_ptr->cheat_lock.Lock();
                         ON_SCOPE_EXIT { this_ptr->cheat_lock.Unlock(); };
                         {
@@ -722,7 +721,7 @@ namespace ams::dmnt::cheat::impl {
                                 this_ptr->cheat_lock.Unlock();
                                 this_ptr->unsafe_break_event.Wait();
                                 this_ptr->cheat_lock.Lock();
-                                if (this_ptr->GetCheatProcessHandle() != svc::InvalidHandle) {
+                                if (this_ptr->GetCheatProcessHandle() != os::InvalidNativeHandle) {
                                     continue;
                                 } else {
                                     break;
@@ -775,16 +774,16 @@ namespace ams::dmnt::cheat::impl {
                             const auto &value  = entry.GetValue();
 
                             /* Use Write SVC directly, to avoid the usual frozen address update logic. */
-                            svcWriteDebugProcessMemory(this_ptr->GetCheatProcessHandle(), &value.value, address, value.width);
+                            svc::WriteDebugProcessMemory(this_ptr->GetCheatProcessHandle(), reinterpret_cast<uintptr_t>(std::addressof(value.value)), address, value.width);
                         }
                     }
                 }
 
                 /* Sleep until next potential execution. */
-                constexpr u64 ONE_SECOND = 1'000'000'000ul;
-                constexpr u64 TIMES_PER_SECOND = 12;
-                constexpr u64 DELAY_TIME = ONE_SECOND / TIMES_PER_SECOND;
-                svcSleepThread(DELAY_TIME);
+                constexpr s64 TimesPerSecond   = 12;
+                constexpr s64 DelayNanoSeconds = TimeSpan::FromSeconds(1).GetNanoSeconds() / TimesPerSecond;
+                constexpr TimeSpan Delay       = TimeSpan::FromNanoSeconds(DelayNanoSeconds);
+                os::SleepThread(Delay);
             }
         }
 
@@ -820,24 +819,21 @@ namespace ams::dmnt::cheat::impl {
 
             /* Get process handle, use it to learn memory extents. */
             {
-                Handle proc_h = svc::InvalidHandle;
+                os::NativeHandle proc_h = os::InvalidNativeHandle;
                 ncm::ProgramLocation loc = {};
                 cfg::OverrideStatus status = {};
-                ON_SCOPE_EXIT { if (proc_h != svc::InvalidHandle) { R_ABORT_UNLESS(svcCloseHandle(proc_h)); } };
 
                 R_ABORT_UNLESS_IF_NEW_PROCESS(pm::dmnt::AtmosphereGetProcessInfo(&proc_h, &loc, &status, this->cheat_process_metadata.process_id));
+                ON_SCOPE_EXIT { os::CloseNativeHandle(proc_h); };
+
                 this->cheat_process_metadata.program_id = loc.program_id;
 
-                {
-                    map::AddressSpaceInfo as_info;
-                    R_ABORT_UNLESS(map::GetProcessAddressSpaceInfo(&as_info, proc_h));
-                    this->cheat_process_metadata.heap_extents.base  = as_info.heap_base;
-                    this->cheat_process_metadata.heap_extents.size  = as_info.heap_size;
-                    this->cheat_process_metadata.alias_extents.base = as_info.alias_base;
-                    this->cheat_process_metadata.alias_extents.size = as_info.alias_size;
-                    this->cheat_process_metadata.aslr_extents.base  = as_info.aslr_base;
-                    this->cheat_process_metadata.aslr_extents.size  = as_info.aslr_size;
-                }
+                R_ABORT_UNLESS(svc::GetInfo(std::addressof(this->cheat_process_metadata.heap_extents.base),  svc::InfoType_HeapRegionAddress,  proc_h, 0));
+                R_ABORT_UNLESS(svc::GetInfo(std::addressof(this->cheat_process_metadata.heap_extents.size),  svc::InfoType_HeapRegionSize,     proc_h, 0));
+                R_ABORT_UNLESS(svc::GetInfo(std::addressof(this->cheat_process_metadata.alias_extents.base), svc::InfoType_AliasRegionAddress, proc_h, 0));
+                R_ABORT_UNLESS(svc::GetInfo(std::addressof(this->cheat_process_metadata.alias_extents.size), svc::InfoType_AliasRegionSize,    proc_h, 0));
+                R_ABORT_UNLESS(svc::GetInfo(std::addressof(this->cheat_process_metadata.aslr_extents.base),  svc::InfoType_AslrRegionAddress,  proc_h, 0));
+                R_ABORT_UNLESS(svc::GetInfo(std::addressof(this->cheat_process_metadata.aslr_extents.size),  svc::InfoType_AslrRegionSize,     proc_h, 0));
 
                 /* If new process launch, we may not want to actually attach. */
                 if (on_process_launch) {
@@ -1211,7 +1207,7 @@ namespace ams::dmnt::cheat::impl {
         return GetReference(g_cheat_process_manager).GetHasActiveCheatProcess();
     }
 
-    Handle GetCheatProcessEventHandle() {
+    os::NativeHandle GetCheatProcessEventHandle() {
         return GetReference(g_cheat_process_manager).GetCheatProcessEventHandle();
     }
 
@@ -1255,7 +1251,7 @@ namespace ams::dmnt::cheat::impl {
         return GetReference(g_cheat_process_manager).GetCheatProcessMappingCount(out_count);
     }
 
-    Result GetCheatProcessMappings(MemoryInfo *mappings, size_t max_count, u64 *out_count, u64 offset) {
+    Result GetCheatProcessMappings(svc::MemoryInfo *mappings, size_t max_count, u64 *out_count, u64 offset) {
         return GetReference(g_cheat_process_manager).GetCheatProcessMappings(mappings, max_count, out_count, offset);
     }
 
@@ -1267,7 +1263,7 @@ namespace ams::dmnt::cheat::impl {
         return GetReference(g_cheat_process_manager).WriteCheatProcessMemory(proc_addr, data, size);
     }
 
-    Result QueryCheatProcessMemory(MemoryInfo *mapping, u64 address) {
+    Result QueryCheatProcessMemory(svc::MemoryInfo *mapping, u64 address) {
         return GetReference(g_cheat_process_manager).QueryCheatProcessMemory(mapping, address);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -39,11 +39,11 @@ namespace ams::sdmmc::impl {
             #endif
 
             #if defined(AMS_SDMMC_USE_OS_EVENTS)
-            os::WaitableManagerType waitable_manager;
+            os::MultiWaitType multi_wait;
             os::InterruptEventType *interrupt_event;
-            os::WaitableHolderType interrupt_event_holder;
+            os::MultiWaitHolderType interrupt_event_holder;
             os::EventType *removed_event;
-            os::WaitableHolderType removed_event_holder;
+            os::MultiWaitHolderType removed_event_holder;
             #endif
 
             u64 next_sdma_address;

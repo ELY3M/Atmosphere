@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -82,7 +82,7 @@ namespace ams::htcs::impl {
         return m_service.Fcntl(out_err, out_res, desc, command, value);
     }
 
-    Result HtcsManagerImpl::AcceptStart(u32 *out_task_id, Handle *out_handle, s32 desc) {
+    Result HtcsManagerImpl::AcceptStart(u32 *out_task_id, os::NativeHandle *out_handle, s32 desc) {
         return m_service.AcceptStart(out_task_id, out_handle, desc);
     }
 
@@ -90,7 +90,7 @@ namespace ams::htcs::impl {
         return m_service.AcceptResults(out_err, out_desc, out_address, task_id, desc);
     }
 
-    Result HtcsManagerImpl::RecvStart(u32 *out_task_id, Handle *out_handle, s64 size, s32 desc, s32 flags) {
+    Result HtcsManagerImpl::RecvStart(u32 *out_task_id, os::NativeHandle *out_handle, s64 size, s32 desc, s32 flags) {
         return m_service.ReceiveSmallStart(out_task_id, out_handle, size, desc, flags);
     }
 
@@ -98,10 +98,10 @@ namespace ams::htcs::impl {
         return m_service.ReceiveSmallResults(out_err, out_size, buffer, buffer_size, task_id, desc);
     }
 
-    Result HtcsManagerImpl::SendStart(u32 *out_task_id, Handle *out_handle, const char *buffer, s64 size, s32 desc, s32 flags) {
+    Result HtcsManagerImpl::SendStart(u32 *out_task_id, os::NativeHandle *out_handle, const char *buffer, s64 size, s32 desc, s32 flags) {
         /* Start the send. */
         u32 task_id;
-        Handle handle;
+        os::NativeHandle handle;
         R_TRY(m_service.SendSmallStart(std::addressof(task_id), std::addressof(handle), desc, size, flags));
 
         /* Continue the send. */
@@ -126,8 +126,9 @@ namespace ams::htcs::impl {
         return ResultSuccess();
     }
 
-    Result HtcsManagerImpl::SendLargeStart(u32 *out_task_id, Handle *out_handle, const char **buffers, const s64 *sizes, s32 count, s32 desc, s32 flags) {
+    Result HtcsManagerImpl::SendLargeStart(u32 *out_task_id, os::NativeHandle *out_handle, const char **buffers, const s64 *sizes, s32 count, s32 desc, s32 flags) {
         /* NOTE: Nintendo aborts here, too. */
+        AMS_UNUSED(out_task_id, out_handle, buffers, sizes, count, desc, flags);
         AMS_ABORT("HtcsManagerImpl::SendLargeStart is not implemented");
     }
 
@@ -135,7 +136,7 @@ namespace ams::htcs::impl {
         return m_service.SendSmallResults(out_err, out_size, task_id, desc);
     }
 
-    Result HtcsManagerImpl::StartSend(u32 *out_task_id, Handle *out_handle, s32 desc, s64 size, s32 flags) {
+    Result HtcsManagerImpl::StartSend(u32 *out_task_id, os::NativeHandle *out_handle, s32 desc, s64 size, s32 flags) {
         return m_service.SendStart(out_task_id, out_handle, desc, size, flags);
     }
 
@@ -147,7 +148,7 @@ namespace ams::htcs::impl {
         return m_service.SendResults(out_err, out_size, task_id, desc);
     }
 
-    Result HtcsManagerImpl::StartRecv(u32 *out_task_id, Handle *out_handle, s64 size, s32 desc, s32 flags) {
+    Result HtcsManagerImpl::StartRecv(u32 *out_task_id, os::NativeHandle *out_handle, s64 size, s32 desc, s32 flags) {
         return m_service.ReceiveStart(out_task_id, out_handle, size, desc, flags);
     }
 
@@ -155,23 +156,25 @@ namespace ams::htcs::impl {
         return m_service.ReceiveResults(out_err, out_size, buffer, buffer_size, task_id, desc);
     }
 
-    Result HtcsManagerImpl::StartSelect(u32 *out_task_id, Handle *out_handle, Span<const int> read_handles, Span<const int> write_handles, Span<const int> exception_handles, s64 tv_sec, s64 tv_usec) {
+    Result HtcsManagerImpl::StartSelect(u32 *out_task_id, os::NativeHandle *out_handle, Span<const int> read_handles, Span<const int> write_handles, Span<const int> exception_handles, s64 tv_sec, s64 tv_usec) {
         /* Start the select. */
         u32 task_id;
-        Handle handle;
+        os::NativeHandle handle = os::InvalidNativeHandle;
         const Result result = m_service.SelectStart(std::addressof(task_id), std::addressof(handle), read_handles, write_handles, exception_handles, tv_sec, tv_usec);
 
         /* Ensure our state ends up clean. */
         if (htcs::ResultCancelled::Includes(result)) {
-            os::SystemEventType event;
-            os::AttachReadableHandleToSystemEvent(std::addressof(event), handle, true, os::EventClearMode_ManualClear);
-
             s32 err;
             bool empty;
             m_service.SelectEnd(std::addressof(err), std::addressof(empty), Span<int>{}, Span<int>{}, Span<int>{}, task_id);
 
-            os::DestroySystemEvent(std::addressof(event));
-        } else {
+            if (handle != os::InvalidNativeHandle) {
+                os::SystemEventType event;
+                os::AttachReadableHandleToSystemEvent(std::addressof(event), handle, true, os::EventClearMode_ManualClear);
+
+                os::DestroySystemEvent(std::addressof(event));
+            }
+        } else if (R_SUCCEEDED(result)) {
             *out_task_id = task_id;
             *out_handle  = handle;
         }

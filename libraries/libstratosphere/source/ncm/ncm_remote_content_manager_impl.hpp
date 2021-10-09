@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Adubbz, Atmosphère-NX
+ * Copyright (c) Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -95,6 +95,7 @@ namespace ams::ncm {
 
             Result GetMemoryReport(sf::Out<MemoryReport> out) {
                 /* TODO: libnx bindings */
+                AMS_UNUSED(out);
                 AMS_ABORT();
             }
     };
