@@ -25,17 +25,17 @@ namespace ams::powctl::impl::board::nintendo::nx {
         NON_MOVEABLE(BatteryDevice);
         AMS_DDSF_CASTABLE_TRAITS(ams::powctl::impl::board::nintendo::nx::BatteryDevice, ::ams::powctl::impl::IDevice);
         private:
-            bool use_event_handler;
-            util::optional<BatteryInterruptEventHandler> event_handler;
-            os::SystemEventType system_event;
+            bool m_use_event_handler;
+            util::optional<BatteryInterruptEventHandler> m_event_handler;
+            os::SystemEventType m_system_event;
         public:
             BatteryDevice(bool ev);
 
-            os::SystemEventType *GetSystemEvent() { return std::addressof(this->system_event); }
+            os::SystemEventType *GetSystemEvent() { return std::addressof(m_system_event); }
 
             void SetInterruptEnabled(bool en) {
-                if (this->use_event_handler) {
-                    this->event_handler->SetInterruptEnabled(en);
+                if (m_use_event_handler) {
+                    m_event_handler->SetInterruptEnabled(en);
                 }
             }
     };
@@ -58,16 +58,19 @@ namespace ams::powctl::impl::board::nintendo::nx {
             virtual Result SetDeviceErrorStatus(IDevice *device, u32 status) override;
 
             /* Battery API. */
-            virtual Result GetBatterySocRep(float *out_percent, IDevice *device) override;
-
-            virtual Result GetBatterySocVf(float *out_percent, IDevice *device) override;
+            virtual Result GetBatteryChargePercentage(float *out_percent, IDevice *device) override;
+            virtual Result GetBatteryVoltageFuelGaugePercentage(float *out_percent, IDevice *device) override;
 
             virtual Result GetBatteryFullCapacity(int *out_mah, IDevice *device) override;
             virtual Result GetBatteryRemainingCapacity(int *out_mah, IDevice *device) override;
 
-            virtual Result SetBatteryPercentageMinimumAlertThreshold(IDevice *device, float percentage) override;
-            virtual Result SetBatteryPercentageMaximumAlertThreshold(IDevice *device, float percentage) override;
-            virtual Result SetBatteryPercentageFullThreshold(IDevice *device, float percentage) override;
+            virtual Result SetBatteryChargePercentageMinimumAlertThreshold(IDevice *device, float percentage) override;
+            virtual Result SetBatteryChargePercentageMaximumAlertThreshold(IDevice *device, float percentage) override;
+
+            virtual Result SetBatteryVoltageFuelGaugePercentageMinimumAlertThreshold(IDevice *device, float percentage) override;
+            virtual Result SetBatteryVoltageFuelGaugePercentageMaximumAlertThreshold(IDevice *device, float percentage) override;
+
+            virtual Result SetBatteryFullChargeThreshold(IDevice *device, float percentage) override;
 
             virtual Result GetBatteryAverageCurrent(int *out_ma, IDevice *device) override;
             virtual Result GetBatteryCurrent(int *out_ma, IDevice *device) override;

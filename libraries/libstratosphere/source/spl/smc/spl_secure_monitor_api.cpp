@@ -17,28 +17,30 @@
 
 namespace ams::spl::smc {
 
-    Result SetConfig(spl::ConfigItem which, const void *address, const u64 *value, size_t num_qwords) {
+    Result SetConfig(AsyncOperationKey *out_op, spl::ConfigItem key, const u64 *value, size_t num_qwords, const void *sign) {
         svc::SecureMonitorArguments args;
 
         args.r[0] = static_cast<u64>(FunctionId::SetConfig);
-        args.r[1] = static_cast<u64>(which);
-        args.r[2] = reinterpret_cast<u64>(address);
-        for (size_t i = 0; i < std::min(size_t(4), num_qwords); i++) {
+        args.r[1] = static_cast<u64>(key);
+        args.r[2] = reinterpret_cast<u64>(sign);
+
+        for (size_t i = 0; i < std::min(static_cast<size_t>(4), num_qwords); i++) {
             args.r[3 + i] = value[i];
         }
         svc::CallSecureMonitor(std::addressof(args));
 
+        out_op->value = args.r[1];
         return static_cast<Result>(args.r[0]);
     }
 
-    Result GetConfig(u64 *out, size_t num_qwords, spl::ConfigItem which) {
+    Result GetConfig(u64 *out, size_t num_qwords, spl::ConfigItem key) {
         svc::SecureMonitorArguments args;
 
         args.r[0] = static_cast<u64>(FunctionId::GetConfig);
-        args.r[1] = static_cast<u64>(which);
+        args.r[1] = static_cast<u64>(key);
         svc::CallSecureMonitor(std::addressof(args));
 
-        for (size_t i = 0; i < std::min(size_t(4), num_qwords); i++) {
+        for (size_t i = 0; i < std::min(static_cast<size_t>(4), num_qwords); i++) {
             out[i] = args.r[1 + i];
         }
         return static_cast<Result>(args.r[0]);
@@ -90,7 +92,7 @@ namespace ams::spl::smc {
         svc::CallSecureMonitor(std::addressof(args));
 
         if (args.r[0] == static_cast<u64>(Result::Success) && (size <= sizeof(args) - sizeof(args.r[0]))) {
-            std::memcpy(out, &args.r[1], size);
+            std::memcpy(out, std::addressof(args.r[1]), size);
         }
         return static_cast<Result>(args.r[0]);
     }
@@ -124,7 +126,7 @@ namespace ams::spl::smc {
         return static_cast<Result>(args.r[0]);
     }
 
-    Result ComputeAes(AsyncOperationKey *out_op, u32 mode, const IvCtr &iv_ctr, u32 dst_addr, u32 src_addr, size_t size) {
+    Result ComputeAes(AsyncOperationKey *out_op, u32 dst_addr, u32 mode, const IvCtr &iv_ctr, u32 src_addr, size_t size) {
         svc::SecureMonitorArguments args;
 
         args.r[0] = static_cast<u64>(FunctionId::ComputeAes);
@@ -173,13 +175,13 @@ namespace ams::spl::smc {
         svc::SecureMonitorArguments args;
 
         args.r[0] = static_cast<u64>(FunctionId::ReencryptDeviceUniqueData);
-        args.r[1] = reinterpret_cast<u64>(&access_key_dec);
-        args.r[2] = reinterpret_cast<u64>(&access_key_enc);
+        args.r[1] = reinterpret_cast<u64>(std::addressof(access_key_dec));
+        args.r[2] = reinterpret_cast<u64>(std::addressof(access_key_enc));
         args.r[3] = option;
         args.r[4] = reinterpret_cast<u64>(data);
         args.r[5] = size;
-        args.r[6] = reinterpret_cast<u64>(&source_dec);
-        args.r[7] = reinterpret_cast<u64>(&source_enc);
+        args.r[6] = reinterpret_cast<u64>(std::addressof(source_dec));
+        args.r[7] = reinterpret_cast<u64>(std::addressof(source_enc));
         svc::CallSecureMonitor(std::addressof(args));
 
         return static_cast<Result>(args.r[0]);
@@ -220,8 +222,8 @@ namespace ams::spl::smc {
         args.r[0] = static_cast<u64>(FunctionId::PrepareEsDeviceUniqueKey);
         args.r[1] = reinterpret_cast<u64>(base);
         args.r[2] = reinterpret_cast<u64>(mod);
-        std::memset(&args.r[3], 0, 4 * sizeof(args.r[3]));
-        std::memcpy(&args.r[3], label_digest, std::min(size_t(4 * sizeof(args.r[3])), label_digest_size));
+        std::memset(std::addressof(args.r[3]), 0, 4 * sizeof(args.r[3]));
+        std::memcpy(std::addressof(args.r[3]), label_digest, std::min(static_cast<size_t>(4 * sizeof(args.r[3])), label_digest_size));
         args.r[7] = option;
         svc::CallSecureMonitor(std::addressof(args));
 
@@ -358,7 +360,7 @@ namespace ams::spl::smc {
         args.r[2] = paths;
         svc::CallSecureMonitor(std::addressof(args));
 
-        std::memcpy(out_config, &args.r[1], sizeof(args) - sizeof(args.r[0]));
+        std::memcpy(out_config, std::addressof(args.r[1]), sizeof(args) - sizeof(args.r[0]));
         return static_cast<Result>(args.r[0]);
     }
 

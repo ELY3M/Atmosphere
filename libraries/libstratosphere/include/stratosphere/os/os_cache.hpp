@@ -13,14 +13,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <stratosphere.hpp>
-#include "spl_api_impl.hpp"
-#include "spl_random_service.hpp"
+#pragma once
+#include <vapours.hpp>
 
-namespace ams::spl {
+namespace ams::os {
 
-    Result RandomService::GenerateRandomBytes(const sf::OutBuffer &out) {
-        return impl::GenerateRandomBytes(out.GetPointer(), out.GetSize());
-    }
+    void FlushDataCache(const void *addr, size_t size);
+    void FlushEntireDataCache();
 
 }

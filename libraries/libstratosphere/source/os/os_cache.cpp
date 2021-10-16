@@ -13,22 +13,17 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#pragma once
 #include <stratosphere.hpp>
+#include "impl/os_cache_impl.hpp"
 
-namespace ams::ldr::args {
+namespace ams::os {
 
-    constexpr size_t ArgumentSizeMax = 0x8000;
+    void FlushDataCache(const void *addr, size_t size) {
+        return impl::FlushDataCacheImpl(addr, size);
+    }
 
-    struct ArgumentInfo {
-        ncm::ProgramId program_id;
-        size_t args_size;
-        u8 args[ArgumentSizeMax];
-    };
-
-    /* API. */
-    const ArgumentInfo *Get(ncm::ProgramId program_id);
-    Result Set(ncm::ProgramId program_id, const void *args, size_t args_size);
-    Result Flush();
+    void FlushEntireDataCache() {
+        return impl::FlushEntireDataCacheImpl();
+    }
 
 }

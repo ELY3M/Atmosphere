@@ -37,32 +37,32 @@ namespace ams::util {
                 return __builtin_ctzll(static_cast<u64>(v));
             }
 
-            T value;
+            T m_value;
         public:
             /* Note: GCC has a bug in constant-folding here. Workaround: wrap entire caller with constexpr. */
-            constexpr ALWAYS_INLINE BitsOf(T value = T(0u)) : value(value) {
+            constexpr ALWAYS_INLINE BitsOf(T value = T(0u)) : m_value(value) {
                 /* ... */
             }
 
             constexpr ALWAYS_INLINE bool operator==(const BitsOf &other) const {
-                return this->value == other.value;
+                return m_value == other.m_value;
             }
 
             constexpr ALWAYS_INLINE bool operator!=(const BitsOf &other) const {
-                return this->value != other.value;
+                return m_value != other.m_value;
             }
 
             constexpr ALWAYS_INLINE int operator*() const {
-                return GetLsbPos(this->value);
+                return GetLsbPos(m_value);
             }
 
             constexpr ALWAYS_INLINE BitsOf &operator++() {
-                this->value &= ~(T(1u) << GetLsbPos(this->value));
+                m_value &= ~(T(1u) << GetLsbPos(m_value));
                 return *this;
             }
 
             constexpr ALWAYS_INLINE BitsOf &operator++(int) {
-                BitsOf ret(this->value);
+                BitsOf ret(m_value);
                 ++(*this);
                 return ret;
             }
@@ -195,6 +195,7 @@ namespace ams::util {
     }
 
     static_assert(CountLeadingZeros(~static_cast<u64>(0)) == 0);
+    static_assert(CountLeadingZeros(static_cast<u64>(1) << 5) == BITSIZEOF(u64) - 1 - 5);
     static_assert(CountLeadingZeros(static_cast<u64>(0)) == BITSIZEOF(u64));
 
     template<typename T> requires std::integral<T>
@@ -202,6 +203,7 @@ namespace ams::util {
         if (std::is_constant_evaluated()) {
             auto count = 0;
             for (size_t i = 0; i < BITSIZEOF(T) && (x & 1) == 0; ++i) {
+                x >>= 1;
                 ++count;
             }
             return count;
@@ -226,6 +228,7 @@ namespace ams::util {
     }
 
     static_assert(CountTrailingZeros(~static_cast<u64>(0)) == 0);
+    static_assert(CountTrailingZeros(static_cast<u64>(1) << 5) == 5);
     static_assert(CountTrailingZeros(static_cast<u64>(0)) == BITSIZEOF(u64));
 
     template<typename T> requires std::integral<T>

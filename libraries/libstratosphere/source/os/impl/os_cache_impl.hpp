@@ -16,9 +16,8 @@
 #pragma once
 #include <stratosphere.hpp>
 
-namespace ams::hos {
-
-    void SetVersionForLibnxInternal();
-    void SetVersionForLibnxInternalDebug(hos::Version debug_version);
-
-}
+#ifdef ATMOSPHERE_OS_HORIZON
+    #include "os_cache_impl.os.horizon.hpp"
+#else
+    #error "Unknown OS for ThreadManagerImpl"
+#endif

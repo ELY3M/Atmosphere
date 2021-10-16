@@ -60,8 +60,9 @@ namespace ams {
 
             void RegisterPrivilegedProcesses() {
                 /* Get privileged process range. */
-                os::ProcessId min_priv_process_id = os::InvalidProcessId, max_priv_process_id = os::InvalidProcessId;
-                cfg::GetInitialProcessRange(&min_priv_process_id, &max_priv_process_id);
+                os::ProcessId min_priv_process_id, max_priv_process_id;
+                R_ABORT_UNLESS(svc::GetSystemInfo(std::addressof(min_priv_process_id.value), svc::SystemInfoType_InitialProcessIdRange, svc::InvalidHandle, svc::InitialProcessIdRangeInfo_Minimum));
+                R_ABORT_UNLESS(svc::GetSystemInfo(std::addressof(max_priv_process_id.value), svc::SystemInfoType_InitialProcessIdRange, svc::InvalidHandle, svc::InitialProcessIdRangeInfo_Maximum));
 
                 /* Get current process id/program id. */
                 const auto cur_process_id = os::GetCurrentProcessId();
@@ -70,7 +71,7 @@ namespace ams {
                 /* Get list of processes, register all privileged ones. */
                 s32 num_pids;
                 os::ProcessId pids[ProcessCountMax];
-                R_ABORT_UNLESS(svc::GetProcessList(&num_pids, reinterpret_cast<u64 *>(pids), ProcessCountMax));
+                R_ABORT_UNLESS(svc::GetProcessList(std::addressof(num_pids), reinterpret_cast<u64 *>(pids), ProcessCountMax));
                 for (s32 i = 0; i < num_pids; i++) {
                     if (min_priv_process_id <= pids[i] && pids[i] <= max_priv_process_id) {
                         RegisterPrivilegedProcess(pids[i], pids[i] == cur_process_id ? cur_program_id : GetProcessProgramId(pids[i]));
@@ -165,6 +166,12 @@ namespace ams {
 
     }
 
+    namespace hos {
+
+        void InitializeVersionInternal(bool allow_approximate);
+
+    }
+
     namespace init {
 
         void InitializeSystemModule() {
@@ -180,6 +187,12 @@ namespace ams {
             pm::RegisterPrivilegedProcesses();
 
             /* Use our manager extension to tell SM that the FS bug has been worked around. */
+            R_ABORT_UNLESS(sm::manager::EndInitialDefers());
+
+            /* Wait for the true hos version to be available. */
+            hos::InitializeVersionInternal(false);
+
+            /* Now that the true hos version is available, we should once more end defers (alerting sm to the available hos version). */
             R_ABORT_UNLESS(sm::manager::EndInitialDefers());
 
             /* Initialize remaining services we need. */

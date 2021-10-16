@@ -52,7 +52,7 @@ namespace ams::settings::impl {
             public:
                 LazyFileAccessor() : m_is_activated(false), m_is_busy(false), m_is_cached(false), m_is_modified(false), m_is_file_size_changed(false), m_mount_name{}, m_file_path{}, m_open_mode(0), m_file_size(0), m_offset(0), m_size(0), m_mutex(false), m_timer_event(os::EventClearMode_AutoClear), m_thread{}  {
                     std::memset(m_buffer, 0, sizeof(m_buffer));
-                    std::memset(m_thread_stack, 0, sizeof(m_buffer));
+                    std::memset(m_thread_stack, 0, sizeof(m_thread_stack));
                 }
 
                 Result Activate();
@@ -200,7 +200,7 @@ namespace ams::settings::impl {
                 s64 file_size = 0;
                 R_TRY(fs::GetFileSize(std::addressof(file_size), file));
                 AMS_ASSERT(0 <= file_size && file_size <= static_cast<s64>(sizeof(m_buffer)));
-                R_UNLESS(file_size <= static_cast<s64>(sizeof(m_buffer)), ResultTooLargeSystemSaveData());
+                R_UNLESS(file_size <= static_cast<s64>(sizeof(m_buffer)), settings::ResultTooLargeSystemSaveData());
 
                 /* Read the save file. */
                 R_TRY(fs::ReadFile(file, 0, m_buffer, static_cast<size_t>(file_size)));

@@ -57,7 +57,7 @@ namespace ams::mitm::bpc {
 
             /* Copy in payload. */
             for (size_t ofs = 0; ofs < sizeof(g_reboot_payload); ofs += sizeof(g_work_page)) {
-                std::memcpy(g_work_page, &g_reboot_payload[ofs], std::min(sizeof(g_reboot_payload) - ofs, sizeof(g_work_page)));
+                std::memcpy(g_work_page, g_reboot_payload + ofs, std::min(sizeof(g_reboot_payload) - ofs, sizeof(g_work_page)));
                 exosphere::CopyToIram(IramPayloadBase + ofs, g_work_page, sizeof(g_work_page));
             }
 
@@ -70,7 +70,7 @@ namespace ams::mitm::bpc {
 
             /* Copy in payload. */
             for (size_t ofs = 0; ofs < sizeof(g_reboot_payload); ofs += sizeof(g_work_page)) {
-                std::memcpy(g_work_page, &g_reboot_payload[ofs], std::min(sizeof(g_reboot_payload) - ofs, sizeof(g_work_page)));
+                std::memcpy(g_work_page, g_reboot_payload + ofs, std::min(sizeof(g_reboot_payload) - ofs, sizeof(g_work_page)));
                 exosphere::CopyToIram(IramPayloadBase + ofs, g_work_page, sizeof(g_work_page));
             }
 
@@ -123,7 +123,8 @@ namespace ams::mitm::bpc {
         std::memcpy(g_reboot_payload, payload, payload_size);
 
         /* Note to the secure monitor that we have a payload. */
-        spl::smc::SetConfig(spl::ConfigItem::ExospherePayloadAddress, g_reboot_payload, nullptr, 0);
+        spl::smc::AsyncOperationKey dummy;
+        spl::smc::SetConfig(std::addressof(dummy), spl::ConfigItem::ExospherePayloadAddress, nullptr, 0, g_reboot_payload);
 
         /* NOTE: Preferred reboot type may be overrwritten when parsed from settings during boot. */
         g_reboot_type = RebootType::ToPayload;
@@ -135,13 +136,13 @@ namespace ams::mitm::bpc {
 
         /* Open payload file. */
         FsFile payload_file;
-        R_TRY(fs::OpenAtmosphereSdFile(&payload_file, "/reboot_payload.bin", ams::fs::OpenMode_Read));
-        ON_SCOPE_EXIT { fsFileClose(&payload_file); };
+        R_TRY(fs::OpenAtmosphereSdFile(std::addressof(payload_file), "/reboot_payload.bin", ams::fs::OpenMode_Read));
+        ON_SCOPE_EXIT { fsFileClose(std::addressof(payload_file)); };
 
         /* Read payload file. Discard result. */
         {
             size_t actual_size;
-            fsFileRead(&payload_file, 0, g_reboot_payload, sizeof(g_reboot_payload), FsReadOption_None, &actual_size);
+            fsFileRead(std::addressof(payload_file), 0, g_reboot_payload, sizeof(g_reboot_payload), FsReadOption_None, std::addressof(actual_size));
         }
 
         /* NOTE: Preferred reboot type will be parsed from settings later on. */

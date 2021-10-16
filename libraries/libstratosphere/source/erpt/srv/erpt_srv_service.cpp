@@ -27,9 +27,11 @@ namespace ams::erpt::srv {
     namespace {
 
         struct ErrorReportServerOptions {
-            static constexpr size_t PointerBufferSize = 0;
-            static constexpr size_t MaxDomains        = 64;
-            static constexpr size_t MaxDomainObjects  = 2 * ReportCountMax + 5 + 2;
+            static constexpr size_t PointerBufferSize   = 0;
+            static constexpr size_t MaxDomains          = 64;
+            static constexpr size_t MaxDomainObjects    = 2 * ReportCountMax + 5 + 2;
+            static constexpr bool CanDeferInvokeRequest = false;
+            static constexpr bool CanManageMitmServers  = false;
         };
 
         constexpr inline size_t ErrorReportNumServers      = 2;
@@ -40,7 +42,7 @@ namespace ams::erpt::srv {
         constexpr inline sm::ServiceName ErrorReportContextServiceName = sm::ServiceName::Encode("erpt:c");
         constexpr inline sm::ServiceName ErrorReportReportServiceName  = sm::ServiceName::Encode("erpt:r");
 
-        alignas(os::ThreadStackAlignment) u8 g_server_thread_stack[16_KB];
+        alignas(os::ThreadStackAlignment) constinit u8 g_server_thread_stack[16_KB];
 
         enum PortIndex {
             PortIndex_Report,
@@ -49,8 +51,8 @@ namespace ams::erpt::srv {
 
         class ErrorReportServiceManager : public ams::sf::hipc::ServerManager<ErrorReportNumServers, ErrorReportServerOptions, ErrorReportMaxSessions> {
             private:
-                os::ThreadType thread;
-                ams::sf::UnmanagedServiceObject<erpt::sf::IContext, erpt::srv::ContextImpl> context_session_object;
+                os::ThreadType m_thread;
+                ams::sf::UnmanagedServiceObject<erpt::sf::IContext, erpt::srv::ContextImpl> m_context_session_object;
             private:
                 static void ThreadFunction(void *_this) {
                     reinterpret_cast<ErrorReportServiceManager *>(_this)->SetupAndLoopProcess();
@@ -67,7 +69,7 @@ namespace ams::erpt::srv {
                                 return this->AcceptImpl(server, intf);
                             }
                         case PortIndex_Context:
-                            return AcceptImpl(server, this->context_session_object.GetShared());
+                            return AcceptImpl(server, m_context_session_object.GetShared());
                         default:
                             return erpt::ResultNotSupported();
                     }
@@ -79,16 +81,16 @@ namespace ams::erpt::srv {
 
                     this->ResumeProcessing();
 
-                    R_ABORT_UNLESS(os::CreateThread(std::addressof(this->thread), ThreadFunction, this, g_server_thread_stack, sizeof(g_server_thread_stack), AMS_GET_SYSTEM_THREAD_PRIORITY(erpt, IpcServer)));
-                    os::SetThreadNamePointer(std::addressof(this->thread), AMS_GET_SYSTEM_THREAD_NAME(erpt, IpcServer));
+                    R_ABORT_UNLESS(os::CreateThread(std::addressof(m_thread), ThreadFunction, this, g_server_thread_stack, sizeof(g_server_thread_stack), AMS_GET_SYSTEM_THREAD_PRIORITY(erpt, IpcServer)));
+                    os::SetThreadNamePointer(std::addressof(m_thread), AMS_GET_SYSTEM_THREAD_NAME(erpt, IpcServer));
 
-                    os::StartThread(std::addressof(this->thread));
+                    os::StartThread(std::addressof(m_thread));
 
                     return ResultSuccess();
                 }
 
                 void Wait() {
-                    os::WaitThread(std::addressof(this->thread));
+                    os::WaitThread(std::addressof(m_thread));
                 }
         };
 
@@ -136,16 +138,17 @@ namespace ams::erpt::srv {
             }
         }
 
-        ErrorReportServiceManager g_erpt_server_manager;
+        constinit util::TypedStorage<ErrorReportServiceManager> g_erpt_server_manager;
 
     }
 
     Result InitializeService() {
-        return g_erpt_server_manager.Initialize();
+        util::ConstructAt(g_erpt_server_manager);
+        return util::GetReference(g_erpt_server_manager).Initialize();
     }
 
     void WaitService() {
-        return g_erpt_server_manager.Wait();
+        return util::GetReference(g_erpt_server_manager).Wait();
     }
 
 }

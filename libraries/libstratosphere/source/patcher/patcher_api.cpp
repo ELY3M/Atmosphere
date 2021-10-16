@@ -56,8 +56,8 @@ namespace ams::patcher {
             /* Read module id from name. */
             std::memset(out_module_id, 0, sizeof(*out_module_id));
             for (unsigned int name_ofs = 0, id_ofs = 0; name_ofs < name_len - extension_len && id_ofs < sizeof(*out_module_id); id_ofs++) {
-                out_module_id->build_id[id_ofs] |= ConvertHexNybble(name[name_ofs++]) << 4;
-                out_module_id->build_id[id_ofs] |= ConvertHexNybble(name[name_ofs++]);
+                out_module_id->data[id_ofs] |= ConvertHexNybble(name[name_ofs++]) << 4;
+                out_module_id->data[id_ofs] |= ConvertHexNybble(name[name_ofs++]);
             }
 
             return true;
@@ -66,17 +66,17 @@ namespace ams::patcher {
         bool MatchesModuleId(const char *name, size_t name_len, size_t extension_len, const ro::ModuleId *module_id) {
             /* Get module id. */
             ro::ModuleId module_id_from_name;
-            if (!ParseModuleIdFromPath(&module_id_from_name, name, name_len, extension_len)) {
+            if (!ParseModuleIdFromPath(std::addressof(module_id_from_name), name, name_len, extension_len)) {
                 return false;
             }
 
-            return std::memcmp(&module_id_from_name, module_id, sizeof(*module_id)) == 0;
+            return std::memcmp(std::addressof(module_id_from_name), module_id, sizeof(*module_id)) == 0;
         }
 
         bool IsIpsFileForModule(const char *name, const ro::ModuleId *module_id) {
             const size_t name_len = std::strlen(name);
 
-            /* The path must be correct size for a build id (with trailing zeroes optionally trimmed) + ".ips". */
+            /* The path must be correct size for a module id (with trailing zeroes optionally trimmed) + ".ips". */
             if (!(IpsFileExtensionLength < name_len && name_len <= ModuleIpsPatchLength)) {
                 return false;
             }
