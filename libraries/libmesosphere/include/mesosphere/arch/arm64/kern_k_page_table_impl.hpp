@@ -42,7 +42,7 @@ namespace ams::kern::arch::arm64 {
                 const L3PageTableEntry *l3_entry;
             };
         private:
-            static constexpr size_t PageBits  = __builtin_ctzll(PageSize);
+            static constexpr size_t PageBits  = util::CountTrailingZeros(PageSize);
             static constexpr size_t NumLevels = 3;
             static constexpr size_t LevelBits = 9;
             static_assert(NumLevels > 0);
@@ -105,7 +105,9 @@ namespace ams::kern::arch::arm64 {
                 return GetL3EntryFromTable(KMemoryLayout::GetLinearVirtualAddress(entry->GetTable()), address);
             }
         public:
-            constexpr KPageTableImpl() : m_table(), m_is_kernel(), m_num_entries() { /* ... */ }
+            constexpr explicit KPageTableImpl(util::ConstantInitializeTag) : m_table(), m_is_kernel(), m_num_entries() { /* ... */ }
+
+            explicit KPageTableImpl() { /* ... */ }
 
             NOINLINE void InitializeForKernel(void *tb, KVirtualAddress start, KVirtualAddress end);
             NOINLINE void InitializeForProcess(void *tb, KVirtualAddress start, KVirtualAddress end);

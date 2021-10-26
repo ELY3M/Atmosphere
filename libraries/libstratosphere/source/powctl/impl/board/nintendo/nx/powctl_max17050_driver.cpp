@@ -16,10 +16,6 @@
 #include <stratosphere.hpp>
 #include "powctl_max17050_driver.hpp"
 
-#if defined(ATMOSPHERE_ARCH_ARM64)
-#include <arm_neon.h>
-#endif
-
 namespace ams::powctl::impl::board::nintendo::nx {
 
     namespace max17050 {
@@ -564,12 +560,10 @@ namespace ams::powctl::impl::board::nintendo::nx {
     }
 
     Result Max17050Driver::SetFullChargeThreshold(double percentage) {
-        #if defined(ATMOSPHERE_ARCH_ARM64)
-            const u16 val = vcvtd_n_s64_f64(percentage, BITSIZEOF(u8));
-        #else
-            #error "Unknown architecture for floating point -> fixed point"
-        #endif
+        /* Convert percentage from double to signed fixed-point with 8 fractional bits. */
+        const u16 val = static_cast<u16>(static_cast<s16>(percentage * (1 << 8)));
 
+        /* Set the threshold. */
         return WriteRegister(m_i2c_session, max17050::FullSocThr, val);
     }
 

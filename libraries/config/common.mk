@@ -23,7 +23,8 @@ export ATMOSPHERE_CFLAGS   := -Wall -ffunction-sections -fdata-sections -fno-str
                               -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector \
                               -Wno-format-truncation -Wno-format-zero-length -Wno-stringop-truncation
 
-export ATMOSPHERE_CXXFLAGS := -fno-rtti -fno-exceptions -std=gnu++20
+
+export ATMOSPHERE_CXXFLAGS := -fno-rtti -fno-exceptions -std=gnu++20 -Wno-invalid-offsetof
 export ATMOSPHERE_ASFLAGS  :=
 
 
@@ -49,6 +50,21 @@ export ATMOSPHERE_BOARD_NAME := nintendo_nx
 export ATMOSPHERE_OS_NAME    := horizon
 
 export ATMOSPHERE_CPU_EXTENSIONS :=
+endif
+
+else ifeq ($(ATMOSPHERE_BOARD),qemu-virt)
+
+
+ifeq ($(ATMOSPHERE_CPU),arm-cortex-a57)
+export ATMOSPHERE_ARCH_DIR   := arm64
+export ATMOSPHERE_BOARD_DIR  := qemu/virt
+export ATMOSPHERE_OS_DIR     := horizon
+
+export ATMOSPHERE_ARCH_NAME  := arm64
+export ATMOSPHERE_BOARD_NAME := qemu_virt
+export ATMOSPHERE_OS_NAME    := horizon
+
+export ATMOSPHERE_CPU_EXTENSIONS := arm_crypto_extension aarch64_crypto_extension
 endif
 
 endif

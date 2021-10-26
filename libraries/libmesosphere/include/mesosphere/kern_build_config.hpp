@@ -32,3 +32,19 @@
 //#define MESOSPHERE_BUILD_FOR_TRACING
 #define MESOSPHERE_ENABLE_PANIC_REGISTER_DUMP
 #define MESOSPHERE_ENABLE_HARDWARE_SINGLE_STEP
+
+/* NOTE: This enables fast class token storage using a class member. */
+/* This saves a virtual call when doing KAutoObject->DynCast<>(), */
+/* at the cost of storing class tokens inside the class object. */
+/* However, as of (10/16/2021) KAutoObject has an unused class member */
+/* of the right side, and so this does not actually cost any space. */
+#define MESOSPHERE_ENABLE_DEVIRTUALIZED_DYNAMIC_CAST
+
+/* NOTE: This uses currently-reserved bits inside the MapRange capability */
+/* in order to support large physical addresses (40-bit instead of 36). */
+/* This is toggleable in order to disable it if N ever uses those bits. */
+#if defined(ATMOSPHERE_BOARD_NINTENDO_NX)
+//#define MESOSPHERE_ENABLE_LARGE_PHYSICAL_ADDRESS_CAPABILITIES
+#else
+#define MESOSPHERE_ENABLE_LARGE_PHYSICAL_ADDRESS_CAPABILITIES
+#endif

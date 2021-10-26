@@ -46,17 +46,13 @@ namespace ams::kern {
             KProcess *m_process;
             bool m_initialized;
         public:
-            constexpr KLightSession()
-                : m_server(), m_client(), m_state(State::Invalid), m_port(), m_name(), m_process(), m_initialized()
-            {
-                /* ... */
-            }
+            explicit KLightSession() : m_state(State::Invalid), m_process(), m_initialized() { /* ... */ }
 
             void Initialize(KClientPort *client_port, uintptr_t name);
-            virtual void Finalize() override;
+            void Finalize();
 
-            virtual bool IsInitialized() const override { return m_initialized; }
-            virtual uintptr_t GetPostDestroyArgument() const override { return reinterpret_cast<uintptr_t>(m_process); }
+            bool IsInitialized() const { return m_initialized; }
+            uintptr_t GetPostDestroyArgument() const { return reinterpret_cast<uintptr_t>(m_process); }
 
             static void PostDestroy(uintptr_t arg);
 

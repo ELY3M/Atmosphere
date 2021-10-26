@@ -32,7 +32,7 @@ namespace ams::kern {
 
     using KThreadFunction = void (*)(uintptr_t);
 
-    class KThread final : public KAutoObjectWithSlabHeapAndContainer<KThread, KSynchronizationObject>, public util::IntrusiveListBaseNode<KThread>, public KTimerTask, public KWorkerTask {
+    class KThread final : public KAutoObjectWithSlabHeapAndContainer<KThread, KWorkerTask>, public util::IntrusiveListBaseNode<KThread>, public KTimerTask {
         MESOSPHERE_AUTOOBJECT_TRAITS(KThread, KSynchronizationObject);
         private:
             friend class KProcess;
@@ -89,7 +89,7 @@ namespace ams::kern {
                 KThreadContext *context;
                 KThread *cur_thread;
                 s16 disable_count;
-                std::atomic<u8> dpc_flags;
+                util::Atomic<u8> dpc_flags;
                 u8 current_svc_id;
                 bool is_calling_svc;
                 bool is_in_exception_handler;
@@ -101,18 +101,18 @@ namespace ams::kern {
             static_assert(alignof(StackParameters) == 0x10);
             static_assert(sizeof(StackParameters) == THREAD_STACK_PARAMETERS_SIZE);
 
-            static_assert(__builtin_offsetof(StackParameters, svc_access_flags)        == THREAD_STACK_PARAMETERS_SVC_PERMISSION);
-            static_assert(__builtin_offsetof(StackParameters, context)                 == THREAD_STACK_PARAMETERS_CONTEXT);
-            static_assert(__builtin_offsetof(StackParameters, cur_thread)              == THREAD_STACK_PARAMETERS_CUR_THREAD);
-            static_assert(__builtin_offsetof(StackParameters, disable_count)           == THREAD_STACK_PARAMETERS_DISABLE_COUNT);
-            static_assert(__builtin_offsetof(StackParameters, dpc_flags)               == THREAD_STACK_PARAMETERS_DPC_FLAGS);
-            static_assert(__builtin_offsetof(StackParameters, current_svc_id)          == THREAD_STACK_PARAMETERS_CURRENT_SVC_ID);
-            static_assert(__builtin_offsetof(StackParameters, is_calling_svc)          == THREAD_STACK_PARAMETERS_IS_CALLING_SVC);
-            static_assert(__builtin_offsetof(StackParameters, is_in_exception_handler) == THREAD_STACK_PARAMETERS_IS_IN_EXCEPTION_HANDLER);
-            static_assert(__builtin_offsetof(StackParameters, is_pinned)               == THREAD_STACK_PARAMETERS_IS_PINNED);
+            static_assert(AMS_OFFSETOF(StackParameters, svc_access_flags)        == THREAD_STACK_PARAMETERS_SVC_PERMISSION);
+            static_assert(AMS_OFFSETOF(StackParameters, context)                 == THREAD_STACK_PARAMETERS_CONTEXT);
+            static_assert(AMS_OFFSETOF(StackParameters, cur_thread)              == THREAD_STACK_PARAMETERS_CUR_THREAD);
+            static_assert(AMS_OFFSETOF(StackParameters, disable_count)           == THREAD_STACK_PARAMETERS_DISABLE_COUNT);
+            static_assert(AMS_OFFSETOF(StackParameters, dpc_flags)               == THREAD_STACK_PARAMETERS_DPC_FLAGS);
+            static_assert(AMS_OFFSETOF(StackParameters, current_svc_id)          == THREAD_STACK_PARAMETERS_CURRENT_SVC_ID);
+            static_assert(AMS_OFFSETOF(StackParameters, is_calling_svc)          == THREAD_STACK_PARAMETERS_IS_CALLING_SVC);
+            static_assert(AMS_OFFSETOF(StackParameters, is_in_exception_handler) == THREAD_STACK_PARAMETERS_IS_IN_EXCEPTION_HANDLER);
+            static_assert(AMS_OFFSETOF(StackParameters, is_pinned)               == THREAD_STACK_PARAMETERS_IS_PINNED);
 
             #if defined(MESOSPHERE_ENABLE_HARDWARE_SINGLE_STEP)
-            static_assert(__builtin_offsetof(StackParameters, is_single_step)          == THREAD_STACK_PARAMETERS_IS_SINGLE_STEP);
+            static_assert(AMS_OFFSETOF(StackParameters, is_single_step)          == THREAD_STACK_PARAMETERS_IS_SINGLE_STEP);
             #endif
 
             struct QueueEntry {
@@ -120,8 +120,6 @@ namespace ams::kern {
                     KThread *m_prev;
                     KThread *m_next;
                 public:
-                    constexpr QueueEntry() : m_prev(nullptr), m_next(nullptr) { /* ... */ }
-
                     constexpr void Initialize() {
                         m_prev = nullptr;
                         m_next = nullptr;
@@ -140,7 +138,9 @@ namespace ams::kern {
                 KSynchronizationObject *m_sync_objects[ams::svc::ArgumentHandleCountMax];
                 ams::svc::Handle        m_handles[ams::svc::ArgumentHandleCountMax * (sizeof(KSynchronizationObject *) / sizeof(ams::svc::Handle))];
 
-                constexpr SyncObjectBuffer() : m_sync_objects() { /* ... */ }
+                constexpr explicit SyncObjectBuffer(util::ConstantInitializeTag) : m_sync_objects() { /* ... */ }
+
+                explicit SyncObjectBuffer() { /* ... */ }
             };
             static_assert(sizeof(SyncObjectBuffer::m_sync_objects) == sizeof(SyncObjectBuffer::m_handles));
 
@@ -177,67 +177,79 @@ namespace ams::kern {
             static_assert(ams::util::HasRedBlackKeyType<ConditionVariableComparator>);
             static_assert(std::same_as<ams::util::RedBlackKeyType<ConditionVariableComparator, void>, ConditionVariableComparator::RedBlackKeyType>);
         private:
-            static inline std::atomic<u64> s_next_thread_id = 0;
-        private:
-            alignas(16) KThreadContext      m_thread_context{};
-            util::IntrusiveListNode         m_process_list_node{};
-            util::IntrusiveRedBlackTreeNode m_condvar_arbiter_tree_node{};
-            s32                             m_priority{};
+            util::IntrusiveListNode         m_process_list_node;
+            util::IntrusiveRedBlackTreeNode m_condvar_arbiter_tree_node;
+            s32                             m_priority;
 
             using ConditionVariableThreadTreeTraits = util::IntrusiveRedBlackTreeMemberTraitsDeferredAssert<&KThread::m_condvar_arbiter_tree_node>;
             using ConditionVariableThreadTree       = ConditionVariableThreadTreeTraits::TreeType<ConditionVariableComparator>;
 
-            ConditionVariableThreadTree    *m_condvar_tree{};
-            uintptr_t                       m_condvar_key{};
-            u64                             m_virtual_affinity_mask{};
-            KAffinityMask                   m_physical_affinity_mask{};
-            u64                             m_thread_id{};
-            std::atomic<s64>                m_cpu_time{};
-            KProcessAddress                 m_address_key{};
-            KProcess                       *m_parent{};
-            void                           *m_kernel_stack_top{};
-            u32                            *m_light_ipc_data{};
-            KProcessAddress                 m_tls_address{};
-            void                           *m_tls_heap_address{};
-            KLightLock                      m_activity_pause_lock{};
-            SyncObjectBuffer                m_sync_object_buffer{};
-            s64                             m_schedule_count{};
-            s64                             m_last_scheduled_tick{};
-            QueueEntry                      m_per_core_priority_queue_entry[cpu::NumCores]{};
-            KLightLock                     *m_waiting_lock{};
-            KThreadQueue                   *m_wait_queue{};
-            WaiterList                      m_waiter_list{};
-            WaiterList                      m_pinned_waiter_list{};
-            KThread                        *m_lock_owner{};
-            uintptr_t                       m_debug_params[3]{};
-            KAutoObject                    *m_closed_object{};
-            u32                             m_address_key_value{};
-            u32                             m_suspend_request_flags{};
-            u32                             m_suspend_allowed_flags{};
-            s32                             m_synced_index{};
+            ConditionVariableThreadTree    *m_condvar_tree;
+            uintptr_t                       m_condvar_key;
+            alignas(16) KThreadContext      m_thread_context;
+            u64                             m_virtual_affinity_mask;
+            KAffinityMask                   m_physical_affinity_mask;
+            u64                             m_thread_id;
+            util::Atomic<s64>               m_cpu_time;
+            KProcessAddress                 m_address_key;
+            KProcess                       *m_parent;
+            void                           *m_kernel_stack_top;
+            u32                            *m_light_ipc_data;
+            KProcessAddress                 m_tls_address;
+            void                           *m_tls_heap_address;
+            KLightLock                      m_activity_pause_lock;
+            SyncObjectBuffer                m_sync_object_buffer;
+            s64                             m_schedule_count;
+            s64                             m_last_scheduled_tick;
+            QueueEntry                      m_per_core_priority_queue_entry[cpu::NumCores];
+            KThreadQueue                   *m_wait_queue;
+            WaiterList                      m_waiter_list;
+            WaiterList                      m_pinned_waiter_list;
+            KThread                        *m_lock_owner;
+            uintptr_t                       m_debug_params[3];
+            KAutoObject                    *m_closed_object;
+            u32                             m_address_key_value;
+            u32                             m_suspend_request_flags;
+            u32                             m_suspend_allowed_flags;
+            s32                             m_synced_index;
             Result                          m_wait_result;
             Result                          m_debug_exception_result;
-            s32                             m_base_priority{};
-            s32                             m_base_priority_on_unpin{};
-            s32                             m_physical_ideal_core_id{};
-            s32                             m_virtual_ideal_core_id{};
-            s32                             m_num_kernel_waiters{};
-            s32                             m_current_core_id{};
-            s32                             m_core_id{};
-            KAffinityMask                   m_original_physical_affinity_mask{};
-            s32                             m_original_physical_ideal_core_id{};
-            s32                             m_num_core_migration_disables{};
-            ThreadState                     m_thread_state{};
-            std::atomic<u8>                 m_termination_requested{};
-            bool                            m_wait_cancelled{};
-            bool                            m_cancellable{};
-            bool                            m_signaled{};
-            bool                            m_initialized{};
-            bool                            m_debug_attached{};
-            s8                              m_priority_inheritance_count{};
-            bool                            m_resource_limit_release_hint{};
+            s32                             m_base_priority;
+            s32                             m_base_priority_on_unpin;
+            s32                             m_physical_ideal_core_id;
+            s32                             m_virtual_ideal_core_id;
+            s32                             m_num_kernel_waiters;
+            s32                             m_current_core_id;
+            s32                             m_core_id;
+            KAffinityMask                   m_original_physical_affinity_mask;
+            s32                             m_original_physical_ideal_core_id;
+            s32                             m_num_core_migration_disables;
+            ThreadState                     m_thread_state;
+            util::Atomic<bool>              m_termination_requested;
+            bool                            m_wait_cancelled;
+            bool                            m_cancellable;
+            bool                            m_signaled;
+            bool                            m_initialized;
+            bool                            m_debug_attached;
+            s8                              m_priority_inheritance_count;
+            bool                            m_resource_limit_release_hint;
         public:
-            constexpr KThread() : m_wait_result(svc::ResultNoSynchronizationObject()), m_debug_exception_result(ResultSuccess()) { /* ... */ }
+            constexpr explicit KThread(util::ConstantInitializeTag)
+                : KAutoObjectWithSlabHeapAndContainer<KThread, KWorkerTask>(util::ConstantInitialize), KTimerTask(util::ConstantInitialize),
+                  m_process_list_node{}, m_condvar_arbiter_tree_node{util::ConstantInitialize}, m_priority{-1}, m_condvar_tree{}, m_condvar_key{},
+                  m_thread_context{util::ConstantInitialize}, m_virtual_affinity_mask{}, m_physical_affinity_mask{}, m_thread_id{}, m_cpu_time{0}, m_address_key{Null<KProcessAddress>}, m_parent{},
+                  m_kernel_stack_top{}, m_light_ipc_data{}, m_tls_address{Null<KProcessAddress>}, m_tls_heap_address{}, m_activity_pause_lock{}, m_sync_object_buffer{util::ConstantInitialize},
+                  m_schedule_count{}, m_last_scheduled_tick{}, m_per_core_priority_queue_entry{}, m_wait_queue{}, m_waiter_list{}, m_pinned_waiter_list{},
+                  m_lock_owner{}, m_debug_params{}, m_closed_object{}, m_address_key_value{}, m_suspend_request_flags{}, m_suspend_allowed_flags{}, m_synced_index{},
+                  m_wait_result{svc::ResultNoSynchronizationObject()}, m_debug_exception_result{ResultSuccess()}, m_base_priority{}, m_base_priority_on_unpin{},
+                  m_physical_ideal_core_id{}, m_virtual_ideal_core_id{}, m_num_kernel_waiters{}, m_current_core_id{}, m_core_id{}, m_original_physical_affinity_mask{},
+                  m_original_physical_ideal_core_id{}, m_num_core_migration_disables{}, m_thread_state{}, m_termination_requested{false}, m_wait_cancelled{},
+                  m_cancellable{}, m_signaled{}, m_initialized{}, m_debug_attached{}, m_priority_inheritance_count{}, m_resource_limit_release_hint{}
+            {
+                /* ... */
+            }
+
+            explicit KThread() : m_priority(-1), m_condvar_tree(nullptr), m_condvar_key(0), m_parent(nullptr), m_initialized(false) { /* ... */ }
 
             Result Initialize(KThreadFunction func, uintptr_t arg, void *kern_stack_top, KProcessAddress user_stack_top, s32 prio, s32 virt_core, KProcess *owner, ThreadType type);
         private:
@@ -349,15 +361,15 @@ namespace ams::kern {
             #endif
 
             ALWAYS_INLINE void RegisterDpc(DpcFlag flag) {
-                this->GetStackParameters().dpc_flags.fetch_or(flag);
+                this->GetStackParameters().dpc_flags |= flag;
             }
 
             ALWAYS_INLINE void ClearDpc(DpcFlag flag) {
-                this->GetStackParameters().dpc_flags.fetch_and(~flag);
+                this->GetStackParameters().dpc_flags &= ~flag;
             }
 
             ALWAYS_INLINE u8 GetDpc() const {
-                return this->GetStackParameters().dpc_flags.load();
+                return this->GetStackParameters().dpc_flags.Load();
             }
 
             ALWAYS_INLINE bool HasDpc() const {
@@ -517,7 +529,7 @@ namespace ams::kern {
                 m_closed_object = object;
 
                 /* Schedule destruction DPC. */
-                if ((this->GetStackParameters().dpc_flags.load(std::memory_order_relaxed) & DpcFlag_PerformDestruction) == 0) {
+                if ((this->GetStackParameters().dpc_flags.Load<std::memory_order_relaxed>() & DpcFlag_PerformDestruction) == 0) {
                     this->RegisterDpc(DpcFlag_PerformDestruction);
                 }
             }
@@ -550,7 +562,7 @@ namespace ams::kern {
                 MESOSPHERE_UNUSED(core_id);
             }
 
-            s64 GetCpuTime() const { return m_cpu_time.load(); }
+            s64 GetCpuTime() const { return m_cpu_time.Load(); }
 
             s64 GetCpuTime(s32 core_id) const {
                 MESOSPHERE_ABORT_UNLESS(0 <= core_id && core_id < static_cast<s32>(cpu::NumCores));
@@ -592,23 +604,25 @@ namespace ams::kern {
             ALWAYS_INLINE void *GetKernelStackTop() const { return m_kernel_stack_top; }
 
             ALWAYS_INLINE bool IsTerminationRequested() const {
-                return m_termination_requested.load() || this->GetRawState() == ThreadState_Terminated;
+                return m_termination_requested.Load() || this->GetRawState() == ThreadState_Terminated;
             }
 
             size_t GetKernelStackUsage() const;
         public:
             /* Overridden parent functions. */
-            virtual u64 GetId() const override final { return this->GetThreadId(); }
+            ALWAYS_INLINE u64 GetIdImpl() const { return this->GetThreadId(); }
+            ALWAYS_INLINE u64 GetId() const { return this->GetIdImpl(); }
 
-            virtual bool IsInitialized() const override { return m_initialized; }
-            virtual uintptr_t GetPostDestroyArgument() const override { return reinterpret_cast<uintptr_t>(m_parent) | (m_resource_limit_release_hint ? 1 : 0); }
+            bool IsInitialized() const { return m_initialized; }
+            uintptr_t GetPostDestroyArgument() const { return reinterpret_cast<uintptr_t>(m_parent) | (m_resource_limit_release_hint ? 1 : 0); }
 
             static void PostDestroy(uintptr_t arg);
 
-            virtual void Finalize() override;
+            void Finalize();
+
             virtual bool IsSignaled() const override;
-            virtual void OnTimer() override;
-            virtual void DoWorkerTask() override;
+            void OnTimer();
+            void DoWorkerTaskImpl();
         public:
             static constexpr bool IsConditionVariableThreadTreeValid() {
                 return ConditionVariableThreadTreeTraits::IsValid();
@@ -651,14 +665,8 @@ namespace ams::kern {
         return GetCurrentThread().GetCurrentCore();
     }
 
-    ALWAYS_INLINE void KAutoObject::ScheduleDestruction() {
-        MESOSPHERE_ASSERT_THIS();
-
-        /* Set our object to destroy. */
-        m_next_closed_object = GetCurrentThread().GetClosedObject();
-
-        /* Set ourselves as the thread's next object to destroy. */
-        GetCurrentThread().SetClosedObject(this);
+    ALWAYS_INLINE void KTimerTask::OnTimer() {
+        static_cast<KThread *>(this)->OnTimer();
     }
 
 }

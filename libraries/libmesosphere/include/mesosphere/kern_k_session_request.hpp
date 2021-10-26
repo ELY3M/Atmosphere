@@ -33,14 +33,14 @@ namespace ams::kern {
 
                     class Mapping {
                         private:
-                            KProcessAddress m_client_address;
-                            KProcessAddress m_server_address;
+                            uintptr_t m_client_address;
+                            uintptr_t m_server_address;
                             size_t m_size;
                             KMemoryState m_state;
                         public:
                             constexpr void Set(KProcessAddress c, KProcessAddress s, size_t sz, KMemoryState st) {
-                                m_client_address = c;
-                                m_server_address = s;
+                                m_client_address = GetInteger(c);
+                                m_server_address = GetInteger(s);
                                 m_size           = sz;
                                 m_state          = st;
                             }
@@ -57,7 +57,9 @@ namespace ams::kern {
                     u8 m_num_recv;
                     u8 m_num_exch;
                 public:
-                    constexpr explicit SessionMappings() : m_static_mappings(), m_mappings(), m_num_send(), m_num_recv(), m_num_exch() { /* ... */ }
+                    constexpr explicit SessionMappings(util::ConstantInitializeTag) : m_static_mappings(), m_mappings(), m_num_send(), m_num_recv(), m_num_exch() { /* ... */ }
+
+                    explicit SessionMappings() : m_mappings(nullptr), m_num_send(), m_num_recv(), m_num_exch() { /* ... */ }
 
                     void Initialize() { /* ... */ }
                     void Finalize();
@@ -119,8 +121,6 @@ namespace ams::kern {
                             return m_mappings[index - NumStaticMappings];
                         }
                     }
-
-
             };
         private:
             SessionMappings m_mappings;
@@ -130,20 +130,22 @@ namespace ams::kern {
             uintptr_t m_address;
             size_t m_size;
         public:
-            constexpr KSessionRequest() : m_mappings(), m_thread(), m_server(), m_event(), m_address(), m_size() { /* ... */ }
+            constexpr explicit KSessionRequest(util::ConstantInitializeTag) : KAutoObject(util::ConstantInitialize), m_mappings(util::ConstantInitialize), m_thread(), m_server(), m_event(), m_address(), m_size() { /* ... */ }
+
+            explicit KSessionRequest() : m_thread(nullptr), m_server(nullptr), m_event(nullptr) { /* ... */ }
 
             static KSessionRequest *Create() {
                 KSessionRequest *req = KSessionRequest::Allocate();
-                if (req != nullptr) {
-                    KAutoObject::Create(req);
+                if (AMS_LIKELY(req != nullptr)) {
+                    KAutoObject::Create<KSessionRequest>(req);
                 }
                 return req;
             }
 
             static KSessionRequest *CreateFromUnusedSlabMemory() {
                 KSessionRequest *req = KSessionRequest::AllocateFromUnusedSlabMemory();
-                if (req != nullptr) {
-                    KAutoObject::Create(req);
+                if (AMS_LIKELY(req != nullptr)) {
+                    KAutoObject::Create<KSessionRequest>(req);
                 }
                 return req;
             }
@@ -164,20 +166,6 @@ namespace ams::kern {
                 m_thread->Open();
                 if (m_event != nullptr) {
                     m_event->Open();
-                }
-            }
-
-            virtual void Finalize() override {
-                m_mappings.Finalize();
-
-                if (m_thread) {
-                    m_thread->Close();
-                }
-                if (m_event) {
-                    m_event->Close();
-                }
-                if (m_server) {
-                    m_server->Close();
                 }
             }
 
@@ -227,6 +215,21 @@ namespace ams::kern {
             constexpr ALWAYS_INLINE KProcessAddress GetExchangeServerAddress(size_t i) const { return m_mappings.GetExchangeServerAddress(i);  }
             constexpr ALWAYS_INLINE size_t          GetExchangeSize(size_t i)          const { return m_mappings.GetExchangeSize(i);           }
             constexpr ALWAYS_INLINE KMemoryState    GetExchangeMemoryState(size_t i)   const { return m_mappings.GetExchangeMemoryState(i);    }
+        private:
+            /* NOTE: This is public and virtual in Nintendo's kernel. */
+            void Finalize() {
+                m_mappings.Finalize();
+
+                if (m_thread) {
+                    m_thread->Close();
+                }
+                if (m_event) {
+                    m_event->Close();
+                }
+                if (m_server) {
+                    m_server->Close();
+                }
+            }
     };
 
 }

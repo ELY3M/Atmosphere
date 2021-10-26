@@ -31,6 +31,7 @@ namespace ams::util {
 
     }
 
+    #pragma pack(push, 4)
     struct IntrusiveRedBlackTreeNode {
         NON_COPYABLE(IntrusiveRedBlackTreeNode);
         public:
@@ -38,13 +39,16 @@ namespace ams::util {
         private:
             RBEntry m_entry;
         public:
-            constexpr ALWAYS_INLINE IntrusiveRedBlackTreeNode() = default;
+            constexpr explicit ALWAYS_INLINE IntrusiveRedBlackTreeNode(util::ConstantInitializeTag) : m_entry(util::ConstantInitialize) { /* ... */ }
+            explicit ALWAYS_INLINE IntrusiveRedBlackTreeNode() { /* ... */ }
 
             [[nodiscard]] constexpr ALWAYS_INLINE RBEntry &GetRBEntry() { return m_entry; }
             [[nodiscard]] constexpr ALWAYS_INLINE const RBEntry &GetRBEntry() const { return m_entry; }
 
             constexpr ALWAYS_INLINE void SetRBEntry(const RBEntry &entry) { m_entry = entry; }
     };
+    static_assert(sizeof(IntrusiveRedBlackTreeNode) == 3 * sizeof(void *) + std::max<size_t>(sizeof(freebsd::RBColor), 4));
+    #pragma pack(pop)
 
     template<class T, class Traits, class Comparator>
     class IntrusiveRedBlackTree;
@@ -491,16 +495,15 @@ namespace ams::util {
                 return std::addressof(parent->*Member);
             }
 
-            static constexpr ALWAYS_INLINE Derived *GetParent(IntrusiveRedBlackTreeNode *node) {
+            static ALWAYS_INLINE Derived *GetParent(IntrusiveRedBlackTreeNode *node) {
                 return util::GetParentPointer<Member, Derived>(node);
             }
 
-            static constexpr ALWAYS_INLINE Derived const *GetParent(IntrusiveRedBlackTreeNode const *node) {
+            static ALWAYS_INLINE Derived const *GetParent(IntrusiveRedBlackTreeNode const *node) {
                 return util::GetParentPointer<Member, Derived>(node);
             }
         private:
-            static constexpr TypedStorage<Derived> DerivedStorage = {};
-            static_assert(GetParent(GetNode(GetPointer(DerivedStorage))) == GetPointer(DerivedStorage));
+            static_assert(util::IsAligned(util::impl::OffsetOf<Member, Derived>::value, alignof(void *)));
     };
 
     template<auto T, class Derived = util::impl::GetParentType<T>>
@@ -514,8 +517,7 @@ namespace ams::util {
             using TreeTypeImpl = impl::IntrusiveRedBlackTreeImpl;
 
             static constexpr bool IsValid() {
-                TypedStorage<Derived> DerivedStorage = {};
-                return GetParent(GetNode(GetPointer(DerivedStorage))) == GetPointer(DerivedStorage);
+                return util::IsAligned(util::impl::OffsetOf<Member, Derived>::value, alignof(void *));
             }
         private:
             template<class, class, class>
@@ -531,26 +533,28 @@ namespace ams::util {
                 return std::addressof(parent->*Member);
             }
 
-            static constexpr ALWAYS_INLINE Derived *GetParent(IntrusiveRedBlackTreeNode *node) {
+            static ALWAYS_INLINE Derived *GetParent(IntrusiveRedBlackTreeNode *node) {
                 return util::GetParentPointer<Member, Derived>(node);
             }
 
-            static constexpr ALWAYS_INLINE Derived const *GetParent(IntrusiveRedBlackTreeNode const *node) {
+            static ALWAYS_INLINE Derived const *GetParent(IntrusiveRedBlackTreeNode const *node) {
                 return util::GetParentPointer<Member, Derived>(node);
             }
     };
 
     template<class Derived>
-    class IntrusiveRedBlackTreeBaseNode : public IntrusiveRedBlackTreeNode {
+    class alignas(void *) IntrusiveRedBlackTreeBaseNode : public IntrusiveRedBlackTreeNode {
         public:
-            constexpr ALWAYS_INLINE Derived *GetPrev()             { return static_cast<      Derived *>(impl::IntrusiveRedBlackTreeImpl::GetPrev(this)); }
-            constexpr ALWAYS_INLINE const Derived *GetPrev() const { return static_cast<const Derived *>(impl::IntrusiveRedBlackTreeImpl::GetPrev(this)); }
+            using IntrusiveRedBlackTreeNode::IntrusiveRedBlackTreeNode;
 
-            constexpr ALWAYS_INLINE Derived *GetNext()             { return static_cast<      Derived *>(impl::IntrusiveRedBlackTreeImpl::GetNext(this)); }
-            constexpr ALWAYS_INLINE const Derived *GetNext() const { return static_cast<const Derived *>(impl::IntrusiveRedBlackTreeImpl::GetNext(this)); }
+            constexpr ALWAYS_INLINE Derived *GetPrev()             { return static_cast<      Derived *>(static_cast<      IntrusiveRedBlackTreeBaseNode *>(impl::IntrusiveRedBlackTreeImpl::GetPrev(this))); }
+            constexpr ALWAYS_INLINE const Derived *GetPrev() const { return static_cast<const Derived *>(static_cast<const IntrusiveRedBlackTreeBaseNode *>(impl::IntrusiveRedBlackTreeImpl::GetPrev(this))); }
+
+            constexpr ALWAYS_INLINE Derived *GetNext()             { return static_cast<      Derived *>(static_cast<      IntrusiveRedBlackTreeBaseNode *>(impl::IntrusiveRedBlackTreeImpl::GetNext(this))); }
+            constexpr ALWAYS_INLINE const Derived *GetNext() const { return static_cast<const Derived *>(static_cast<const IntrusiveRedBlackTreeBaseNode *>(impl::IntrusiveRedBlackTreeImpl::GetNext(this))); }
     };
 
-    template<class Derived> requires std::derived_from<Derived, IntrusiveRedBlackTreeNode>
+    template<class Derived>
     class IntrusiveRedBlackTreeBaseTraits {
         public:
             template<class Comparator>
@@ -563,19 +567,19 @@ namespace ams::util {
             friend class impl::IntrusiveRedBlackTreeImpl;
 
             static constexpr ALWAYS_INLINE IntrusiveRedBlackTreeNode *GetNode(Derived *parent) {
-                return static_cast<IntrusiveRedBlackTreeNode *>(parent);
+                return static_cast<IntrusiveRedBlackTreeNode *>(static_cast<IntrusiveRedBlackTreeBaseNode<Derived> *>(parent));
             }
 
             static constexpr ALWAYS_INLINE IntrusiveRedBlackTreeNode const *GetNode(Derived const *parent) {
-                return static_cast<const IntrusiveRedBlackTreeNode *>(parent);
+                return static_cast<const IntrusiveRedBlackTreeNode *>(static_cast<const IntrusiveRedBlackTreeBaseNode<Derived> *>(parent));
             }
 
             static constexpr ALWAYS_INLINE Derived *GetParent(IntrusiveRedBlackTreeNode *node) {
-                return static_cast<Derived *>(node);
+                return static_cast<Derived *>(static_cast<IntrusiveRedBlackTreeBaseNode<Derived> *>(node));
             }
 
             static constexpr ALWAYS_INLINE Derived const *GetParent(IntrusiveRedBlackTreeNode const *node) {
-                return static_cast<const Derived *>(node);
+                return static_cast<const Derived *>(static_cast<const IntrusiveRedBlackTreeBaseNode<Derived> *>(node));
             }
     };
 

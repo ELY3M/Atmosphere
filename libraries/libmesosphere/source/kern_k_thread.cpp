@@ -21,7 +21,9 @@ namespace ams::kern {
 
         constexpr inline s32 TerminatingThreadPriority = ams::svc::SystemThreadPriorityHighest - 1;
 
-        constexpr bool IsKernelAddressKey(KProcessAddress key) {
+        constinit util::Atomic<u64> g_thread_id = 0;
+
+        constexpr ALWAYS_INLINE bool IsKernelAddressKey(KProcessAddress key) {
             const uintptr_t key_uptr = GetInteger(key);
             return KernelVirtualAddressSpaceBase <= key_uptr && key_uptr <= KernelVirtualAddressSpaceLast && (key_uptr & 1) == 0;
         }
@@ -130,6 +132,7 @@ namespace ams::kern {
         /* Set parent and condvar tree. */
         m_parent                        = nullptr;
         m_condvar_tree                  = nullptr;
+        m_condvar_key                   = 0;
 
         /* Set sync booleans. */
         m_signaled                      = false;
@@ -147,9 +150,6 @@ namespace ams::kern {
         /* Set priorities. */
         m_priority                      = prio;
         m_base_priority                 = prio;
-
-        /* Set waiting lock to null. */
-        m_waiting_lock                  = nullptr;
 
         /* Initialize wait queue/sync index. */
         m_synced_index                  = -1;
@@ -180,7 +180,7 @@ namespace ams::kern {
         m_current_core_id               = phys_core;
 
         /* We haven't released our resource limit hint, and we've spent no time on the cpu. */
-        m_resource_limit_release_hint   = 0;
+        m_resource_limit_release_hint   = false;
         m_cpu_time                      = 0;
 
         /* Setup our kernel stack. */
@@ -222,7 +222,7 @@ namespace ams::kern {
         this->SetInExceptionHandler();
 
         /* Set thread ID. */
-        m_thread_id = s_next_thread_id++;
+        m_thread_id = g_thread_id++;
 
         /* We initialized! */
         m_initialized = true;
@@ -338,7 +338,7 @@ namespace ams::kern {
         }
 
         /* Perform inherited finalization. */
-        KAutoObjectWithSlabHeapAndContainer<KThread, KSynchronizationObject>::Finalize();
+        KSynchronizationObject::Finalize();
     }
 
     bool KThread::IsSignaled() const {
@@ -406,7 +406,7 @@ namespace ams::kern {
         this->Close();
     }
 
-    void KThread::DoWorkerTask() {
+    void KThread::DoWorkerTaskImpl() {
         /* Finish the termination that was begun by Exit(). */
         this->FinishTermination();
     }
@@ -444,7 +444,7 @@ namespace ams::kern {
             m_base_priority_on_unpin    = old_base_priority;
 
             /* Set base priority to higher than any possible process priority. */
-            m_base_priority = std::min<s32>(old_base_priority, __builtin_ctzll(this->GetOwnerProcess()->GetPriorityMask()));
+            m_base_priority = std::min<s32>(old_base_priority, __builtin_ctzll(this->GetOwnerProcess()->GetPriorityMask()) - 1);
             RestorePriority(this);
         }
 
@@ -710,7 +710,7 @@ namespace ams::kern {
         KScopedSchedulerLock sl;
 
         /* Determine the priority value to use. */
-        const s32 target_priority = m_termination_requested.load() && priority >= TerminatingThreadPriority ? TerminatingThreadPriority : priority;
+        const s32 target_priority = m_termination_requested.Load() && priority >= TerminatingThreadPriority ? TerminatingThreadPriority : priority;
 
         /* Change our base priority. */
         if (this->GetStackParameters().is_pinned) {
@@ -1185,8 +1185,8 @@ namespace ams::kern {
         /* Determine if this is the first termination request. */
         const bool first_request = [&] ALWAYS_INLINE_LAMBDA () -> bool {
             /* Perform an atomic compare-and-swap from false to true. */
-            u8 expected = false;
-            return m_termination_requested.compare_exchange_strong(expected, true);
+            bool expected = false;
+            return m_termination_requested.CompareExchangeStrong(expected, true);
         }();
 
         /* If this is the first request, start termination procedure. */
@@ -1324,33 +1324,16 @@ namespace ams::kern {
         KThread::ListAccessor accessor;
         const auto end = accessor.end();
 
-        /* Define helper object to find the thread. */
-        class IdObjectHelper : public KAutoObjectWithListContainer::ListType::value_type {
-            private:
-                u64 m_id;
-            public:
-                constexpr explicit IdObjectHelper(u64 id) : m_id(id) { /* ... */ }
-                virtual u64 GetId() const override { return m_id; }
-        };
-
         /* Find the object with the right id. */
-        const auto it = accessor.find(IdObjectHelper(thread_id));
-
-        /* Check to make sure we found the thread. */
-        if (it == end) {
-            return nullptr;
+        if (const auto it = accessor.find_key(thread_id); it != end) {
+            /* Try to open the thread. */
+            if (KThread *thread = static_cast<KThread *>(std::addressof(*it)); AMS_LIKELY(thread->Open())) {
+                MESOSPHERE_ASSERT(thread->GetId() == thread_id);
+                return thread;
+            }
         }
 
-        /* Get the thread. */
-        KThread *thread = static_cast<KThread *>(std::addressof(*it));
-
-        /* Open the thread. */
-        if (AMS_LIKELY(thread->Open())) {
-            MESOSPHERE_ASSERT(thread->GetId() == thread_id);
-            return thread;
-        }
-
-        /* We failed to find the thread. */
+        /* We failed to find or couldn't open the thread. */
         return nullptr;
     }
 

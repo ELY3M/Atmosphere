@@ -31,14 +31,25 @@ namespace ams::kern {
             s32 m_core_id;
             bool m_is_initialized;
         public:
-            constexpr KInterruptEvent() : m_interrupt_id(-1), m_core_id(-1), m_is_initialized(false) { /* ... */ }
+            constexpr explicit KInterruptEvent(util::ConstantInitializeTag) : KAutoObjectWithSlabHeapAndContainer<KInterruptEvent, KReadableEvent>(util::ConstantInitialize), m_interrupt_id(-1), m_core_id(-1), m_is_initialized(false) { /* ... */ }
+
+            explicit KInterruptEvent() : m_interrupt_id(-1), m_is_initialized(false) { /* ... */ }
 
             Result Initialize(int32_t interrupt_name, ams::svc::InterruptType type);
-            virtual void Finalize() override;
+            void Finalize();
 
-            virtual Result Reset() override;
+            Result Reset();
 
-            virtual bool IsInitialized() const override { return m_is_initialized; }
+            Result Clear() {
+                MESOSPHERE_ASSERT_THIS();
+
+                /* Try to perform a reset, succeeding unconditionally. */
+                this->Reset();
+
+                return ResultSuccess();
+            }
+
+            bool IsInitialized() const { return m_is_initialized; }
 
             static void PostDestroy(uintptr_t arg) { MESOSPHERE_UNUSED(arg); /* ... */ }
 

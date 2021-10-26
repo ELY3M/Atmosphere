@@ -26,34 +26,19 @@ namespace ams::kern {
         protected:
             using DebugEventList = util::IntrusiveListBaseTraits<KEventInfo>::ListType;
         private:
-            class ProcessHolder {
-                private:
-                    friend class KDebugBase;
-                private:
-                    KProcess *m_process;
-                    std::atomic<u32> m_ref_count;
-                private:
-                    explicit ProcessHolder() : m_process(nullptr) { /* ... */ }
-
-                    void Attach(KProcess *process);
-                    void Detach();
-
-                    bool Open();
-                    void Close();
-            };
-        private:
             DebugEventList m_event_info_list;
             u32 m_continue_flags;
-            ProcessHolder m_process_holder;
+            KSharedAutoObject<KProcess> m_process_holder;
             KLightLock m_lock;
             KProcess::State m_old_process_state;
             bool m_is_attached;
         public:
-            explicit KDebugBase() : m_event_info_list(), m_process_holder(), m_lock() { /* ... */ }
+            explicit KDebugBase() { /* ... */ }
         protected:
             bool Is64Bit() const;
         public:
             void Initialize();
+            void Finalize();
 
             Result Attach(KProcess *process);
             Result BreakProcess();
@@ -67,9 +52,6 @@ namespace ams::kern {
 
             Result GetThreadContext(ams::svc::ThreadContext *out, u64 thread_id, u32 context_flags);
             Result SetThreadContext(const ams::svc::ThreadContext &ctx, u64 thread_id, u32 context_flags);
-
-            virtual Result GetThreadContextImpl(ams::svc::ThreadContext *out, KThread *thread, u32 context_flags) = 0;
-            virtual Result SetThreadContextImpl(const ams::svc::ThreadContext &ctx, KThread *thread, u32 context_flags) = 0;
 
             Result GetRunningThreadInfo(ams::svc::LastThreadContext *out_context, u64 *out_thread_id);
 
@@ -89,7 +71,7 @@ namespace ams::kern {
             }
 
             ALWAYS_INLINE KProcess *GetProcessUnsafe() const {
-                return m_process_holder.m_process;
+                return m_process_holder.Get();
             }
         private:
             void PushDebugEvent(ams::svc::DebugEvent event, uintptr_t param0 = 0, uintptr_t param1 = 0, uintptr_t param2 = 0, uintptr_t param3 = 0, uintptr_t param4 = 0);
@@ -98,8 +80,10 @@ namespace ams::kern {
             template<typename T> requires (std::same_as<T, ams::svc::lp64::DebugEventInfo> || std::same_as<T, ams::svc::ilp32::DebugEventInfo>)
             Result GetDebugEventInfoImpl(T *out);
         public:
-            virtual void OnFinalizeSynchronizationObject() override;
             virtual bool IsSignaled() const override;
+        private:
+            /* NOTE: This is public/virtual override in Nintendo's kernel. */
+            void OnFinalizeSynchronizationObject();
         private:
             static Result ProcessDebugEvent(ams::svc::DebugEvent event, uintptr_t param0, uintptr_t param1, uintptr_t param2, uintptr_t param3, uintptr_t param4);
         public:

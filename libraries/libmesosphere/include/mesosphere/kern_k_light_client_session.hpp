@@ -26,7 +26,7 @@ namespace ams::kern {
         private:
             KLightSession *m_parent;
         public:
-            constexpr KLightClientSession() : m_parent() { /* ... */ }
+            explicit KLightClientSession() { /* ... */ }
 
             void Initialize(KLightSession *parent) {
                 /* Set member variables. */
@@ -34,7 +34,6 @@ namespace ams::kern {
             }
 
             virtual void Destroy() override;
-            static void PostDestroy(uintptr_t arg) { MESOSPHERE_UNUSED(arg); /* ... */ }
 
             constexpr const KLightSession *GetParent() const { return m_parent; }
 

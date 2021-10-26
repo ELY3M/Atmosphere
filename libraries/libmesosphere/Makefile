@@ -104,6 +104,18 @@ $(eval $(call ATMOSPHERE_ADD_TARGET, audit, $(TARGET)_audit.a, \
 	ATMOSPHERE_BUILD_SETTINGS="-DMESOSPHERE_BUILD_FOR_AUDITING" \
 ))
 
+$(eval $(call ATMOSPHERE_ADD_TARGET, qemu_virt_release, $(TARGET)_qemu_virt.a, \
+	ATMOSPHERE_BUILD_SETTINGS="" \
+))
+
+$(eval $(call ATMOSPHERE_ADD_TARGET, qemu_virt_debug, $(TARGET)_qemu_virt_debug.a, \
+	ATMOSPHERE_BUILD_SETTINGS="-DMESOSPHERE_BUILD_FOR_DEBUGGING" \
+))
+
+$(eval $(call ATMOSPHERE_ADD_TARGET, qemu_virt_audit, $(TARGET)_qemu_virt_audit.a, \
+	ATMOSPHERE_BUILD_SETTINGS="-DMESOSPHERE_BUILD_FOR_AUDITING" \
+))
+
 #---------------------------------------------------------------------------------
 
 -include $(ATMOSPHERE_BOARD_NAME)_$(ATMOSPHERE_ARCH_NAME).mk
@@ -141,8 +153,6 @@ $(filter-out kern_svc_tables.o, $(OFILES))	:	$(GCH_FILES)
 $(OFILES_SRC)	: $(HFILES_BIN)
 
 kern_libc_generic.o: CFLAGS += -fno-builtin
-
-kern_k_auto_object.o kern_k_debug_base_process_holder.o: CXXFLAGS += -fno-lto
 
 #---------------------------------------------------------------------------------
 %_bin.h %.bin.o	:	%.bin

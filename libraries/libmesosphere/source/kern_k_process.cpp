@@ -25,8 +25,8 @@ namespace ams::kern {
         constexpr u64 ProcessIdMin        = InitialProcessIdMax + 1;
         constexpr u64 ProcessIdMax        = std::numeric_limits<u64>::max();
 
-        std::atomic<u64> g_initial_process_id = InitialProcessIdMin;
-        std::atomic<u64> g_process_id         = ProcessIdMin;
+        constinit util::Atomic<u64> g_initial_process_id = InitialProcessIdMin;
+        constinit util::Atomic<u64> g_process_id         = ProcessIdMin;
 
         Result TerminateChildren(KProcess *process, const KThread *thread_to_not_terminate) {
             /* Request that all children threads terminate. */
@@ -183,7 +183,7 @@ namespace ams::kern {
         MESOSPHERE_LOG("KProcess::Finalize() pid=%ld name=%-12s\n", m_process_id, m_name);
 
         /* Perform inherited finalization. */
-        KAutoObjectWithSlabHeapAndContainer<KProcess, KSynchronizationObject>::Finalize();
+        KSynchronizationObject::Finalize();
     }
 
     Result KProcess::Initialize(const ams::svc::CreateProcessParameter &params) {
@@ -220,8 +220,8 @@ namespace ams::kern {
         /* Set thread fields. */
         for (size_t i = 0; i < cpu::NumCores; i++) {
             m_running_threads[i]            = nullptr;
-            m_running_thread_idle_counts[i] = 0;
             m_pinned_threads[i]             = nullptr;
+            m_running_thread_idle_counts[i] = 0;
         }
 
         /* Set max memory based on address space type. */
@@ -238,7 +238,7 @@ namespace ams::kern {
         }
 
         /* Generate random entropy. */
-        KSystemControl::GenerateRandomBytes(m_entropy, sizeof(m_entropy));
+        KSystemControl::GenerateRandom(m_entropy, util::size(m_entropy));
 
         /* Clear remaining fields. */
         m_num_running_threads         = 0;
@@ -432,7 +432,7 @@ namespace ams::kern {
         return ResultSuccess();
     }
 
-    void KProcess::DoWorkerTask() {
+    void KProcess::DoWorkerTaskImpl() {
         /* Terminate child threads. */
         TerminateChildren(this, nullptr);
 
@@ -705,10 +705,10 @@ namespace ams::kern {
             KScopedSchedulerLock sl;
 
             /* Try to find the page in the partially used list. */
-            auto it = m_partially_used_tlp_tree.find(KThreadLocalPage(util::AlignDown(GetInteger(addr), PageSize)));
+            auto it = m_partially_used_tlp_tree.find_key(util::AlignDown(GetInteger(addr), PageSize));
             if (it == m_partially_used_tlp_tree.end()) {
                 /* If we don't find it, it has to be in the fully used list. */
-                it = m_fully_used_tlp_tree.find(KThreadLocalPage(util::AlignDown(GetInteger(addr), PageSize)));
+                it = m_fully_used_tlp_tree.find_key(util::AlignDown(GetInteger(addr), PageSize));
                 R_UNLESS(it != m_fully_used_tlp_tree.end(), svc::ResultInvalidAddress());
 
                 /* Release the region. */
@@ -749,9 +749,9 @@ namespace ams::kern {
         KThreadLocalPage *tlp = nullptr;
         {
             KScopedSchedulerLock sl;
-            if (auto it = m_partially_used_tlp_tree.find(KThreadLocalPage(util::AlignDown(GetInteger(addr), PageSize))); it != m_partially_used_tlp_tree.end()) {
+            if (auto it = m_partially_used_tlp_tree.find_key(util::AlignDown(GetInteger(addr), PageSize)); it != m_partially_used_tlp_tree.end()) {
                 tlp = std::addressof(*it);
-            } else if (auto it = m_fully_used_tlp_tree.find(KThreadLocalPage(util::AlignDown(GetInteger(addr), PageSize))); it != m_fully_used_tlp_tree.end()) {
+            } else if (auto it = m_fully_used_tlp_tree.find_key(util::AlignDown(GetInteger(addr), PageSize)); it != m_fully_used_tlp_tree.end()) {
                 tlp = std::addressof(*it);
             } else {
                 return nullptr;
@@ -789,15 +789,15 @@ namespace ams::kern {
     }
 
     void KProcess::IncrementRunningThreadCount() {
-        MESOSPHERE_ASSERT(m_num_running_threads.load() >= 0);
+        MESOSPHERE_ASSERT(m_num_running_threads.Load() >= 0);
 
-        m_num_running_threads.fetch_add(1);
+        ++m_num_running_threads;
     }
 
     void KProcess::DecrementRunningThreadCount() {
-        MESOSPHERE_ASSERT(m_num_running_threads.load() > 0);
+        MESOSPHERE_ASSERT(m_num_running_threads.Load() > 0);
 
-        if (m_num_running_threads.fetch_sub(1) == 1) {
+        if (const auto prev = m_num_running_threads--; prev == 1) {
             this->Terminate();
         }
     }

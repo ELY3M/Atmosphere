@@ -25,31 +25,6 @@ namespace ams::kern {
 
     }
 
-    void KDebugBase::ProcessHolder::Attach(KProcess *process) {
-        MESOSPHERE_ASSERT(m_process == nullptr);
-
-        /* Set our process. */
-        m_process = process;
-
-        /* Open reference to our process. */
-        m_process->Open();
-
-        /* Set our reference count. */
-        m_ref_count = 1;
-    }
-
-    void KDebugBase::ProcessHolder::Detach() {
-        /* Close our process, if we have one. */
-        KProcess * const process = m_process;
-        if (AMS_LIKELY(process != nullptr)) {
-            /* Set our process to a debug sentinel value, which will cause crash if accessed. */
-            m_process = reinterpret_cast<KProcess *>(1);
-
-            /* Close reference to our process. */
-            process->Close();
-        }
-    }
-
     void KDebugBase::Initialize() {
         /* Clear the continue flags. */
         m_continue_flags = 0;
@@ -553,7 +528,8 @@ namespace ams::kern {
             }
 
             /* Get the thread context. */
-            return this->GetThreadContextImpl(out, thread, context_flags);
+            static_assert(std::derived_from<KDebug, KDebugBase>);
+            return static_cast<KDebug *>(this)->GetThreadContextImpl(out, thread, context_flags);
         }
     }
 
@@ -644,7 +620,8 @@ namespace ams::kern {
             }
 
             /* Set the thread context. */
-            return this->SetThreadContextImpl(ctx, thread, context_flags);
+            static_assert(std::derived_from<KDebug, KDebugBase>);
+            return static_cast<KDebug *>(this)->SetThreadContextImpl(ctx, thread, context_flags);
         }
     }
 
@@ -1007,6 +984,14 @@ namespace ams::kern {
 
     Result KDebugBase::GetDebugEventInfo(ams::svc::ilp32::DebugEventInfo *out) {
         return this->GetDebugEventInfoImpl(out);
+    }
+
+    void KDebugBase::Finalize() {
+        /* Perform base finalization. */
+        KSynchronizationObject::Finalize();
+
+        /* Perform post-synchronization finalization. */
+        this->OnFinalizeSynchronizationObject();
     }
 
     void KDebugBase::OnFinalizeSynchronizationObject() {

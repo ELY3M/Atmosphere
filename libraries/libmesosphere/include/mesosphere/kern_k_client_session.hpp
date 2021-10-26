@@ -27,7 +27,8 @@ namespace ams::kern {
         private:
             KSession *m_parent;
         public:
-            constexpr KClientSession() : m_parent() { /* ... */ }
+            constexpr explicit KClientSession(util::ConstantInitializeTag) : KAutoObject(util::ConstantInitialize), m_parent() { /* ... */ }
+            explicit KClientSession() { /* ... */ }
 
             void Initialize(KSession *parent) {
                 /* Set member variables. */
@@ -35,7 +36,6 @@ namespace ams::kern {
             }
 
             virtual void Destroy() override;
-            static void PostDestroy(uintptr_t arg) { MESOSPHERE_UNUSED(arg); /* ... */ }
 
             constexpr KSession *GetParent() const { return m_parent; }
 

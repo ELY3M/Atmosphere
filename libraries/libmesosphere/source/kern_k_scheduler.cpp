@@ -126,11 +126,13 @@ namespace ams::kern {
         for (size_t core_id = 0; core_id < cpu::NumCores; core_id++) {
             KThread *top_thread = priority_queue.GetScheduledFront(core_id);
             if (top_thread != nullptr) {
-                /* If the thread has no waiters, we need to check if the process has a thread pinned. */
-                if (top_thread->GetNumKernelWaiters() == 0) {
-                    if (KProcess *parent = top_thread->GetOwnerProcess(); parent != nullptr) {
-                        if (KThread *pinned = parent->GetPinnedThread(core_id); pinned != nullptr && pinned != top_thread) {
-                            /* We prefer our parent's pinned thread if possible. However, we also don't want to schedule un-runnable threads. */
+                /* We need to check if the thread's process has a pinned thread. */
+                if (KProcess *parent = top_thread->GetOwnerProcess(); parent != nullptr) {
+                    /* Check that there's a pinned thread other than the current top thread. */
+                    if (KThread *pinned = parent->GetPinnedThread(core_id); pinned != nullptr && pinned != top_thread) {
+                        /* We need to prefer threads with kernel waiters to the pinned thread. */
+                        if (top_thread->GetNumKernelWaiters() == 0 && top_thread != parent->GetExceptionThread()) {
+                            /* If the pinned thread is runnable, use it. */
                             if (pinned->GetRawState() == KThread::ThreadState_Runnable) {
                                 top_thread = pinned;
                             } else {
@@ -246,7 +248,7 @@ namespace ams::kern {
             if (AMS_LIKELY(!cur_thread->IsTerminationRequested()) && AMS_LIKELY(cur_thread->GetActiveCore() == m_core_id)) {
                 m_state.prev_thread = cur_thread;
             } else {
-                m_state.prev_thread = nullptr;
+                m_state.prev_thread =nullptr;
             }
         }
 
@@ -269,12 +271,11 @@ namespace ams::kern {
         MESOSPHERE_ASSERT(IsSchedulerLockedByCurrentThread());
         for (size_t i = 0; i < cpu::NumCores; ++i) {
             /* Get an atomic reference to the core scheduler's previous thread. */
-            std::atomic_ref<KThread *> prev_thread(Kernel::GetScheduler(static_cast<s32>(i)).m_state.prev_thread);
-            static_assert(std::atomic_ref<KThread *>::is_always_lock_free);
+            const util::AtomicRef<KThread *> prev_thread(Kernel::GetScheduler(static_cast<s32>(i)).m_state.prev_thread);
 
             /* Atomically clear the previous thread if it's our target. */
             KThread *compare = thread;
-            prev_thread.compare_exchange_strong(compare, nullptr);
+            prev_thread.CompareExchangeStrong(compare, nullptr);
         }
     }
 

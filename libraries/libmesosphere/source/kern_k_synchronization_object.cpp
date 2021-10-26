@@ -83,8 +83,8 @@ namespace ams::kern {
         }
         #endif
 
-        this->OnFinalizeSynchronizationObject();
-        KAutoObject::Finalize();
+        /* NOTE: In Nintendo's kernel, the following is virtual and called here. */
+        /* this->OnFinalizeSynchronizationObject(); */
     }
 
     Result KSynchronizationObject::Wait(s32 *out_index, KSynchronizationObject **objects, const s32 num_objects, s64 timeout) {

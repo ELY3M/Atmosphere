@@ -29,21 +29,24 @@ namespace ams::kern {
             bool m_initialized;
             bool m_readable_event_destroyed;
         public:
-            constexpr KEvent()
-                : m_readable_event(), m_owner(), m_initialized(), m_readable_event_destroyed()
+            constexpr explicit KEvent(util::ConstantInitializeTag)
+                : KAutoObjectWithSlabHeapAndContainer<KEvent, KAutoObjectWithList, true>(util::ConstantInitialize),
+                  m_readable_event(util::ConstantInitialize), m_owner(), m_initialized(), m_readable_event_destroyed()
             {
                 /* ... */
             }
 
-            void Initialize();
-            virtual void Finalize() override;
+            explicit KEvent() : m_readable_event(), m_owner(), m_initialized(), m_readable_event_destroyed() { /* ... */ }
 
-            virtual bool IsInitialized() const override { return m_initialized; }
-            virtual uintptr_t GetPostDestroyArgument() const override { return reinterpret_cast<uintptr_t>(m_owner); }
+            void Initialize();
+            void Finalize();
+
+            bool IsInitialized() const { return m_initialized; }
+            uintptr_t GetPostDestroyArgument() const { return reinterpret_cast<uintptr_t>(m_owner); }
 
             static void PostDestroy(uintptr_t arg);
 
-            virtual KProcess *GetOwner() const override { return m_owner; }
+            KProcess *GetOwner() const { return m_owner; }
 
             KReadableEvent &GetReadableEvent() { return m_readable_event; }
 

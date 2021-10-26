@@ -19,7 +19,12 @@ namespace ams::kern {
 
     Result KCapabilities::Initialize(const u32 *caps, s32 num_caps, KProcessPageTable *page_table) {
         /* We're initializing an initial process. */
-        /* Most fields have already been cleared by our constructor. */
+        m_svc_access_flags.Reset();
+        m_irq_access_flags.Reset();
+        m_debug_capabilities      = {0};
+        m_handle_table_size       = 0;
+        m_intended_kernel_version = {0};
+        m_program_type            = 0;
 
         /* Initial processes may run on all cores. */
         m_core_mask = cpu::VirtualCoreMask;
@@ -38,7 +43,16 @@ namespace ams::kern {
 
      Result KCapabilities::Initialize(svc::KUserPointer<const u32 *> user_caps, s32 num_caps, KProcessPageTable *page_table) {
         /* We're initializing a user process. */
-        /* Most fields have already been cleared by our constructor. */
+        m_svc_access_flags.Reset();
+        m_irq_access_flags.Reset();
+        m_debug_capabilities      = {0};
+        m_handle_table_size       = 0;
+        m_intended_kernel_version = {0};
+        m_program_type            = 0;
+
+        /* User processes must specify what cores/priorities they can use. */
+        m_core_mask     = 0;
+        m_priority_mask = 0;
 
         /* Parse the user capabilities array. */
         return this->SetCapabilities(user_caps, num_caps, page_table);
@@ -76,6 +90,9 @@ namespace ams::kern {
         R_UNLESS(m_core_mask     != 0, svc::ResultInvalidArgument());
         R_UNLESS(m_priority_mask != 0, svc::ResultInvalidArgument());
 
+        /* Processes must not have access to kernel thread priorities. */
+        R_UNLESS((m_priority_mask & 0xF) == 0, svc::ResultInvalidArgument());
+
         return ResultSuccess();
     }
 
@@ -100,11 +117,15 @@ namespace ams::kern {
     }
 
     Result KCapabilities::MapRange(const util::BitPack32 cap, const util::BitPack32 size_cap, KProcessPageTable *page_table) {
+        /* Get/validate address/size */
+        #if defined(MESOSPHERE_ENABLE_LARGE_PHYSICAL_ADDRESS_CAPABILITIES)
+        const u64 phys_addr    = static_cast<u64>(cap.Get<MapRange::Address>() | (size_cap.Get<MapRangeSize::AddressHigh>() << MapRange::Address::Count)) * PageSize;
+        #else
+        const u64 phys_addr    = static_cast<u64>(cap.Get<MapRange::Address>()) * PageSize;
+
         /* Validate reserved bits are unused. */
         R_UNLESS(size_cap.Get<MapRangeSize::Reserved>() == 0, svc::ResultOutOfRange());
-
-        /* Get/validate address/size */
-        const u64 phys_addr    = cap.Get<MapRange::Address>() * PageSize;
+        #endif
         const size_t num_pages = size_cap.Get<MapRangeSize::Pages>();
         const size_t size      = num_pages * PageSize;
         R_UNLESS(phys_addr == GetInteger(KPhysicalAddress(phys_addr)),    svc::ResultInvalidAddress());

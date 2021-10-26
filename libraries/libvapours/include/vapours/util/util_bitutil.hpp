@@ -255,4 +255,44 @@ namespace ams::util {
         return static_cast<T>((v + add) / d);
     }
 
+    template<typename T, T N, T D>
+    constexpr ALWAYS_INLINE T ScaleByConstantFactorUp(const T V) {
+        /* Multiplying and dividing by large numerator/denominator can cause error to be introduced. */
+        /* This algorithm multiples/divides in stages, so as to mitigate this (particularly with large denominator). */
+
+        /* Justification for the algorithm.                                                                         */
+        /* Calculate: (V * N) / D                                                                                   */
+        /*          = (Quot_V * D + Rem_V) * (Quot_N * D + Rem_N) / D                                               */
+        /*          = (D^2 * (Quot_V * Quot_N) + D * (Quot_V * Rem_N + Rem_V * Quot_N) + Rem_V * Rem_N) / D         */
+        /*          = (D * Quot_V * Quot_N) + (Quot_V * Rem_N) + (Rem_V * Quot_N) + ((Rem_V * Rem_N) / D)           */
+
+        /* Calculate quotients/remainders. */
+        const     T Quot_V = V / D;
+        const     T Rem_V  = V % D;
+        constexpr T Quot_N = N / D;
+        constexpr T Rem_N  = N % D;
+
+        /* Calculate the remainder multiplication, rounding up. */
+        const T rem_mult = ((Rem_V * Rem_N) + (D - 1)) / D;
+
+        /* Calculate results. */
+        return (D * Quot_N * Quot_V) + (Quot_V * Rem_N) + (Rem_V * Quot_N) + rem_mult;
+    }
+
+    template<std::integral T>
+    constexpr ALWAYS_INLINE T RotateLeft(T v, int n) {
+        using Unsigned = typename std::make_unsigned<T>::type;
+        static_assert(sizeof(Unsigned) == sizeof(T));
+
+        return static_cast<T>(std::rotl<Unsigned>(static_cast<Unsigned>(v), n));
+    }
+
+    template<std::integral T>
+    constexpr ALWAYS_INLINE T RotateRight(T v, int n) {
+        using Unsigned = typename std::make_unsigned<T>::type;
+        static_assert(sizeof(Unsigned) == sizeof(T));
+
+        return static_cast<T>(std::rotr<Unsigned>(static_cast<Unsigned>(v), n));
+    }
+
 }

@@ -28,6 +28,7 @@
 #pragma once
 #include <vapours/common.hpp>
 #include <vapours/assert.hpp>
+#include <vapours/util/util_type_traits.hpp>
 
 #pragma GCC push_options
 #pragma GCC optimize ("-O3")
@@ -53,14 +54,18 @@ namespace ams::freebsd {
         RB_RED   = 1,
     };
 
+    #pragma pack(push, 4)
     template<typename T>
     class RBEntry {
         private:
-            T *m_rbe_left        = nullptr;
-            T *m_rbe_right       = nullptr;
-            T *m_rbe_parent      = nullptr;
-            RBColor m_rbe_color = RBColor::RB_BLACK;
+            T *m_rbe_left ;
+            T *m_rbe_right;
+            T *m_rbe_parent;
+            RBColor m_rbe_color;
         public:
+            constexpr ALWAYS_INLINE explicit RBEntry(util::ConstantInitializeTag) : m_rbe_left(nullptr), m_rbe_right(nullptr), m_rbe_parent(nullptr), m_rbe_color(RBColor::RB_BLACK) { /* ... */ }
+            explicit ALWAYS_INLINE RBEntry() { /* ... */ }
+
             [[nodiscard]] constexpr ALWAYS_INLINE       T *Left()       { return m_rbe_left; }
             [[nodiscard]] constexpr ALWAYS_INLINE const T *Left() const { return m_rbe_left; }
 
@@ -82,6 +87,7 @@ namespace ams::freebsd {
 
             constexpr ALWAYS_INLINE void SetColor(RBColor c) { m_rbe_color = c; }
     };
+    #pragma pack(pop)
 
     template<typename T> struct CheckRBEntry             { static constexpr bool value = false; };
     template<typename T> struct CheckRBEntry<RBEntry<T>> { static constexpr bool value = true;  };

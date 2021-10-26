@@ -57,7 +57,8 @@ namespace ams::kern::arch::arm64 {
             static void RestoreFpuRegisters64(const KThreadContext &);
             static void RestoreFpuRegisters32(const KThreadContext &);
         public:
-            constexpr explicit KThreadContext() : m_callee_saved(), m_lr(), m_sp(), m_cpacr(), m_fpcr(), m_fpsr(), m_fpu_registers(), m_locked() { /* ... */ }
+            constexpr explicit KThreadContext(util::ConstantInitializeTag) : m_callee_saved(), m_lr(), m_sp(), m_cpacr(), m_fpcr(), m_fpsr(), m_fpu_registers(), m_locked() { /* ... */ }
+            explicit KThreadContext() { /* ... */ }
 
             Result Initialize(KVirtualAddress u_pc, KVirtualAddress k_sp, KVirtualAddress u_sp, uintptr_t arg, bool is_user, bool is_64_bit, bool is_main);
             Result Finalize();
@@ -86,25 +87,25 @@ namespace ams::kern::arch::arm64 {
     consteval bool KThreadContext::ValidateOffsets() {
         static_assert(sizeof(KThreadContext) == THREAD_CONTEXT_SIZE);
 
-        static_assert(__builtin_offsetof(KThreadContext, m_callee_saved.registers) == THREAD_CONTEXT_CPU_REGISTERS);
-        static_assert(__builtin_offsetof(KThreadContext, m_callee_saved.x19)       == THREAD_CONTEXT_X19);
-        static_assert(__builtin_offsetof(KThreadContext, m_callee_saved.x20)       == THREAD_CONTEXT_X20);
-        static_assert(__builtin_offsetof(KThreadContext, m_callee_saved.x21)       == THREAD_CONTEXT_X21);
-        static_assert(__builtin_offsetof(KThreadContext, m_callee_saved.x22)       == THREAD_CONTEXT_X22);
-        static_assert(__builtin_offsetof(KThreadContext, m_callee_saved.x23)       == THREAD_CONTEXT_X23);
-        static_assert(__builtin_offsetof(KThreadContext, m_callee_saved.x24)       == THREAD_CONTEXT_X24);
-        static_assert(__builtin_offsetof(KThreadContext, m_callee_saved.x25)       == THREAD_CONTEXT_X25);
-        static_assert(__builtin_offsetof(KThreadContext, m_callee_saved.x26)       == THREAD_CONTEXT_X26);
-        static_assert(__builtin_offsetof(KThreadContext, m_callee_saved.x27)       == THREAD_CONTEXT_X27);
-        static_assert(__builtin_offsetof(KThreadContext, m_callee_saved.x28)       == THREAD_CONTEXT_X28);
-        static_assert(__builtin_offsetof(KThreadContext, m_callee_saved.x29)       == THREAD_CONTEXT_X29);
-        static_assert(__builtin_offsetof(KThreadContext, m_lr)                     == THREAD_CONTEXT_LR);
-        static_assert(__builtin_offsetof(KThreadContext, m_sp)                     == THREAD_CONTEXT_SP);
-        static_assert(__builtin_offsetof(KThreadContext, m_cpacr)                  == THREAD_CONTEXT_CPACR);
-        static_assert(__builtin_offsetof(KThreadContext, m_fpcr)                   == THREAD_CONTEXT_FPCR);
-        static_assert(__builtin_offsetof(KThreadContext, m_fpsr)                   == THREAD_CONTEXT_FPSR);
-        static_assert(__builtin_offsetof(KThreadContext, m_fpu_registers)          == THREAD_CONTEXT_FPU_REGISTERS);
-        static_assert(__builtin_offsetof(KThreadContext, m_locked)                 == THREAD_CONTEXT_LOCKED);
+        static_assert(AMS_OFFSETOF(KThreadContext, m_callee_saved.registers) == THREAD_CONTEXT_CPU_REGISTERS);
+        static_assert(AMS_OFFSETOF(KThreadContext, m_callee_saved.x19)       == THREAD_CONTEXT_X19);
+        static_assert(AMS_OFFSETOF(KThreadContext, m_callee_saved.x20)       == THREAD_CONTEXT_X20);
+        static_assert(AMS_OFFSETOF(KThreadContext, m_callee_saved.x21)       == THREAD_CONTEXT_X21);
+        static_assert(AMS_OFFSETOF(KThreadContext, m_callee_saved.x22)       == THREAD_CONTEXT_X22);
+        static_assert(AMS_OFFSETOF(KThreadContext, m_callee_saved.x23)       == THREAD_CONTEXT_X23);
+        static_assert(AMS_OFFSETOF(KThreadContext, m_callee_saved.x24)       == THREAD_CONTEXT_X24);
+        static_assert(AMS_OFFSETOF(KThreadContext, m_callee_saved.x25)       == THREAD_CONTEXT_X25);
+        static_assert(AMS_OFFSETOF(KThreadContext, m_callee_saved.x26)       == THREAD_CONTEXT_X26);
+        static_assert(AMS_OFFSETOF(KThreadContext, m_callee_saved.x27)       == THREAD_CONTEXT_X27);
+        static_assert(AMS_OFFSETOF(KThreadContext, m_callee_saved.x28)       == THREAD_CONTEXT_X28);
+        static_assert(AMS_OFFSETOF(KThreadContext, m_callee_saved.x29)       == THREAD_CONTEXT_X29);
+        static_assert(AMS_OFFSETOF(KThreadContext, m_lr)                     == THREAD_CONTEXT_LR);
+        static_assert(AMS_OFFSETOF(KThreadContext, m_sp)                     == THREAD_CONTEXT_SP);
+        static_assert(AMS_OFFSETOF(KThreadContext, m_cpacr)                  == THREAD_CONTEXT_CPACR);
+        static_assert(AMS_OFFSETOF(KThreadContext, m_fpcr)                   == THREAD_CONTEXT_FPCR);
+        static_assert(AMS_OFFSETOF(KThreadContext, m_fpsr)                   == THREAD_CONTEXT_FPSR);
+        static_assert(AMS_OFFSETOF(KThreadContext, m_fpu_registers)          == THREAD_CONTEXT_FPU_REGISTERS);
+        static_assert(AMS_OFFSETOF(KThreadContext, m_locked)                 == THREAD_CONTEXT_LOCKED);
 
         return true;
     }

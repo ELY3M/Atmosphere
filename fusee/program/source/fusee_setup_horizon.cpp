@@ -146,7 +146,7 @@ namespace ams::nxboot {
                         /* Handle individual fields. */
                         for (const auto &entry : section.kv_list) {
                             if (std::strcmp(entry.key, "enabled") == 0) {
-                                enabled = entry.value[0] == '1';
+                                enabled = entry.value[0] != '0';
                             } else if (std::strcmp(entry.key, "id") == 0) {
                                 id = ParseHexInteger(entry.value);
                             } else if (std::strcmp(entry.key, "sector") == 0) {
@@ -270,7 +270,7 @@ namespace ams::nxboot {
             u8 *package2;
             size_t package2_size;
             {
-                constexpr s64 Package2Offset = __builtin_offsetof(pkg2::StorageLayout, package2_header);
+                constexpr s64 Package2Offset = AMS_OFFSETOF(pkg2::StorageLayout, package2_header);
 
                 pkg2::Package2Header header;
                 if (R_FAILED((result = ReadPackage2(Package2Offset, std::addressof(header), sizeof(header))))) {

@@ -27,18 +27,31 @@ namespace ams::kern {
             bool m_is_signaled;
             KEvent *m_parent;
         public:
-            constexpr explicit KReadableEvent() : KSynchronizationObject(), m_is_signaled(), m_parent() { MESOSPHERE_ASSERT_THIS(); }
+            constexpr explicit KReadableEvent(util::ConstantInitializeTag) : KSynchronizationObject(util::ConstantInitialize), m_is_signaled(), m_parent() { MESOSPHERE_ASSERT_THIS(); }
+
+            explicit KReadableEvent() { /* ... */ }
 
             void Initialize(KEvent *parent);
 
             constexpr KEvent *GetParent() const { return m_parent; }
 
             Result Signal();
-            Result Clear();
+            Result Reset();
+
+            Result Clear() {
+                MESOSPHERE_ASSERT_THIS();
+
+                /* Try to perform a reset, succeeding unconditionally. */
+                this->Reset();
+
+                return ResultSuccess();
+            }
 
             virtual bool IsSignaled() const override;
             virtual void Destroy() override;
-            virtual Result Reset();
+
+            /* NOTE: This is a virtual function in Nintendo's kernel. */
+            /* virtual Result Reset(); */
     };
 
 }

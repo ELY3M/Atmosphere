@@ -34,7 +34,7 @@
 
 namespace ams::kern {
 
-    class KProcess final : public KAutoObjectWithSlabHeapAndContainer<KProcess, KSynchronizationObject>, public KWorkerTask {
+    class KProcess final : public KAutoObjectWithSlabHeapAndContainer<KProcess, KWorkerTask> {
         MESOSPHERE_AUTOOBJECT_TRAITS(KProcess, KSynchronizationObject);
         public:
             enum State {
@@ -57,73 +57,73 @@ namespace ams::kern {
             using TLPTree = util::IntrusiveRedBlackTreeBaseTraits<KThreadLocalPage>::TreeType<KThreadLocalPage>;
             using TLPIterator = TLPTree::iterator;
         private:
-            KProcessPageTable           m_page_table{};
-            std::atomic<size_t>         m_used_kernel_memory_size{};
-            TLPTree                     m_fully_used_tlp_tree{};
-            TLPTree                     m_partially_used_tlp_tree{};
-            s32                         m_ideal_core_id{};
-            void                       *m_attached_object{};
-            KResourceLimit             *m_resource_limit{};
-            KVirtualAddress             m_system_resource_address{};
-            size_t                      m_system_resource_num_pages{};
-            size_t                      m_memory_release_hint{};
-            State                       m_state{};
-            KLightLock                  m_state_lock{};
-            KLightLock                  m_list_lock{};
-            KConditionVariable          m_cond_var{};
-            KAddressArbiter             m_address_arbiter{};
-            u64                         m_entropy[4]{};
-            bool                        m_is_signaled{};
-            bool                        m_is_initialized{};
-            bool                        m_is_application{};
-            char                        m_name[13]{};
-            std::atomic<u16>            m_num_running_threads{};
-            u32                         m_flags{};
-            KMemoryManager::Pool        m_memory_pool{};
-            s64                         m_schedule_count{};
-            KCapabilities               m_capabilities{};
-            ams::svc::ProgramId         m_program_id{};
-            u64                         m_process_id{};
-            s64                         m_creation_time{};
-            KProcessAddress             m_code_address{};
-            size_t                      m_code_size{};
-            size_t                      m_main_thread_stack_size{};
-            size_t                      m_max_process_memory{};
-            u32                         m_version{};
-            KHandleTable                m_handle_table{};
-            KProcessAddress             m_plr_address{};
-            void                       *m_plr_heap_address{};
-            KThread                    *m_exception_thread{};
-            ThreadList                  m_thread_list{};
-            SharedMemoryInfoList        m_shared_memory_list{};
-            IoRegionList                m_io_region_list{};
-            bool                        m_is_suspended{};
-            bool                        m_is_immortal{};
-            bool                        m_is_jit_debug{};
-            bool                        m_is_handle_table_initialized{};
-            ams::svc::DebugEvent        m_jit_debug_event_type{};
-            ams::svc::DebugException    m_jit_debug_exception_type{};
-            uintptr_t                   m_jit_debug_params[4]{};
-            u64                         m_jit_debug_thread_id{};
-            KWaitObject                 m_wait_object{};
-            KThread                    *m_running_threads[cpu::NumCores]{};
-            u64                         m_running_thread_idle_counts[cpu::NumCores]{};
-            KThread                    *m_pinned_threads[cpu::NumCores]{};
-            std::atomic<s64>            m_cpu_time{};
-            std::atomic<s64>            m_num_process_switches{};
-            std::atomic<s64>            m_num_thread_switches{};
-            std::atomic<s64>            m_num_fpu_switches{};
-            std::atomic<s64>            m_num_supervisor_calls{};
-            std::atomic<s64>            m_num_ipc_messages{};
-            std::atomic<s64>            m_num_ipc_replies{};
-            std::atomic<s64>            m_num_ipc_receives{};
-            KDynamicPageManager         m_dynamic_page_manager{};
-            KMemoryBlockSlabManager     m_memory_block_slab_manager{};
-            KBlockInfoManager           m_block_info_manager{};
-            KPageTableManager           m_page_table_manager{};
-            KMemoryBlockSlabHeap        m_memory_block_heap{};
-            KBlockInfoSlabHeap          m_block_info_heap{};
-            KPageTableSlabHeap          m_page_table_heap{};
+            KProcessPageTable           m_page_table;
+            util::Atomic<size_t>        m_used_kernel_memory_size;
+            TLPTree                     m_fully_used_tlp_tree;
+            TLPTree                     m_partially_used_tlp_tree;
+            s32                         m_ideal_core_id;
+            void                       *m_attached_object;
+            KResourceLimit             *m_resource_limit;
+            KVirtualAddress             m_system_resource_address;
+            size_t                      m_system_resource_num_pages;
+            size_t                      m_memory_release_hint;
+            State                       m_state;
+            KLightLock                  m_state_lock;
+            KLightLock                  m_list_lock;
+            KConditionVariable          m_cond_var;
+            KAddressArbiter             m_address_arbiter;
+            u64                         m_entropy[4];
+            bool                        m_is_signaled;
+            bool                        m_is_initialized;
+            bool                        m_is_application;
+            char                        m_name[13];
+            util::Atomic<u16>           m_num_running_threads;
+            u32                         m_flags;
+            KMemoryManager::Pool        m_memory_pool;
+            s64                         m_schedule_count;
+            KCapabilities               m_capabilities;
+            ams::svc::ProgramId         m_program_id;
+            u64                         m_process_id;
+            s64                         m_creation_time;
+            KProcessAddress             m_code_address;
+            size_t                      m_code_size;
+            size_t                      m_main_thread_stack_size;
+            size_t                      m_max_process_memory;
+            u32                         m_version;
+            KHandleTable                m_handle_table;
+            KProcessAddress             m_plr_address;
+            void                       *m_plr_heap_address;
+            KThread                    *m_exception_thread;
+            ThreadList                  m_thread_list;
+            SharedMemoryInfoList        m_shared_memory_list;
+            IoRegionList                m_io_region_list;
+            bool                        m_is_suspended;
+            bool                        m_is_immortal;
+            bool                        m_is_jit_debug;
+            bool                        m_is_handle_table_initialized;
+            ams::svc::DebugEvent        m_jit_debug_event_type;
+            ams::svc::DebugException    m_jit_debug_exception_type;
+            uintptr_t                   m_jit_debug_params[4];
+            u64                         m_jit_debug_thread_id;
+            KWaitObject                 m_wait_object;
+            KThread                    *m_running_threads[cpu::NumCores];
+            u64                         m_running_thread_idle_counts[cpu::NumCores];
+            KThread                    *m_pinned_threads[cpu::NumCores];
+            util::Atomic<s64>           m_cpu_time;
+            util::Atomic<s64>           m_num_process_switches;
+            util::Atomic<s64>           m_num_thread_switches;
+            util::Atomic<s64>           m_num_fpu_switches;
+            util::Atomic<s64>           m_num_supervisor_calls;
+            util::Atomic<s64>           m_num_ipc_messages;
+            util::Atomic<s64>           m_num_ipc_replies;
+            util::Atomic<s64>           m_num_ipc_receives;
+            KDynamicPageManager         m_dynamic_page_manager;
+            KMemoryBlockSlabManager     m_memory_block_slab_manager;
+            KBlockInfoManager           m_block_info_manager;
+            KPageTableManager           m_page_table_manager;
+            KMemoryBlockSlabHeap        m_memory_block_heap;
+            KBlockInfoSlabHeap          m_block_info_heap;
+            KPageTableSlabHeap          m_page_table_heap;
         private:
             Result Initialize(const ams::svc::CreateProcessParameter &params);
 
@@ -145,7 +145,7 @@ namespace ams::kern {
                 m_pinned_threads[core_id] = nullptr;
             }
         public:
-            KProcess() { /* ... */ }
+            explicit KProcess() : m_is_initialized(false) { /* ... */ }
 
             Result Initialize(const ams::svc::CreateProcessParameter &params, const KPageGroup &pg, const u32 *caps, s32 num_caps, KResourceLimit *res_limit, KMemoryManager::Pool pool, bool immortal);
             Result Initialize(const ams::svc::CreateProcessParameter &params, svc::KUserPointer<const u32 *> caps, s32 num_caps, KResourceLimit *res_limit, KMemoryManager::Pool pool);
@@ -284,8 +284,12 @@ namespace ams::kern {
 
             constexpr KProcessAddress GetProcessLocalRegionAddress() const { return m_plr_address; }
 
+            constexpr void *GetProcessLocalRegionHeapAddress() const { return m_plr_heap_address; }
+
+            KThread *GetExceptionThread() const { return m_exception_thread; }
+
             void AddCpuTime(s64 diff) { m_cpu_time += diff; }
-            s64 GetCpuTime() { return m_cpu_time; }
+            s64 GetCpuTime() { return m_cpu_time.Load(); }
 
             constexpr s64 GetScheduledCount() const { return m_schedule_count; }
             void IncrementScheduledCount() { ++m_schedule_count; }
@@ -380,13 +384,14 @@ namespace ams::kern {
             }
         public:
             /* Overridden parent functions. */
-            virtual bool IsInitialized() const override { return m_is_initialized; }
+            bool IsInitialized() const { return m_is_initialized; }
 
             static void PostDestroy(uintptr_t arg) { MESOSPHERE_UNUSED(arg); /* ... */ }
 
-            virtual void Finalize() override;
+            void Finalize();
 
-            virtual u64 GetId() const override final { return this->GetProcessId(); }
+            ALWAYS_INLINE u64 GetIdImpl() const { return this->GetProcessId(); }
+            ALWAYS_INLINE u64 GetId() const { return this->GetIdImpl(); }
 
             virtual bool IsSignaled() const override {
                 MESOSPHERE_ASSERT_THIS();
@@ -394,7 +399,7 @@ namespace ams::kern {
                 return m_is_signaled;
             }
 
-            virtual void DoWorkerTask() override;
+            void DoWorkerTaskImpl();
         private:
             void ChangeState(State new_state) {
                 if (m_state != new_state) {

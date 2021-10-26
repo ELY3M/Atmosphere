@@ -33,14 +33,14 @@ namespace ams::kern {
         public:
             static bool IsValidIoPoolType(ams::svc::IoPoolType pool_type);
         public:
-            explicit KIoPool() : m_lock(), m_io_region_list(), m_is_initialized(false) {
+            explicit KIoPool() : m_is_initialized(false) {
                 /* ... */
             }
 
             Result Initialize(ams::svc::IoPoolType pool_type);
-            virtual void Finalize() override;
+            void Finalize();
 
-            virtual bool IsInitialized() const override { return m_is_initialized; }
+            bool IsInitialized() const { return m_is_initialized; }
             static void PostDestroy(uintptr_t arg) { MESOSPHERE_UNUSED(arg); /* ... */ }
 
             Result AddIoRegion(KIoRegion *region);

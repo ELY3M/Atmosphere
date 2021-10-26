@@ -1,4 +1,77 @@
 # Changelog
+## 1.2.1
++ Support was implemented for 13.1.0.
+  + `mesosphère` was updated to reflect the kernel behavioral changes made in 13.1.0.
+    + KScheduler now issues a data memory barrier when unlocking the scheduler lock and when early-returning due to top-thread-is-current during scheduling.
+  + `erpt` was  updated to reflect the latest official behaviors.
+    + The new service added in 13.0.0 ("sprofile") was revised, and the data formats it expects was changed.
+      + This still appears to be (possibly(?)) untestable due to data not being transmitted yet, but I have greater confidence things will go smoothly than I did when 1.1.0 released.
++ A number of improvements were made to `mesosphère`, including:
+  + A build target was created to build targeting the qemu `virt` board.
+    + This facilitates writing unit tests for the kernel (and other atmosphere components) and running them under PC.
+      + **Please Note**: Official system software will not work at all under this, and the Atmosphère project has zero interest in attempting to run official software of any kind. This is unit testing machinery, and explicitly not more than that.
+    + This should hopefully allow us to have greater confidence that all of atmosphere's components work the way they're theoretically supposed to in the future.
+    + **Please Note**: If you are a developer who is familiar with the Horizon operating system (or capable of becoming familiar), I would greatly appreciate help writing tests and improving the testing framework.
+      + Please contact `SciresM#0524` if you are capable and interested.
+        + Really, if you are actually a developer who would like to help me get this off the ground, I would deeply appreciate it.
+        + That said, if you are not a developer but want to be one, this probably isn't the best opportunity; I expect it to be highly technical.
+          + Consider the ReSwitched discord's #hack-n-all channel for your educational purposes.
+      + We are (at least for now) using [catch2](https://github.com/catchorg/Catch2) for unit tests.
+  + Almost all virtual calls in the kernel are now resolved statically.
+    + This eliminates substantial virtual call overhead, and should lead to improved kernel microperformance in pretty much every function.
+  + The remaining red black tree find operations which weren't using the optimized "find key" variant are now using the optimized version.
+  + Custom assembly was written to improve tick-to-timespan conversion.
+    + This works around gcc emitting suboptimal assembly at -Os (it emits good assembly at -O3, clang is fine at both -O3 and -Os).
+  + KThread and KSession structures were updated to optimize member layout, saving 0x10 bytes per KThread/KSession object.
+  + Rather than unnecessarily zero-ing all data in kernel objects only to overwrite members later, we now only initialize the members we need to in kernel object constructors.
+    + This is what Nintendo was doing already.
+  + A set of custom optimized atomic primitives were implemented and are used in place of std::atomic<>
+    + This works around a gcc bug which downgrades specified memory order to seq_cst, and introduces clrex in places where it is appropriate.
+    + This should strictly improve microperformance of many system calls.
+  + An compile-time toggleable extension was added to support 40-bit physical addresses in MapRange capabilities (using currently reserved bits).
+  + A number of minor bugs were fixed, including:
+    + Initial cache management now better reflects official behavior.
+      + This fixes an issue that caused certain hardware with cache sensitivity to produce cryptic kernel panics during boot.
+    + Incorrect logic when checking thread priority capabilities was fixed to reflect official behavior.
+    + The scheduler was updated to reflect latest official behavior, and a number of minor bugs involving clz/ctz were fixed.
+    + Accesses to the processes local region were fixed to properly use kernel linear region, not userland pointers.
+    + The cache SVCs exposed for 32-bit processes now better reflect official core mask request semantics.
+    + A bug was fixed that could cause a kernel panic if SvcArbitrateLock was called on a thread with exactly one reference in the middle of handling a user-mode exception.
++ General system stability improvements to enhance the user's experience.
+## 1.2.0
++ `boot` was updated to reflect the latest official behavior for display/battery management.
+  + This should fix any issues that might result from running older releases on the OLED model, if you're somehow in a position to do so.
++ The "target firmware" system was changed to allow the bootloader to specify an approximation, rather than the true target firmware.
+  + Previously we expected compliant bootloaders to inspect SYSTEM:/ to determine the specific target firmware.
+  + Now, we only require an approximate version, with major version == true major version and approximate version <= true version.
+  + This greatly simplifies bootloader requirements, and correspondingly all code for accessing SYSTEM has been removed from fusee.
+    + This should result in a substantial speedup when booting emummc with fusee, as SYSTEM accesses were the most expensive thing done previously.
+  + This should resolve any inconsistency in firmware detection when booting via fusee vs hekate.
+  + This should also improve our compatibility with micro firmware releases, making it more likely that atmosphere "just works" if nothing important has changed.
++ Dynamic resource limit determination logic was implemented in `pm` to match latest official behavior.
+  + This greatly simplifies/makes consistent the resource limits on older firmwares, as well.
++ An enormous amount of refactoring was performed under the hood, including:
+  + **Please Note**: If you are a developer who uses Atmosphere-libs, a number of changes here are breaking.
+    + Feel free to contact SciresM#0524 for help updating your program.
+  + The OS namespace had many primitives implemented/made more accurate.
+  + Since mesosphere is now always-on, os::LightEvent (which required newer SVCs) is now globally usable (and used by stratosphere where relevant).
+  + Assertions are now true no-ops when building for release.
+  + Stratosphere is now built with -Wextra/-Werror.
+  + Most "common" logic in system module main.cpp files was moved into libstratosphere.
+    + **Please Note**: main.cpp files for prior atmosphere-libs will no longer work, for a really large number of reasons.
+  + A number of longstanding code style issues were corrected.
+  + Mesosphere now uses util::BitFlagSet for SVC permissions.
+  + Mesosphere now puts its relocation table inside .bss, which allows that memory to be reclaimed after relocations are performed.
+    + These changes save ~16KB of memory in the kernel, all said and done.
+  + A number of locations in stratosphere where memory could be saved were spotted and taken advantage of, leading to ~150-200KB of saved memory.
+  + The `spl` and `loader` system module was refactored to better reflect official logic.
+  + `sf` ipc server code was updated to only emit mitm/defer logic when that logic is actually required somewhere in process.
+  + `tipc` ipc server code was updated to reflect changes to official logic made in 13.0.0.
+  + Many, many other minor changes, please talk to SciresM#0524 or read the relevant commits if you want to know more.
++ A number of minor issues were fixed, including:
+  + Mesosphere's handling of SVC permissions on thread pin/unpin was updated to reflect official kernel behavior.
+  + util::CountTrailingZeroes() was fixed to calculate the correct value when used at compile-time.
++ General system stability improvements to enhance the user's experience.
 ## 1.1.1
 + A bug was fixed which caused some memory to leak when launching a game with mods enabled, eventually causing a crash after enough game launches without rebooting.
 + General system stability improvements to enhance the user's experience.
