@@ -31,10 +31,11 @@ namespace ams::dmnt {
             };
         private:
             int m_socket;
-            HtcsSession m_session;
+            TransportSession m_session;
             GdbPacketIo m_packet_io;
             char *m_receive_packet{nullptr};
-            char *m_reply_packet{nullptr};
+            char *m_reply_cur{nullptr};
+            char *m_reply_end{nullptr};
             char m_buffer[GdbPacketBufferSize / 2];
             bool m_killed{false};
             os::ThreadType m_events_thread;
@@ -42,6 +43,7 @@ namespace ams::dmnt {
             DebugProcess m_debug_process;
             os::ProcessId m_process_id{os::InvalidProcessId};
             os::Event m_event;
+            os::ProcessId m_wait_process_id{os::InvalidProcessId};
         public:
             GdbServerImpl(int socket, void *thread_stack, size_t stack_size);
             ~GdbServerImpl();
@@ -60,7 +62,7 @@ namespace ams::dmnt {
             static void DebugEventsThreadEntry(void *arg) { static_cast<GdbServerImpl *>(arg)->DebugEventsThread(); }
             void DebugEventsThread();
             void ProcessDebugEvents();
-            void SetStopReplyPacket(GdbSignal signal);
+            void AppendStopReplyPacket(GdbSignal signal);
         private:
             void D();
 
@@ -98,6 +100,7 @@ namespace ams::dmnt {
 
             void qAttached();
             void qC();
+            void qRcmd();
             void qSupported();
             void qXfer();
             void qXferFeaturesRead();
