@@ -13,25 +13,16 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#pragma once
 #include <stratosphere.hpp>
-#include "dmnt2_transport_session.hpp"
+#include "util_common.hpp"
+#include "util_scoped_heap.hpp"
 
-namespace ams::dmnt {
+namespace ams::test {
 
-    static constexpr size_t GdbPacketBufferSize = 32_KB;
-
-    class GdbPacketIo {
-        private:
-            os::SdkMutex m_mutex;
-            bool m_no_ack;
-        public:
-            GdbPacketIo() : m_mutex(), m_no_ack(false) { /* ... */ }
-
-            void SetNoAck() { m_no_ack = true; }
-
-            void SendPacket(bool *out_break, const char *src, TransportSession *session);
-            char *ReceivePacket(bool *out_break, char *dst, size_t size, TransportSession *session);
-    };
+    DOCTEST_TEST_CASE( "Setting a thread's disable count will cause it to become pinned." ) {
+        DoWithThreadPinning([]() {
+            __asm__ __volatile__("" ::: "memory");
+        });
+    }
 
 }

@@ -27,9 +27,14 @@ namespace ams::dmnt {
 
     }
 
-    Result DebugProcess::Attach(os::ProcessId process_id) {
+    Result DebugProcess::Attach(os::ProcessId process_id, bool start_process) {
         /* Attach to the process. */
         R_TRY(svc::DebugActiveProcess(std::addressof(m_debug_handle), process_id.value));
+
+        /* If necessary, start the process. */
+        if (start_process) {
+            R_ABORT_UNLESS(pm::dmnt::StartProcess(process_id));
+        }
 
         /* Collect initial information. */
         R_TRY(this->Start());
@@ -42,6 +47,10 @@ namespace ams::dmnt {
         svc::GetProcessId(std::addressof(pid_value), m_debug_handle);
 
         m_process_id = { pid_value };
+
+        /* Get process info. */
+        this->CollectProcessInfo();
+
         return ResultSuccess();
     }
 
@@ -187,13 +196,25 @@ namespace ams::dmnt {
                         char path[ModuleDefinition::PathLengthMax];
                     } module_path;
                     if (R_SUCCEEDED(this->ReadMemory(std::addressof(module_path), memory_info.base_address + memory_info.size, sizeof(module_path)))) {
-                        if (module_path.zero == 0 && module_path.path_length == util::Strnlen(module_path.path, sizeof(module_path.path))) {
-                            std::memcpy(module_name, module_path.path, ModuleDefinition::PathLengthMax);
+                        if (module_path.zero == 0 && module_path.path_length > 0) {
+                            std::memcpy(module_name, module_path.path, std::min<size_t>(ModuleDefinition::PathLengthMax, module_path.path_length));
                         }
+                    } else {
+                        module_path.path_length = 0;
                     }
 
                     /* Truncate module name. */
                     module_name[ModuleDefinition::PathLengthMax - 1] = 0;
+
+                    /* Set default module name start. */
+                    module.SetNameStart(0);
+
+                    /* Ignore leading directories. */
+                    for (size_t i = 0; i < std::min<size_t>(ModuleDefinition::PathLengthMax, module_path.path_length) && module_name[i] != 0; ++i) {
+                        if (module_name[i] == '/' || module_name[i] == '\\') {
+                            module.SetNameStart(i + 1);
+                        }
+                    }
                 }
             }
 
@@ -212,6 +233,53 @@ namespace ams::dmnt {
         return ResultSuccess();
     }
 
+    void DebugProcess::CollectProcessInfo() {
+        /* Define helper for getting process info. */
+        auto CollectProcessInfoImpl = [&](os::NativeHandle handle) -> Result {
+            /* Collect all values. */
+            R_TRY(svc::GetInfo(std::addressof(m_process_alias_address), svc::InfoType_AliasRegionAddress, handle, 0));
+            R_TRY(svc::GetInfo(std::addressof(m_process_alias_size),    svc::InfoType_AliasRegionSize,    handle, 0));
+            R_TRY(svc::GetInfo(std::addressof(m_process_heap_address),  svc::InfoType_HeapRegionAddress,  handle, 0));
+            R_TRY(svc::GetInfo(std::addressof(m_process_heap_size),     svc::InfoType_HeapRegionSize,     handle, 0));
+            R_TRY(svc::GetInfo(std::addressof(m_process_aslr_address),  svc::InfoType_AslrRegionAddress,  handle, 0));
+            R_TRY(svc::GetInfo(std::addressof(m_process_aslr_size),     svc::InfoType_AslrRegionSize,     handle, 0));
+            R_TRY(svc::GetInfo(std::addressof(m_process_stack_address), svc::InfoType_StackRegionAddress, handle, 0));
+            R_TRY(svc::GetInfo(std::addressof(m_process_stack_size),    svc::InfoType_StackRegionSize,    handle, 0));
+
+            if (m_program_location.program_id == ncm::InvalidProgramId) {
+                R_TRY(svc::GetInfo(std::addressof(m_program_location.program_id.value), svc::InfoType_ProgramId, handle, 0));
+            }
+
+            u64 value;
+            R_TRY(svc::GetInfo(std::addressof(value), svc::InfoType_IsApplication, handle, 0));
+            m_is_application = value != 0;
+
+            return ResultSuccess();
+        };
+
+        /* Get process info/status. */
+        os::NativeHandle process_handle;
+        if (R_FAILED(pm::dmnt::AtmosphereGetProcessInfo(std::addressof(process_handle), std::addressof(m_program_location), std::addressof(m_process_override_status), m_process_id))) {
+            process_handle            = os::InvalidNativeHandle;
+            m_program_location        = { ncm::InvalidProgramId, };
+            m_process_override_status = {};
+        }
+        ON_SCOPE_EXIT { os::CloseNativeHandle(process_handle); };
+
+        /* Try collecting from our debug handle, then the process handle. */
+        if (R_FAILED(CollectProcessInfoImpl(m_debug_handle)) && R_FAILED(CollectProcessInfoImpl(process_handle))) {
+            m_process_alias_address = 0;
+            m_process_alias_size    = 0;
+            m_process_heap_address  = 0;
+            m_process_heap_size     = 0;
+            m_process_aslr_address  = 0;
+            m_process_aslr_size     = 0;
+            m_process_stack_address = 0;
+            m_process_stack_size    = 0;
+            m_is_application        = false;
+        }
+    }
+
     Result DebugProcess::GetThreadContext(svc::ThreadContext *out, u64 thread_id, u32 flags) {
         return svc::GetDebugThreadContext(out, m_debug_handle, thread_id, flags);
     }
@@ -226,6 +294,11 @@ namespace ams::dmnt {
 
     Result DebugProcess::WriteMemory(const void *src, uintptr_t address, size_t size) {
         return svc::WriteDebugProcessMemory(m_debug_handle, reinterpret_cast<uintptr_t>(src), address, size);
+    }
+
+    Result DebugProcess::QueryMemory(svc::MemoryInfo *out, uintptr_t address) {
+        svc::PageInfo dummy;
+        return svc::QueryDebugProcessMemory(out, std::addressof(dummy), m_debug_handle, address);
     }
 
     Result DebugProcess::Continue() {
@@ -522,5 +595,25 @@ namespace ams::dmnt {
         return ResultSuccess();
     }
 
+    void DebugProcess::GetThreadName(char *dst, u64 thread_id) const {
+        for (size_t i = 0; i < ThreadCountMax; ++i) {
+            if (m_thread_valid[i] && m_thread_ids[i] == thread_id) {
+                if (R_FAILED(osdbg::GetThreadName(dst, std::addressof(m_thread_infos[i])))) {
+                    if (m_thread_infos[i]._thread_type != 0) {
+                        if (m_thread_infos[i]._thread_type_type == osdbg::ThreadTypeType_Libnx) {
+                            util::TSNPrintf(dst, os::ThreadNameLengthMax, "libnx Thread_0x%010lx", reinterpret_cast<uintptr_t>(m_thread_infos[i]._thread_type));
+                        } else {
+                            util::TSNPrintf(dst, os::ThreadNameLengthMax, "Thread_0x%010lx", reinterpret_cast<uintptr_t>(m_thread_infos[i]._thread_type));
+                        }
+                    } else {
+                        break;
+                    }
+                }
+                return;
+            }
+        }
+
+        util::TSNPrintf(dst, os::ThreadNameLengthMax, "Thread_ID=%lu", thread_id);
+    }
 
 }

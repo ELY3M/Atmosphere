@@ -265,6 +265,57 @@ namespace ams::dmnt {
             "\t<reg name=\"fpscr\" bitsize=\"32\" type=\"int\" group=\"float\"/>\n"
             "</feature>\n";
 
+        constexpr const char * const MemoryStateNames[svc::MemoryState_Coverage + 1] = {
+            "----- Free -----", /* svc::MemoryState_Free             */
+            "Io              ", /* svc::MemoryState_Io               */
+            "Static          ", /* svc::MemoryState_Static           */
+            "Code            ", /* svc::MemoryState_Code             */
+            "CodeData        ", /* svc::MemoryState_CodeData         */
+            "Normal          ", /* svc::MemoryState_Normal           */
+            "Shared          ", /* svc::MemoryState_Shared           */
+            "Alias           ", /* svc::MemoryState_Alias            */
+            "AliasCode       ", /* svc::MemoryState_AliasCode        */
+            "AliasCodeData   ", /* svc::MemoryState_AliasCodeData    */
+            "Ipc             ", /* svc::MemoryState_Ipc              */
+            "Stack           ", /* svc::MemoryState_Stack            */
+            "ThreadLocal     ", /* svc::MemoryState_ThreadLocal      */
+            "Transfered      ", /* svc::MemoryState_Transfered       */
+            "SharedTransfered", /* svc::MemoryState_SharedTransfered */
+            "SharedCode      ", /* svc::MemoryState_SharedCode       */
+            "Inaccessible    ", /* svc::MemoryState_Inaccessible     */
+            "NonSecureIpc    ", /* svc::MemoryState_NonSecureIpc     */
+            "NonDeviceIpc    ", /* svc::MemoryState_NonDeviceIpc     */
+            "Kernel          ", /* svc::MemoryState_Kernel           */
+            "GeneratedCode   ", /* svc::MemoryState_GeneratedCode    */
+            "CodeOut         ", /* svc::MemoryState_CodeOut          */
+            "Coverage        ", /* svc::MemoryState_Coverage         */
+        };
+
+        constexpr const char *GetMemoryStateName(svc::MemoryState state) {
+            if (static_cast<size_t>(state) < util::size(MemoryStateNames)) {
+                return MemoryStateNames[static_cast<size_t>(state)];
+            } else {
+                return "Unknown         ";
+            }
+        }
+
+        constexpr const char *GetMemoryPermissionString(const svc::MemoryInfo &info) {
+            if (info.state == svc::MemoryState_Free) {
+                return "   ";
+            } else {
+                switch (info.permission) {
+                    case svc::MemoryPermission_ReadExecute:
+                        return "r-x";
+                    case svc::MemoryPermission_Read:
+                        return "r--";
+                    case svc::MemoryPermission_ReadWrite:
+                        return "rw-";
+                    default:
+                        return "---";
+                }
+            }
+        }
+
         bool ParsePrefix(char *&packet, const char *prefix) {
             const auto len = std::strlen(prefix);
             if (std::strncmp(packet, prefix, len) == 0) {
@@ -275,33 +326,27 @@ namespace ams::dmnt {
             }
         }
 
-        void SetReplyOk(char *reply) {
+        void AppendReplyOk(char * &reply, char * const reply_end) {
+            AMS_UNUSED(reply_end);
             std::strcpy(reply, "OK");
+            reply += 2;
         }
 
-        void SetReplyError(char *reply, const char *err) {
-            AMS_DMNT2_GDB_LOG_ERROR("Reply Error: %s\n", err);
+        void AppendReplyError(char * reply, char * const reply_end, const char *err) {
+            AMS_UNUSED(reply_end);
             std::strcpy(reply, err);
+            reply += std::strlen(err);
         }
 
-        void SetReply(char *reply, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
+        void AppendReplyFormat(char * &reply, char * const reply_end, const char *fmt, ...) __attribute__((format(printf, 3, 4)));
 
-        void SetReply(char *reply, const char *fmt, ...) {
-            std::va_list vl;
-            va_start(vl, fmt);
-            util::VSNPrintf(reply, GdbPacketBufferSize, fmt, vl);
-            va_end(vl);
-        }
-
-        void AppendReply(char *reply, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
-
-        void AppendReply(char *reply, const char *fmt, ...) {
-            const auto len = std::strlen(reply);
-
-            std::va_list vl;
-            va_start(vl, fmt);
-            util::VSNPrintf(reply + len, GdbPacketBufferSize - len, fmt, vl);
-            va_end(vl);
+        void AppendReplyFormat(char * &reply, char * const reply_end, const char *fmt, ...) {
+            if (const auto remaining_size = reply_end - reply; remaining_size > 0) {
+                std::va_list vl;
+                va_start(vl, fmt);
+                reply += util::VSNPrintf(reply, remaining_size, fmt, vl);
+                va_end(vl);
+            }
         }
 
         constexpr int DecodeHex(char c) {
@@ -333,10 +378,10 @@ namespace ams::dmnt {
             return value;
         }
 
-        void MemoryToHex(char *dst, const void *mem, size_t size) {
+        void MemoryToHex(char *dst, char * const dst_end, const void *mem, size_t size) {
             const u8 *mem_u8 = static_cast<const u8 *>(mem);
 
-            while (size-- > 0) {
+            while (size-- > 0 && dst < dst_end - 1) {
                 const u8 v = *(mem_u8++);
                 *(dst++) = "0123456789abcdef"[v >> 4];
                 *(dst++) = "0123456789abcdef"[v & 0xF];
@@ -388,76 +433,76 @@ namespace ams::dmnt {
             return 0;
         }
 
-        void SetGdbRegister32(char *dst, u32 value) {
+        void SetGdbRegister32(char * &dst, char * const dst_end, u32 value) {
             if (value != 0) {
-                AppendReply(dst, "%08x", util::ConvertToBigEndian(value));
+                AppendReplyFormat(dst, dst_end, "%08x", util::ConvertToBigEndian(value));
             } else {
-                AppendReply(dst, "0*\"00");
+                AppendReplyFormat(dst, dst_end, "0*\"00");
             }
         }
 
-        void SetGdbRegister64(char *dst, u64 value) {
+        void SetGdbRegister64(char * &dst, char * const dst_end, u64 value) {
             if (value != 0) {
-                AppendReply(dst, "%016lx", util::ConvertToBigEndian(value));
+                AppendReplyFormat(dst, dst_end, "%016lx", util::ConvertToBigEndian(value));
             } else {
-                AppendReply(dst, "0*,");
+                AppendReplyFormat(dst, dst_end, "0*,");
             }
         }
 
-        void SetGdbRegister128(char *dst, u128 value) {
+        void SetGdbRegister128(char * &dst, char * const dst_end, u128 value) {
             if (value != 0) {
-                AppendReply(dst, "%016lx%016lx", util::ConvertToBigEndian(static_cast<u64>(value >> 0)), util::ConvertToBigEndian(static_cast<u64>(value >> BITSIZEOF(u64))));
+                AppendReplyFormat(dst, dst_end, "%016lx%016lx", util::ConvertToBigEndian(static_cast<u64>(value >> 0)), util::ConvertToBigEndian(static_cast<u64>(value >> BITSIZEOF(u64))));
             } else {
-                AppendReply(dst, "0*<");
+                AppendReplyFormat(dst, dst_end, "0*<");
             }
         }
 
-        void SetGdbRegisterPacket(char *dst, const svc::ThreadContext &thread_context, bool is_64_bit) {
+        void SetGdbRegisterPacket(char * &dst, char * const dst_end, const svc::ThreadContext &thread_context, bool is_64_bit) {
             /* Clear packet. */
             dst[0] = 0;
 
             if (is_64_bit) {
                 /* Copy general purpose registers. */
                 for (size_t i = 0; i < util::size(thread_context.r); ++i) {
-                    SetGdbRegister64(dst, thread_context.r[i]);
+                    SetGdbRegister64(dst, dst_end, thread_context.r[i]);
                 }
 
                 /* Copy special registers. */
-                SetGdbRegister64(dst, thread_context.fp);
-                SetGdbRegister64(dst, thread_context.lr);
-                SetGdbRegister64(dst, thread_context.sp);
-                SetGdbRegister64(dst, thread_context.pc);
+                SetGdbRegister64(dst, dst_end, thread_context.fp);
+                SetGdbRegister64(dst, dst_end, thread_context.lr);
+                SetGdbRegister64(dst, dst_end, thread_context.sp);
+                SetGdbRegister64(dst, dst_end, thread_context.pc);
 
-                SetGdbRegister32(dst, thread_context.pstate);
+                SetGdbRegister32(dst, dst_end, thread_context.pstate);
 
                 /* Copy FPU registers. */
                 for (size_t i = 0; i < util::size(thread_context.v); ++i) {
-                    SetGdbRegister128(dst, thread_context.v[i]);
+                    SetGdbRegister128(dst, dst_end, thread_context.v[i]);
                 }
 
-                SetGdbRegister32(dst, thread_context.fpsr);
-                SetGdbRegister32(dst, thread_context.fpcr);
+                SetGdbRegister32(dst, dst_end, thread_context.fpsr);
+                SetGdbRegister32(dst, dst_end, thread_context.fpcr);
             } else {
                 /* Copy general purpose registers. */
                 for (size_t i = 0; i < 15; ++i) {
-                    SetGdbRegister32(dst, thread_context.r[i]);
+                    SetGdbRegister32(dst, dst_end, thread_context.r[i]);
                 }
 
                 /* Copy special registers. */
-                SetGdbRegister32(dst, thread_context.pc);
-                SetGdbRegister32(dst, thread_context.pstate);
+                SetGdbRegister32(dst, dst_end, thread_context.pc);
+                SetGdbRegister32(dst, dst_end, thread_context.pstate);
 
                 /* Copy FPU registers. */
                 for (size_t i = 0; i < util::size(thread_context.v) / 2; ++i) {
-                    SetGdbRegister128(dst, thread_context.v[i]);
+                    SetGdbRegister128(dst, dst_end, thread_context.v[i]);
                 }
 
                 const u32 fpscr = (thread_context.fpsr & 0xF80000FF) | (thread_context.fpcr & 0x07FFFF00);
-                SetGdbRegister32(dst, fpscr);
+                SetGdbRegister32(dst, dst_end, fpscr);
             }
         }
 
-        void SetGdbRegisterPacket(char *dst, const svc::ThreadContext &thread_context, u64 reg_num, bool is_64_bit) {
+        void SetGdbRegisterPacket(char * &dst, char * const dst_end, const svc::ThreadContext &thread_context, u64 reg_num, bool is_64_bit) {
             /* Clear packet. */
             dst[0] = 0;
 
@@ -524,9 +569,9 @@ namespace ams::dmnt {
             }
 
             switch (reg_size) {
-                case sizeof(u32):  SetGdbRegister32 (dst, v.v32 ); break;
-                case sizeof(u64):  SetGdbRegister64 (dst, v.v64 ); break;
-                case sizeof(u128): SetGdbRegister128(dst, v.v128); break;
+                case sizeof(u32):  SetGdbRegister32 (dst, dst_end, v.v32 ); break;
+                case sizeof(u64):  SetGdbRegister64 (dst, dst_end, v.v64 ); break;
+                case sizeof(u128): SetGdbRegister128(dst, dst_end, v.v128); break;
                 AMS_UNREACHABLE_DEFAULT_CASE();
             }
         }
@@ -765,7 +810,7 @@ namespace ams::dmnt {
         }
 
         constinit os::SdkMutex g_annex_buffer_lock;
-        constinit char g_annex_buffer[0x8000];
+        constinit char g_annex_buffer[2 * GdbPacketBufferSize];
 
         enum AnnexBufferContents {
             AnnexBufferContents_Invalid,
@@ -776,23 +821,29 @@ namespace ams::dmnt {
 
         constinit AnnexBufferContents g_annex_buffer_contents = AnnexBufferContents_Invalid;
 
-        void GetAnnexBufferContents(char *dst, u32 offset, u32 length) {
+        void GetAnnexBufferContents(char * &dst, u32 offset, u32 length) {
             const u32 annex_len = std::strlen(g_annex_buffer);
             if (offset <= annex_len) {
                 if (offset + length < annex_len) {
                     dst[0] = 'm';
                     std::memcpy(dst + 1, g_annex_buffer + offset, length);
                     dst[1 + length] = 0;
+
+                    dst += 1 + length;
                 } else {
                     const auto size = annex_len - offset;
 
                     dst[0] = 'l';
                     std::memcpy(dst + 1, g_annex_buffer + offset, size);
                     dst[1 + size] = 0;
+
+                    dst += 1 + size;
                 }
             } else {
                 dst[0] = '1';
                 dst[1] = 0;
+
+                dst += 1;
             }
         }
 
@@ -856,11 +907,18 @@ namespace ams::dmnt {
                 /* Detach. */
                 m_debug_process.Detach();
 
-                /* If we have a process id, attach. */
-                if (R_FAILED(m_debug_process.Attach(m_process_id))) {
-                    AMS_DMNT2_GDB_LOG_DEBUG("Failed to attach to %016lx\n", m_process_id.value);
-                    g_event_done_cv.Signal();
-                    continue;
+                /* Check if we need to start the process. */
+                const bool start_process = m_process_id == m_wait_process_id;
+                {
+                    /* Clear our wait process id. */
+                    ON_SCOPE_EXIT { if (start_process) { m_wait_process_id = os::InvalidProcessId; } };
+
+                    /* If we have a process id, attach. */
+                    if (R_FAILED(m_debug_process.Attach(m_process_id, m_process_id == m_wait_process_id))) {
+                        AMS_DMNT2_GDB_LOG_DEBUG("Failed to attach to %016lx\n", m_process_id.value);
+                        g_event_done_cv.Signal();
+                        continue;
+                    }
                 }
 
                 /* Set our process id. */
@@ -889,6 +947,9 @@ namespace ams::dmnt {
     void GdbServerImpl::ProcessDebugEvents() {
         AMS_DMNT2_GDB_LOG_DEBUG("Processing debug events for %016lx\n", m_process_id.value);
 
+        u64 new_hb_nro_addr = 0;
+        u32 new_hb_nro_insn = 0;
+
         while (true) {
             /* Wait for an event to come in. */
             const Result wait_result = [&] ALWAYS_INLINE_LAMBDA {
@@ -916,11 +977,13 @@ namespace ams::dmnt {
             }
 
             /* Process the event. */
-            bool reply = false;
             GdbSignal signal;
             char send_buffer[GdbPacketBufferSize];
             u64 thread_id = d.thread_id;
             m_debug_process.ClearStep();
+
+            char *       reply_cur = send_buffer;
+            char * const reply_end = std::end(send_buffer);
 
             send_buffer[0] = 0;
             switch (d.type) {
@@ -936,7 +999,7 @@ namespace ams::dmnt {
                                     AMS_DMNT2_GDB_LOG_DEBUG("BreakPoint %lx, addr=%lx, type=%s\n", thread_id, address, is_instr ? "Instr" : "Data");
 
                                     if (is_instr) {
-                                        SetReply(send_buffer, "T%02Xthread:p%lx.%lx;hwbreak:;", static_cast<u32>(signal), m_process_id.value, thread_id);
+                                        AppendReplyFormat(reply_cur, reply_end, "T%02Xthread:p%lx.%lx;hwbreak:;", static_cast<u32>(signal), m_process_id.value, thread_id);
                                     } else {
                                         bool read = false, write = false;
                                         const char *type = "watch";
@@ -950,10 +1013,8 @@ namespace ams::dmnt {
                                             AMS_DMNT2_GDB_LOG_DEBUG("GetWatchPointInfo FAIL %lx, addr=%lx, type=%s\n", thread_id, address, is_instr ? "Instr" : "Data");
                                         }
 
-                                        SetReply(send_buffer, "T%02Xthread:p%lx.%lx;%s:%lx;", static_cast<u32>(signal), m_process_id.value, thread_id, type, address);
+                                        AppendReplyFormat(reply_cur, reply_end, "T%02Xthread:p%lx.%lx;%s:%lx;", static_cast<u32>(signal), m_process_id.value, thread_id, type, address);
                                     }
-
-                                    reply = true;
                                 }
                                 break;
                             case svc::DebugException_UserBreak:
@@ -970,6 +1031,25 @@ namespace ams::dmnt {
                                             /* Re-collect the process's modules. */
                                             m_debug_process.CollectModules();
                                         }
+
+                                        if (m_debug_process.GetOverrideStatus().IsHbl() && reason == svc::BreakReason_PostLoadDll) {
+                                            if (R_SUCCEEDED(m_debug_process.ReadMemory(std::addressof(new_hb_nro_insn), info.address, sizeof(new_hb_nro_insn)))) {
+                                                const u32 break_insn = SdkBreakPoint;
+                                                if (R_SUCCEEDED(m_debug_process.WriteMemory(std::addressof(break_insn), info.address, sizeof(break_insn)))) {
+                                                    AMS_DMNT2_GDB_LOG_DEBUG("Set automatic break on new homebrew NRO (%lx, %lx)\n", info.address, info.size);
+
+                                                    new_hb_nro_addr = info.address;
+                                                } else {
+                                                    AMS_DMNT2_GDB_LOG_DEBUG("Failed to set automatic break on new homebrew NRO (%lx, %lx)\n", info.address, info.size);
+                                                }
+                                            } else {
+                                                AMS_DMNT2_GDB_LOG_DEBUG("Failed to read first insn on new homebrew NRO (%lx, %lx)\n", info.address, info.size);
+                                            }
+                                        }
+
+                                        /* This was just a notification, so we should continue. */
+                                        m_debug_process.Continue();
+                                        continue;
                                     }
 
                                     /* Check if we should automatically continue. */
@@ -994,10 +1074,18 @@ namespace ams::dmnt {
                                 break;
                             case svc::DebugException_DebuggerBreak:
                                 {
-                                    AMS_DMNT2_GDB_LOG_DEBUG("DebuggerBreak %lx, last=%lx\n", thread_id, m_debug_process.GetLastThreadId());
                                     signal = GdbSignal_Interrupt;
-                                    thread_id = m_debug_process.GetLastThreadId();
+
+                                    thread_id = m_debug_process.GetPreferredDebuggerBreakThreadId();
+                                    svc::ThreadContext ctx;
+                                    if (thread_id == 0 || thread_id == static_cast<u64>(-1) || R_FAILED(m_debug_process.GetThreadContext(std::addressof(ctx), thread_id, svc::ThreadContextFlag_Control))) {
+                                        thread_id = m_debug_process.GetLastThreadId();
+                                    }
+
+                                    AMS_DMNT2_GDB_LOG_DEBUG("DebuggerBreak %lx, last=%lx\n", thread_id, m_debug_process.GetLastThreadId());
+
                                     m_debug_process.SetLastThreadId(thread_id);
+                                    m_debug_process.SetThreadIdOverride(thread_id);
                                 }
                                 break;
                             case svc::DebugException_UndefinedInstruction:
@@ -1007,6 +1095,10 @@ namespace ams::dmnt {
                                     uintptr_t address = d.info.exception.address;
                                     const u32 insn    = d.info.exception.specific.undefined_instruction.insn;
                                     u32 new_insn      = 0;
+
+                                    AMS_DMNT2_GDB_LOG_DEBUG("Undefined Instruction %lx, address=%p, insn=%08x\n", thread_id, reinterpret_cast<void *>(address), insn);
+
+                                    bool is_new_hb_nro = false;
 
                                     svc::ThreadContext ctx;
                                     if (R_SUCCEEDED(m_debug_process.GetThreadContext(std::addressof(ctx), thread_id, svc::ThreadContextFlag_Control))) {
@@ -1049,6 +1141,19 @@ namespace ams::dmnt {
                                             {
                                                 signal = GdbSignal_BreakpointTrap;
                                             }
+
+                                            if (m_debug_process.GetOverrideStatus().IsHbl() && address == new_hb_nro_addr && insn == SdkBreakPoint) {
+                                                if (R_SUCCEEDED(m_debug_process.WriteMemory(std::addressof(new_hb_nro_insn), new_hb_nro_addr, sizeof(new_hb_nro_insn)))) {
+                                                    AMS_DMNT2_GDB_LOG_DEBUG("Did automatic break on new homebrew NRO (%lx)\n", address);
+
+                                                    new_hb_nro_addr = 0;
+                                                    new_hb_nro_insn = 0;
+
+                                                    is_new_hb_nro = true;
+                                                } else {
+                                                    AMS_DMNT2_GDB_LOG_ERROR("Failed to restore instruction for new homebrew NRO (%lx)!\n", address);
+                                                }
+                                            }
                                         }
 
                                         if (insn_changed) {
@@ -1057,14 +1162,13 @@ namespace ams::dmnt {
                                     }
 
                                     if (signal == GdbSignal_IllegalInstruction) {
-                                        AMS_DMNT2_GDB_LOG_DEBUG("Undefined Instruction %lx, address=%p, insn=%08x\n", thread_id, reinterpret_cast<void *>(address), insn);
+                                        AMS_DMNT2_GDB_LOG_DEBUG("Illegal Instruction %lx, address=%p, insn=%08x\n", thread_id, reinterpret_cast<void *>(address), insn);
                                     } else if (signal == GdbSignal_BreakpointTrap && ((insn & SdkBreakPointMask) != SdkBreakPoint)) {
                                         AMS_DMNT2_GDB_LOG_DEBUG("Non-SDK BreakPoint %lx, address=%p, insn=%08x\n", thread_id, reinterpret_cast<void *>(address), insn);
                                     }
 
-                                    if (signal == GdbSignal_BreakpointTrap) {
-                                        SetReply(send_buffer, "T%02Xthread:p%lx.%lx;swbreak:;", static_cast<u32>(signal), m_process_id.value, thread_id);
-                                        reply = true;
+                                    if (signal == GdbSignal_BreakpointTrap && !is_new_hb_nro) {
+                                        AppendReplyFormat(reply_cur, reply_end, "T%02Xthread:p%lx.%lx;swbreak:;", static_cast<u32>(signal), m_process_id.value, thread_id);
                                     }
 
                                     m_debug_process.ClearStep();
@@ -1076,9 +1180,8 @@ namespace ams::dmnt {
                                 break;
                         }
 
-                        if (!reply) {
-                            SetReply(send_buffer, "T%02Xthread:p%lx.%lx;", static_cast<u32>(signal), m_process_id.value, thread_id);
-                            reply = true;
+                        if (reply_cur == send_buffer) {
+                            AppendReplyFormat(reply_cur, reply_end, "T%02Xthread:p%lx.%lx;", static_cast<u32>(signal), m_process_id.value, thread_id);
                         }
 
                         m_debug_process.SetLastThreadId(thread_id);
@@ -1092,8 +1195,7 @@ namespace ams::dmnt {
                         if (m_debug_process.IsValid()) {
                             m_debug_process.Continue();
                         } else {
-                            SetReply(send_buffer, "W00");
-                            reply = true;
+                            AppendReplyFormat(reply_cur, reply_end, "W00");
                         }
                     }
                     break;
@@ -1104,8 +1206,7 @@ namespace ams::dmnt {
                         if (m_debug_process.IsValid()) {
                             m_debug_process.Continue();
                         } else {
-                            SetReply(send_buffer, "W00");
-                            reply = true;
+                            AppendReplyFormat(reply_cur, reply_end, "W00");
                         }
                     }
                     break;
@@ -1115,13 +1216,12 @@ namespace ams::dmnt {
                         AMS_DMNT2_GDB_LOG_DEBUG("ExitProcess\n");
 
                         if (d.info.exit_process.reason == svc::ProcessExitReason_ExitProcess) {
-                            SetReply(send_buffer, "W00");
+                            AppendReplyFormat(reply_cur, reply_end, "W00");
                         } else {
-                            SetReply(send_buffer, "X%02X", GdbSignal_Killed);
+                            AppendReplyFormat(reply_cur, reply_end, "X%02X", GdbSignal_Killed);
                         }
 
                         m_debug_process.Detach();
-                        reply = true;
                     }
                     break;
                 default:
@@ -1130,7 +1230,7 @@ namespace ams::dmnt {
                     break;
             }
 
-            if (reply) {
+            if (reply_cur != send_buffer) {
                 bool do_break;
                 this->SendPacket(std::addressof(do_break), send_buffer);
                 if (do_break) {
@@ -1140,9 +1240,9 @@ namespace ams::dmnt {
         }
     }
 
-    void GdbServerImpl::SetStopReplyPacket(GdbSignal signal) {
+    void GdbServerImpl::AppendStopReplyPacket(GdbSignal signal) {
         /* Set the signal. */
-        SetReply(m_reply_packet, "T%02X", static_cast<u32>(signal));
+        AppendReplyFormat(m_reply_cur, m_reply_end, "T%02X", static_cast<u32>(signal));
 
         /* Get the last thread id. */
         const u64 thread_id = m_debug_process.GetLastThreadId();
@@ -1155,33 +1255,33 @@ namespace ams::dmnt {
         /* TODO: aarch32 */
         {
             if (thread_context.fp != 0) {
-                AppendReply(m_reply_packet, "1d:%016lx", util::ConvertToBigEndian(thread_context.fp));
+                AppendReplyFormat(m_reply_cur, m_reply_end, "1d:%016lx", util::ConvertToBigEndian(thread_context.fp));
             } else {
-                AppendReply(m_reply_packet, "1d:0*,");
+                AppendReplyFormat(m_reply_cur, m_reply_end, "1d:0*,");
             }
 
             if (thread_context.sp != 0) {
-                AppendReply(m_reply_packet, ";1f:%016lx", util::ConvertToBigEndian(thread_context.sp));
+                AppendReplyFormat(m_reply_cur, m_reply_end, ";1f:%016lx", util::ConvertToBigEndian(thread_context.sp));
             } else {
-                AppendReply(m_reply_packet, ";1f:0*,");
+                AppendReplyFormat(m_reply_cur, m_reply_end, ";1f:0*,");
             }
 
             if (thread_context.pc != 0) {
-                AppendReply(m_reply_packet, ";20:%016lx", util::ConvertToBigEndian(thread_context.pc));
+                AppendReplyFormat(m_reply_cur, m_reply_end, ";20:%016lx", util::ConvertToBigEndian(thread_context.pc));
             } else {
-                AppendReply(m_reply_packet, ";20:0*,");
+                AppendReplyFormat(m_reply_cur, m_reply_end, ";20:0*,");
             }
         }
 
         /* Add the thread id. */
-        AppendReply(m_reply_packet, ";thread:p%lx.%lx", m_process_id.value, thread_id);
+        AppendReplyFormat(m_reply_cur, m_reply_end, ";thread:p%lx.%lx", m_process_id.value, thread_id);
 
         /* Add the thread core. */
         {
             u32 core = 0;
             m_debug_process.GetThreadCurrentCore(std::addressof(core), thread_id);
 
-            AppendReply(m_reply_packet, ";core:%u;", core);
+            AppendReplyFormat(m_reply_cur, m_reply_end, ";core:%u;", core);
         }
     }
 
@@ -1201,19 +1301,25 @@ namespace ams::dmnt {
                 /* Send packet. */
                 this->SendPacket(std::addressof(do_break), reply_buffer);
             }
+
+            /* If we should, break the process. */
+            if (do_break) {
+                m_debug_process.Break();
+            }
         }
     }
 
     void GdbServerImpl::ProcessPacket(char *receive, char *reply) {
         /* Set our fields. */
         m_receive_packet = receive;
-        m_reply_packet   = reply;
+        m_reply_cur      = reply;
+        m_reply_end      = reply + GdbPacketBufferSize;
 
         /* Log the packet we're processing. */
         AMS_DMNT2_GDB_LOG_DEBUG("Receive: %s\n", m_receive_packet);
 
         /* Clear our reply packet. */
-        m_reply_packet[0] = 0;
+        reply[0] = 0;
 
         /* Handle the received packet. */
         switch (m_receive_packet[0]) {
@@ -1268,7 +1374,7 @@ namespace ams::dmnt {
                 this->z();
                 break;
             case '!':
-                SetReplyOk(m_reply_packet);
+                AppendReplyOk(m_reply_cur, m_reply_end);
                 break;
             case '?':
                 this->QuestionMark();
@@ -1281,7 +1387,7 @@ namespace ams::dmnt {
 
     void GdbServerImpl::D() {
         m_debug_process.Detach();
-        SetReplyOk(m_reply_packet);
+        AppendReplyOk(m_reply_cur, m_reply_end);
     }
 
     void GdbServerImpl::G() {
@@ -1294,7 +1400,7 @@ namespace ams::dmnt {
         /* Get thread context. */
         svc::ThreadContext ctx;
         if (R_FAILED(m_debug_process.GetThreadContext(std::addressof(ctx), thread_id, svc::ThreadContextFlag_All))) {
-            SetReplyError(m_reply_packet, "E01");
+            AppendReplyError(m_reply_cur, m_reply_end, "E01");
             return;
         }
 
@@ -1303,9 +1409,9 @@ namespace ams::dmnt {
 
         /* Set the thread context. */
         if (R_SUCCEEDED(m_debug_process.SetThreadContext(std::addressof(ctx), thread_id, svc::ThreadContextFlag_All))) {
-            SetReplyOk(m_reply_packet);
+            AppendReplyOk(m_reply_cur, m_reply_end);
         } else {
-            SetReplyError(m_reply_packet, "E01");
+            AppendReplyError(m_reply_cur, m_reply_end, "E01");
         }
     }
 
@@ -1314,10 +1420,10 @@ namespace ams::dmnt {
             if (ParsePrefix(m_receive_packet, "Hg") || ParsePrefix(m_receive_packet, "HG")) {
                 this->Hg();
             } else {
-                SetReplyError(m_reply_packet, "E01");
+                AppendReplyError(m_reply_cur, m_reply_end, "E01");
             }
         } else {
-            SetReplyError(m_reply_packet, "E01");
+            AppendReplyError(m_reply_cur, m_reply_end, "E01");
         }
     }
 
@@ -1349,9 +1455,9 @@ namespace ams::dmnt {
         }
 
         if (success) {
-            SetReplyOk(m_reply_packet);
+            AppendReplyOk(m_reply_cur, m_reply_end);
         } else {
-            SetReplyError(m_reply_packet, "E01");
+            AppendReplyError(m_reply_cur, m_reply_end, "E01");
         }
     }
 
@@ -1361,14 +1467,14 @@ namespace ams::dmnt {
         /* Validate format. */
         char *comma = std::strchr(m_receive_packet, ',');
         if (comma == nullptr) {
-            SetReplyError(m_reply_packet, "E01");
+            AppendReplyError(m_reply_cur, m_reply_end, "E01");
             return;
         }
         *comma = 0;
 
         char *colon = std::strchr(comma + 1, ':');
         if (colon == nullptr) {
-            SetReplyError(m_reply_packet, "E01");
+            AppendReplyError(m_reply_cur, m_reply_end, "E01");
             return;
         }
         *colon = 0;
@@ -1377,7 +1483,7 @@ namespace ams::dmnt {
         const u64 address = DecodeHex(m_receive_packet);
         const u64 length  = DecodeHex(comma + 1);
         if (length >= sizeof(m_buffer)) {
-            SetReplyError(m_reply_packet, "E01");
+            AppendReplyError(m_reply_cur, m_reply_end, "E01");
             return;
         }
 
@@ -1386,9 +1492,9 @@ namespace ams::dmnt {
 
         /* Write the memory. */
         if (R_SUCCEEDED(m_debug_process.WriteMemory(m_buffer, address, length))) {
-            SetReplyOk(m_reply_packet);
+            AppendReplyOk(m_reply_cur, m_reply_end);
         } else {
-            SetReplyError(m_reply_packet, "E01");
+            AppendReplyError(m_reply_cur, m_reply_end, "E01");
         }
     }
 
@@ -1398,7 +1504,7 @@ namespace ams::dmnt {
         /* Validate format. */
         char *equal = std::strchr(m_receive_packet, '=');
         if (equal == nullptr) {
-            SetReplyError(m_reply_packet, "E01");
+            AppendReplyError(m_reply_cur, m_reply_end, "E01");
             return;
         }
         *equal = 0;
@@ -1421,12 +1527,12 @@ namespace ams::dmnt {
             ParseGdbRegisterPacket(ctx, equal + 1, reg_num, m_debug_process.Is64Bit());
 
             if (R_SUCCEEDED(m_debug_process.SetThreadContext(std::addressof(ctx), thread_id, flags))) {
-                SetReplyOk(m_reply_packet);
+                AppendReplyOk(m_reply_cur, m_reply_end);
             } else {
-                SetReplyError(m_reply_packet, "E01");
+                AppendReplyError(m_reply_cur, m_reply_end, "E01");
             }
         } else {
-            SetReplyError(m_reply_packet, "E01");
+            AppendReplyError(m_reply_cur, m_reply_end, "E01");
         }
     }
 
@@ -1444,12 +1550,12 @@ namespace ams::dmnt {
 
             svc::ThreadContext ctx;
             if (R_SUCCEEDED(m_debug_process.GetThreadContext(std::addressof(ctx), thread_id, svc::ThreadContextFlag_Control))) {
-                SetReplyOk(m_reply_packet);
+                AppendReplyOk(m_reply_cur, m_reply_end);
             } else {
-                SetReply(m_reply_packet, "E01");
+                AppendReplyFormat(m_reply_cur, m_reply_end, "E01");
             }
         } else {
-            SetReplyError(m_reply_packet, "E01");
+            AppendReplyError(m_reply_cur, m_reply_end, "E01");
         }
     }
 
@@ -1459,7 +1565,7 @@ namespace ams::dmnt {
 
         /* Decode the type. */
         if (!('0' <= m_receive_packet[0] && m_receive_packet[0] <= '4') || m_receive_packet[1] != ',') {
-            SetReplyError(m_reply_packet, "E01");
+            AppendReplyError(m_reply_cur, m_reply_end, "E01");
             return;
         }
 
@@ -1469,7 +1575,7 @@ namespace ams::dmnt {
         /* Decode the address/length. */
         const char *comma = std::strchr(m_receive_packet, ',');
         if (comma == nullptr) {
-            SetReplyError(m_reply_packet, "E01");
+            AppendReplyError(m_reply_cur, m_reply_end, "E01");
             return;
         }
 
@@ -1482,9 +1588,9 @@ namespace ams::dmnt {
                 {
                     if (length == 2 || length == 4) {
                         if (R_SUCCEEDED(m_debug_process.SetBreakPoint(address, length, false))) {
-                            SetReplyOk(m_reply_packet);
+                            AppendReplyOk(m_reply_cur, m_reply_end);
                         } else {
-                            SetReplyError(m_reply_packet, "E01");
+                            AppendReplyError(m_reply_cur, m_reply_end, "E01");
                         }
                     }
                 }
@@ -1493,9 +1599,9 @@ namespace ams::dmnt {
                 {
                     if (length == 2 || length == 4) {
                         if (R_SUCCEEDED(m_debug_process.SetHardwareBreakPoint(address, length, false))) {
-                            SetReplyOk(m_reply_packet);
+                            AppendReplyOk(m_reply_cur, m_reply_end);
                         } else {
-                            SetReplyError(m_reply_packet, "E01");
+                            AppendReplyError(m_reply_cur, m_reply_end, "E01");
                         }
                     }
                 }
@@ -1504,9 +1610,9 @@ namespace ams::dmnt {
                 {
                     if (m_debug_process.IsValidWatchPoint(address, length)) {
                         if (R_SUCCEEDED(m_debug_process.SetWatchPoint(address, length, false, true))) {
-                            SetReplyOk(m_reply_packet);
+                            AppendReplyOk(m_reply_cur, m_reply_end);
                         } else {
-                            SetReplyError(m_reply_packet, "E01");
+                            AppendReplyError(m_reply_cur, m_reply_end, "E01");
                         }
                     }
                 }
@@ -1515,9 +1621,9 @@ namespace ams::dmnt {
                 {
                     if (m_debug_process.IsValidWatchPoint(address, length)) {
                         if (R_SUCCEEDED(m_debug_process.SetWatchPoint(address, length, true, false))) {
-                            SetReplyOk(m_reply_packet);
+                            AppendReplyOk(m_reply_cur, m_reply_end);
                         } else {
-                            SetReplyError(m_reply_packet, "E01");
+                            AppendReplyError(m_reply_cur, m_reply_end, "E01");
                         }
                     }
                 }
@@ -1526,9 +1632,9 @@ namespace ams::dmnt {
                 {
                     if (m_debug_process.IsValidWatchPoint(address, length)) {
                         if (R_SUCCEEDED(m_debug_process.SetWatchPoint(address, length, true, true))) {
-                            SetReplyOk(m_reply_packet);
+                            AppendReplyOk(m_reply_cur, m_reply_end);
                         } else {
-                            SetReplyError(m_reply_packet, "E01");
+                            AppendReplyError(m_reply_cur, m_reply_end, "E01");
                         }
                     }
                 }
@@ -1554,9 +1660,9 @@ namespace ams::dmnt {
         }
 
         if (R_SUCCEEDED(result)) {
-            SetReplyOk(m_reply_packet);
+            AppendReplyOk(m_reply_cur, m_reply_end);
         } else {
-            SetReplyError(m_reply_packet, "E01");
+            AppendReplyError(m_reply_cur, m_reply_end, "E01");
         }
     }
 
@@ -1574,7 +1680,7 @@ namespace ams::dmnt {
         }
 
         /* Populate reply packet. */
-        SetGdbRegisterPacket(m_reply_packet, thread_context, m_debug_process.Is64Bit());
+        SetGdbRegisterPacket(m_reply_cur, m_reply_end, thread_context, m_debug_process.Is64Bit());
 
         return true;
     }
@@ -1585,7 +1691,7 @@ namespace ams::dmnt {
         /* Validate format. */
         const char *comma = std::strchr(m_receive_packet, ',');
         if (comma == nullptr) {
-            SetReplyError(m_reply_packet, "E01");
+            AppendReplyError(m_reply_cur, m_reply_end, "E01");
             return;
         }
 
@@ -1593,19 +1699,19 @@ namespace ams::dmnt {
         const u64 address = DecodeHex(m_receive_packet);
         const u64 length  = DecodeHex(comma + 1);
         if (length >= sizeof(m_buffer)) {
-            SetReplyError(m_reply_packet, "E01");
+            AppendReplyError(m_reply_cur, m_reply_end, "E01");
             return;
         }
 
         /* Read the memory. */
         /* TODO: Detect partial readability? */
         if (R_FAILED(m_debug_process.ReadMemory(m_buffer, address, length))) {
-            SetReplyError(m_reply_packet, "E01");
+            AppendReplyError(m_reply_cur, m_reply_end, "E01");
             return;
         }
 
         /* Encode the memory. */
-        MemoryToHex(m_reply_packet, m_buffer, length);
+        MemoryToHex(m_reply_cur, m_reply_end, m_buffer, length);
     }
 
     void GdbServerImpl::k() {
@@ -1631,9 +1737,9 @@ namespace ams::dmnt {
         /* Get the register. */
         svc::ThreadContext ctx;
         if (R_SUCCEEDED(m_debug_process.GetThreadContext(std::addressof(ctx), thread_id, flags))) {
-            SetGdbRegisterPacket(m_reply_packet, ctx, reg_num, m_debug_process.Is64Bit());
+            SetGdbRegisterPacket(m_reply_cur, m_reply_end, ctx, reg_num, m_debug_process.Is64Bit());
         } else {
-            SetReplyError(m_reply_packet, "E01");
+            AppendReplyError(m_reply_cur, m_reply_end, "E01");
         }
     }
 
@@ -1666,22 +1772,22 @@ namespace ams::dmnt {
                 /* If we're attached, send a stop reply packet. */
                 if (m_debug_process.IsValid()) {
                     /* Set the stop reply packet. */
-                    this->SetStopReplyPacket(m_debug_process.GetLastSignal());
+                    this->AppendStopReplyPacket(m_debug_process.GetLastSignal());
                 } else {
-                    SetReplyError(m_reply_packet, "E01");
+                    AppendReplyError(m_reply_cur, m_reply_end, "E01");
                 }
             } else {
-                SetReplyError(m_reply_packet, "E01");
+                AppendReplyError(m_reply_cur, m_reply_end, "E01");
             }
         } else {
-            SetReplyError(m_reply_packet, "E01");
+            AppendReplyError(m_reply_cur, m_reply_end, "E01");
         }
     }
 
     void GdbServerImpl::vCont() {
         /* Check if this is a query about what we support. */
         if (ParsePrefix(m_receive_packet, "?")) {
-            SetReply(m_reply_packet, "vCont;c;C;s;S;");
+            AppendReplyFormat(m_reply_cur, m_reply_end, "vCont;c;C;s;S;");
             return;
         }
 
@@ -1701,7 +1807,7 @@ namespace ams::dmnt {
         s32 num_threads;
         if (R_FAILED(m_debug_process.GetThreadList(std::addressof(num_threads), thread_ids, util::size(thread_ids)))) {
             AMS_DMNT2_GDB_LOG_ERROR("vCont: Failed to get thread list\n");
-            SetReplyError(m_reply_packet, "E01");
+            AppendReplyError(m_reply_cur, m_reply_end, "E01");
             return;
         }
 
@@ -1733,10 +1839,10 @@ namespace ams::dmnt {
 
         /* Set reply. */
         if (R_SUCCEEDED(result)) {
-            SetReplyOk(m_reply_packet);
+            AppendReplyOk(m_reply_cur, m_reply_end);
         } else {
             AMS_DMNT2_GDB_LOG_ERROR("vCont: Failed %08x\n", result.GetValue());
-            SetReplyError(m_reply_packet, "E01");
+            AppendReplyError(m_reply_cur, m_reply_end, "E01");
         }
     }
 
@@ -1817,6 +1923,8 @@ namespace ams::dmnt {
             this->qAttached();
         } else if (ParsePrefix(m_receive_packet, "qC")) {
             this->qC();
+        } else if (ParsePrefix(m_receive_packet, "qRcmd,")) {
+            this->qRcmd();
         } else if (ParsePrefix(m_receive_packet, "qSupported:")) {
             this->qSupported();
         } else if (ParsePrefix(m_receive_packet, "qXfer:")) {
@@ -1828,18 +1936,180 @@ namespace ams::dmnt {
 
     void GdbServerImpl::qAttached() {
         if (this->HasDebugProcess()) {
-            SetReply(m_reply_packet, "1");
+            AppendReplyFormat(m_reply_cur, m_reply_end, "1");
         } else {
-            SetReplyError(m_reply_packet, "E01");
+            AppendReplyError(m_reply_cur, m_reply_end, "E01");
         }
     }
 
     void GdbServerImpl::qC() {
         if (this->HasDebugProcess()) {
             /* Send the thread id. */
-            SetReply(m_reply_packet, "QCp%lx.%lx", m_process_id.value, m_debug_process.GetLastThreadId());
+            AppendReplyFormat(m_reply_cur, m_reply_end, "QCp%lx.%lx", m_process_id.value, m_debug_process.GetLastThreadId());
         } else {
-            SetReplyError(m_reply_packet, "E01");
+            AppendReplyError(m_reply_cur, m_reply_end, "E01");
+        }
+    }
+
+    void GdbServerImpl::qRcmd() {
+        /* Decode the command. */
+        const auto packet_len = std::strlen(m_receive_packet);
+        HexToMemory(m_buffer, m_receive_packet, packet_len);
+        m_buffer[packet_len / 2] = '\x00';
+
+        /* Convert our response to hex, on complete. */
+        ON_SCOPE_EXIT {
+            /* Convert response to hex. */
+            MemoryToHex(m_reply_cur, m_reply_end, m_buffer, std::strlen(m_buffer));
+        };
+
+        char *reply_cur = m_buffer;
+        char *reply_end = m_buffer + sizeof(m_buffer);
+
+        /* Parse the command. */
+        char *command = reinterpret_cast<char *>(m_buffer);
+        if (ParsePrefix(command, "help")) {
+            AppendReplyFormat(reply_cur, reply_end, "get info\n"
+                                               "get mappings\n"
+                                               "get mappings {address}\n"
+                                               "get mapping {address}\n"
+                                               "wait application\n"
+                                               "wait {program id}\n"
+                                               "wait homebrew\n");
+        } else if (ParsePrefix(command, "get base") || ParsePrefix(command, "get info") || ParsePrefix(command, "get modules")) {
+            if (!this->HasDebugProcess()) {
+                AppendReplyFormat(reply_cur, reply_end, "Not attached.\n");
+                return;
+            }
+
+            AppendReplyFormat(reply_cur, reply_end, "Process:     0x%lx (%s)\n"
+                                                    "Program Id:  0x%016lx\n"
+                                                    "Application: %d\n"
+                                                    "Hbl:         %d\n"
+                                                    "Layout:\n", m_process_id.value, m_debug_process.GetProcessName(), m_debug_process.GetProgramLocation().program_id.value, m_debug_process.IsApplication(), m_debug_process.GetOverrideStatus().IsHbl());
+
+            AppendReplyFormat(reply_cur, reply_end, "  Alias: 0x%010lx - 0x%010lx\n"
+                                                    "  Heap:  0x%010lx - 0x%010lx\n"
+                                                    "  Aslr:  0x%010lx - 0x%010lx\n"
+                                                    "  Stack: 0x%010lx - 0x%010lx\n"
+                                                    "Modules:\n", m_debug_process.GetAliasRegionAddress(), m_debug_process.GetAliasRegionAddress() + m_debug_process.GetAliasRegionSize() - 1,
+                                                                  m_debug_process.GetHeapRegionAddress(),  m_debug_process.GetHeapRegionAddress()  + m_debug_process.GetHeapRegionSize()  - 1,
+                                                                  m_debug_process.GetAslrRegionAddress(),  m_debug_process.GetAslrRegionAddress()  + m_debug_process.GetAslrRegionSize()  - 1,
+                                                                  m_debug_process.GetStackRegionAddress(), m_debug_process.GetStackRegionAddress() + m_debug_process.GetStackRegionSize() - 1);
+
+            /* Get the module list. */
+            for (size_t i = 0; i < m_debug_process.GetModuleCount(); ++i) {
+                const char *module_name = m_debug_process.GetModuleName(i);
+                const auto name_len = std::strlen(module_name);
+                if (name_len < 5 || (std::strcmp(module_name + name_len - 4, ".elf") != 0 && std::strcmp(module_name + name_len - 4, ".nss") != 0)) {
+                    AppendReplyFormat(reply_cur, reply_end, "  0x%010lx - 0x%010lx %s.elf\n", m_debug_process.GetModuleBaseAddress(i), m_debug_process.GetModuleBaseAddress(i) + m_debug_process.GetModuleSize(i) - 1, module_name);
+                } else {
+                    AppendReplyFormat(reply_cur, reply_end, "  0x%010lx - 0x%010lx %s\n", m_debug_process.GetModuleBaseAddress(i), m_debug_process.GetModuleBaseAddress(i) + m_debug_process.GetModuleSize(i) - 1, module_name);
+                }
+            }
+        } else if (ParsePrefix(command, "get mappings")) {
+            if (!this->HasDebugProcess()) {
+                AppendReplyFormat(reply_cur, reply_end, "Not attached.\n");
+                return;
+            }
+
+            uintptr_t cur_addr = 0;
+            if (ParsePrefix(command, " ")) {
+                ParsePrefix(command, "0x");
+
+                cur_addr = DecodeHex(command);
+            }
+
+            AppendReplyFormat(reply_cur, reply_end, "Mappings (starting from 0x%010lx):\n", cur_addr);
+
+            while (true) {
+                /* Check if we have room for a mapping. */
+                if (reply_end - reply_cur < 0x48 * 2) {
+                    AppendReplyFormat(reply_cur, reply_end, "<-- Send `monitor get mappings 0x%010lx` to continue -->\n", cur_addr);
+                    break;
+                }
+
+                /* Get mapping. */
+                svc::MemoryInfo mem_info;
+                if (R_FAILED(m_debug_process.QueryMemory(std::addressof(mem_info), cur_addr))) {
+                    break;
+                }
+
+                if (mem_info.state != svc::MemoryState_Inaccessible || mem_info.base_address + mem_info.size - 1 != std::numeric_limits<u64>::max()) {
+                    const char *state = GetMemoryStateName(mem_info.state);
+                    const char *perm  = GetMemoryPermissionString(mem_info);
+
+                    const char l = (mem_info.attribute & svc::MemoryAttribute_Locked)       ? 'L' : '-';
+                    const char i = (mem_info.attribute & svc::MemoryAttribute_IpcLocked)    ? 'I' : '-';
+                    const char d = (mem_info.attribute & svc::MemoryAttribute_DeviceShared) ? 'D' : '-';
+                    const char u = (mem_info.attribute & svc::MemoryAttribute_Uncached)     ? 'U' : '-';
+
+                    AppendReplyFormat(reply_cur, reply_end, "  0x%010lx - 0x%010lx %s %s %c%c%c%c [%d, %d]\n", mem_info.base_address, mem_info.base_address + mem_info.size - 1, perm, state, l, i, d, u, mem_info.ipc_count, mem_info.device_count);
+                }
+
+                /* Advance. */
+                const uintptr_t next_address = mem_info.base_address + mem_info.size;
+                if (next_address <= cur_addr) {
+                    break;
+                }
+
+                cur_addr = next_address;
+            }
+        } else if (ParsePrefix(command, "get mapping ")) {
+            if (!this->HasDebugProcess()) {
+                AppendReplyFormat(reply_cur, reply_end, "Not attached.\n");
+                return;
+            }
+
+            /* Allow optional "0x" prefix. */
+            ParsePrefix(command, "0x");
+
+            /* Decode address. */
+            const u64 address = DecodeHex(command);
+
+            /* Get mapping. */
+            svc::MemoryInfo mem_info;
+            if (R_FAILED(m_debug_process.QueryMemory(std::addressof(mem_info), address))) {
+                AppendReplyFormat(reply_cur, reply_end, "0x%016lx: No mapping.\n", address);
+            }
+
+            const char *state = GetMemoryStateName(mem_info.state);
+            const char *perm  = GetMemoryPermissionString(mem_info);
+
+            const char l = (mem_info.attribute & svc::MemoryAttribute_Locked)       ? 'L' : '-';
+            const char i = (mem_info.attribute & svc::MemoryAttribute_IpcLocked)    ? 'I' : '-';
+            const char d = (mem_info.attribute & svc::MemoryAttribute_DeviceShared) ? 'D' : '-';
+            const char u = (mem_info.attribute & svc::MemoryAttribute_Uncached)     ? 'U' : '-';
+
+            AppendReplyFormat(reply_cur, reply_end, "0x%010lx - 0x%010lx %s %s %c%c%c%c [%d, %d]\n", mem_info.base_address, mem_info.base_address + mem_info.size - 1, perm, state, l, i, d, u, mem_info.ipc_count, mem_info.device_count);
+        } else if (ParsePrefix(command, "wait application") || ParsePrefix(command, "wait app")) {
+            /* Wait for an application process. */
+            {
+                /* Get hook to creation of application process. */
+                os::NativeHandle h;
+                R_ABORT_UNLESS(pm::dmnt::HookToCreateApplicationProcess(std::addressof(h)));
+
+                /* Wait for event. */
+                os::SystemEvent hook_event(h, true, os::InvalidNativeHandle, false, os::EventClearMode_AutoClear);
+                hook_event.Wait();
+            }
+
+            /* Get application process id. */
+            R_ABORT_UNLESS(pm::dmnt::GetApplicationProcessId(std::addressof(m_wait_process_id)));
+
+            /* Note that we're attaching. */
+            AppendReplyFormat(reply_cur, reply_end, "Send `attach 0x%lx` to attach.\n", m_wait_process_id.value);
+        } else if (ParsePrefix(command, "wait ")) {
+            /* Allow optional "0x" prefix. */
+            ParsePrefix(command, "0x");
+
+            /* Decode program id. */
+            const u64 program_id = DecodeHex(command);
+
+            AppendReplyFormat(reply_cur, reply_end, "[TODO] wait for program id 0x%lx\n", program_id);
+        } else {
+            std::memcpy(m_reply_cur, command, std::strlen(command) + 1);
+            AppendReplyFormat(reply_cur, reply_end, "Unknown command `%s`\n", m_reply_cur);
         }
     }
 
@@ -1847,18 +2117,18 @@ namespace ams::dmnt {
         /* Current string from devkita64-none-elf-gdb: */
         /* qSupported:multiprocess+;swbreak+;hwbreak+;qRelocInsn+;fork-events+;vfork-events+;exec-events+;vContSupported+;QThreadEvents+;no-resumed+ */
 
-        SetReply(m_reply_packet, "PacketSize=%lx", GdbPacketBufferSize - 1);
-        AppendReply(m_reply_packet, ";multiprocess+");
-        AppendReply(m_reply_packet, ";qXfer:osdata:read+");
-        AppendReply(m_reply_packet, ";qXfer:features:read+");
-        AppendReply(m_reply_packet, ";qXfer:libraries:read+");
-        AppendReply(m_reply_packet, ";qXfer:libraries-svr4:read+");
-        AppendReply(m_reply_packet, ";augmented-libraries-svr4-read+");
-        AppendReply(m_reply_packet, ";qXfer:threads:read+");
-        AppendReply(m_reply_packet, ";qXfer:exec-file:read+");
-        AppendReply(m_reply_packet, ";swbreak+");
-        AppendReply(m_reply_packet, ";hwbreak+");
-        AppendReply(m_reply_packet, ";vContSupported+");
+        AppendReplyFormat(m_reply_cur, m_reply_end, "PacketSize=%lx", GdbPacketBufferSize - 1);
+        AppendReplyFormat(m_reply_cur, m_reply_end, ";multiprocess+");
+        AppendReplyFormat(m_reply_cur, m_reply_end, ";qXfer:osdata:read+");
+        AppendReplyFormat(m_reply_cur, m_reply_end, ";qXfer:features:read+");
+        AppendReplyFormat(m_reply_cur, m_reply_end, ";qXfer:libraries:read+");
+        // TODO: AppendReplyFormat(m_reply_cur, m_reply_end, ";qXfer:libraries-svr4:read+");
+        // TODO: AppendReplyFormat(m_reply_cur, m_reply_end, ";augmented-libraries-svr4-read+");
+        AppendReplyFormat(m_reply_cur, m_reply_end, ";qXfer:threads:read+");
+        AppendReplyFormat(m_reply_cur, m_reply_end, ";qXfer:exec-file:read+");
+        AppendReplyFormat(m_reply_cur, m_reply_end, ";swbreak+");
+        AppendReplyFormat(m_reply_cur, m_reply_end, ";hwbreak+");
+        AppendReplyFormat(m_reply_cur, m_reply_end, ";vContSupported+");
     }
 
     void GdbServerImpl::qXfer() {
@@ -1868,7 +2138,7 @@ namespace ams::dmnt {
         } else {
             /* All other qXfer require debug process. */
             if (!this->HasDebugProcess()) {
-                SetReplyError(m_reply_packet, "E01");
+                AppendReplyError(m_reply_cur, m_reply_end, "E01");
                 return;
             }
 
@@ -1878,15 +2148,15 @@ namespace ams::dmnt {
             } else if (ParsePrefix(m_receive_packet, "threads:read::")) {
                 if (!this->qXferThreadsRead()) {
                     m_killed = true;
-                    SetReplyError(m_reply_packet, "E01");
+                    AppendReplyError(m_reply_cur, m_reply_end, "E01");
                 }
             } else if (ParsePrefix(m_receive_packet, "libraries:read::")) {
                 this->qXferLibrariesRead();
             } else if (ParsePrefix(m_receive_packet, "exec-file:read:")) {
-                SetReply(m_reply_packet, "l%s", m_debug_process.GetProcessName());
+                AppendReplyFormat(m_reply_cur, m_reply_end, "l%s", m_debug_process.GetProcessName());
             } else {
                 AMS_DMNT2_GDB_LOG_DEBUG("Not Implemented qxfer: %s\n", m_receive_packet);
-                SetReplyError(m_reply_packet, "E01");
+                AppendReplyError(m_reply_cur, m_reply_end, "E01");
             }
         }
     }
@@ -1900,44 +2170,44 @@ namespace ams::dmnt {
             ParseOffsetLength(m_receive_packet, offset, length);
 
             /* Send the desired xml. */
-            std::strncpy(m_reply_packet, (this->Is64Bit() ? TargetXmlAarch64 : TargetXmlAarch32) + offset, length);
-            m_reply_packet[length] = 0;
-            m_reply_packet += std::strlen(m_reply_packet);
+            std::strncpy(m_reply_cur, (this->Is64Bit() ? TargetXmlAarch64 : TargetXmlAarch32) + offset, length);
+            m_reply_cur[length] = 0;
+            m_reply_cur += std::strlen(m_reply_cur);
         } else if (ParsePrefix(m_receive_packet, "aarch64-core.xml:")) {
             /* Parse offset/length. */
             ParseOffsetLength(m_receive_packet, offset, length);
 
             /* Send the desired xml. */
-            std::strncpy(m_reply_packet, Aarch64CoreXml + offset, length);
-            m_reply_packet[length] = 0;
-            m_reply_packet += std::strlen(m_reply_packet);
+            std::strncpy(m_reply_cur, Aarch64CoreXml + offset, length);
+            m_reply_cur[length] = 0;
+            m_reply_cur += std::strlen(m_reply_cur);
         } else if (ParsePrefix(m_receive_packet, "aarch64-fpu.xml:")) {
             /* Parse offset/length. */
             ParseOffsetLength(m_receive_packet, offset, length);
 
             /* Send the desired xml. */
-            std::strncpy(m_reply_packet, Aarch64FpuXml + offset, length);
-            m_reply_packet[length] = 0;
-            m_reply_packet += std::strlen(m_reply_packet);
+            std::strncpy(m_reply_cur, Aarch64FpuXml + offset, length);
+            m_reply_cur[length] = 0;
+            m_reply_cur += std::strlen(m_reply_cur);
         }  else if (ParsePrefix(m_receive_packet, "arm-core.xml:")) {
             /* Parse offset/length. */
             ParseOffsetLength(m_receive_packet, offset, length);
 
             /* Send the desired xml. */
-            std::strncpy(m_reply_packet, ArmCoreXml + offset, length);
-            m_reply_packet[length] = 0;
-            m_reply_packet += std::strlen(m_reply_packet);
+            std::strncpy(m_reply_cur, ArmCoreXml + offset, length);
+            m_reply_cur[length] = 0;
+            m_reply_cur += std::strlen(m_reply_cur);
         } else if (ParsePrefix(m_receive_packet, "arm-vfp.xml:")) {
             /* Parse offset/length. */
             ParseOffsetLength(m_receive_packet, offset, length);
 
             /* Send the desired xml. */
-            std::strncpy(m_reply_packet, ArmVfpXml + offset, length);
-            m_reply_packet[length] = 0;
-            m_reply_packet += std::strlen(m_reply_packet);
+            std::strncpy(m_reply_cur, ArmVfpXml + offset, length);
+            m_reply_cur[length] = 0;
+            m_reply_cur += std::strlen(m_reply_cur);
         } else {
             AMS_DMNT2_GDB_LOG_DEBUG("Not Implemented qxfer:features:read: %s\n", m_receive_packet);
-            SetReplyError(m_reply_packet, "E01");
+            AppendReplyError(m_reply_cur, m_reply_end, "E01");
         }
     }
 
@@ -1953,29 +2223,33 @@ namespace ams::dmnt {
 
         /* If doing a fresh read, generate the module list. */
         if (offset == 0 || g_annex_buffer_contents != AnnexBufferContents_Libraries) {
+            /* Prepare to write to annex buffer. */
+            char *dst_cur = g_annex_buffer;
+            char *dst_end = g_annex_buffer + sizeof(g_annex_buffer);
+
             /* Set header. */
-            SetReply(g_annex_buffer, "<library-list>");
+            AppendReplyFormat(dst_cur, dst_end, "<library-list>");
 
             /* Get the module list. */
             for (size_t i = 0; i < m_debug_process.GetModuleCount(); ++i) {
-                AMS_DMNT2_GDB_LOG_DEBUG("Module[%zu]: %p, %s\n", i, reinterpret_cast<void *>(m_debug_process.GetBaseAddress(i)), m_debug_process.GetModuleName(i));
+                AMS_DMNT2_GDB_LOG_DEBUG("Module[%zu]: %p, %s\n", i, reinterpret_cast<void *>(m_debug_process.GetModuleBaseAddress(i)), m_debug_process.GetModuleName(i));
 
                 const char *module_name = m_debug_process.GetModuleName(i);
                 const auto name_len = std::strlen(module_name);
-                if (name_len > 4 && std::strcmp(module_name + name_len - 4, ".elf") != 0 && std::strcmp(module_name + name_len - 4, ".nss") != 0) {
-                    AppendReply(g_annex_buffer, "<library name=\"%s.elf\"><segment address=\"0x%lx\" /></library>", module_name, m_debug_process.GetBaseAddress(i));
+                if (name_len < 5 || (std::strcmp(module_name + name_len - 4, ".elf") != 0 && std::strcmp(module_name + name_len - 4, ".nss") != 0)) {
+                    AppendReplyFormat(dst_cur, dst_end, "<library name=\"%s.elf\"><segment address=\"0x%lx\" /></library>", module_name, m_debug_process.GetModuleBaseAddress(i));
                 } else {
-                    AppendReply(g_annex_buffer, "<library name=\"%s\"><segment address=\"0x%lx\" /></library>", module_name, m_debug_process.GetBaseAddress(i));
+                    AppendReplyFormat(dst_cur, dst_end, "<library name=\"%s\"><segment address=\"0x%lx\" /></library>", module_name, m_debug_process.GetModuleBaseAddress(i));
                 }
             }
 
-            AppendReply(g_annex_buffer, "</library-list>");
+            AppendReplyFormat(dst_cur, dst_end, "</library-list>");
 
             g_annex_buffer_contents = AnnexBufferContents_Libraries;
         }
 
         /* Copy out the module list. */
-        GetAnnexBufferContents(m_reply_packet, offset, length);
+        GetAnnexBufferContents(m_reply_cur, offset, length);
     }
 
     void GdbServerImpl::qXferOsdataRead() {
@@ -1991,11 +2265,15 @@ namespace ams::dmnt {
 
             /* If doing a fresh read, generate the process list. */
             if (offset == 0 || g_annex_buffer_contents != AnnexBufferContents_Processes) {
+                /* Prepare to write to annex buffer. */
+                char *dst_cur = g_annex_buffer;
+                char *dst_end = g_annex_buffer + sizeof(g_annex_buffer);
+
                 /* Clear the process list buffer. */
-                g_annex_buffer[0] = 0;
+                dst_cur[0] = 0;
 
                 /* Set header. */
-                SetReply(g_annex_buffer, "<?xml version=\"1.0\"?>\n<!DOCTYPE target SYSTEM \"osdata.dtd\">\n<osdata type=\"processes\">\n");
+                AppendReplyFormat(dst_cur, dst_end, "<?xml version=\"1.0\"?>\n<!DOCTYPE target SYSTEM \"osdata.dtd\">\n<osdata type=\"processes\">\n");
 
                 /* Get all processes. */
                 {
@@ -2015,22 +2293,22 @@ namespace ams::dmnt {
                             R_ABORT_UNLESS(svc::GetDebugEvent(std::addressof(d), handle));
                             AMS_ABORT_UNLESS(d.type == svc::DebugEvent_CreateProcess);
 
-                            AppendReply(g_annex_buffer, "<item>\n<column name=\"pid\">%lu</column>\n<column name=\"command\">%s</column>\n</item>\n", d.info.create_process.process_id, d.info.create_process.name);
+                            AppendReplyFormat(dst_cur, dst_end, "<item>\n<column name=\"pid\">%lu</column>\n<column name=\"command\">%s</column>\n</item>\n", d.info.create_process.process_id, d.info.create_process.name);
                         }
                     }
                 }
 
                 /* Set footer. */
-                AppendReply(g_annex_buffer, "</osdata>");
+                AppendReplyFormat(dst_cur, dst_end, "</osdata>");
 
                 g_annex_buffer_contents = AnnexBufferContents_Processes;
             }
 
             /* Copy out the process list. */
-            GetAnnexBufferContents(m_reply_packet, offset, length);
+            GetAnnexBufferContents(m_reply_cur, offset, length);
         } else {
             AMS_DMNT2_GDB_LOG_DEBUG("Not Implemented qxfer:osdata:read: %s\n", m_receive_packet);
-            SetReplyError(m_reply_packet, "E01");
+            AppendReplyError(m_reply_cur, m_reply_end, "E01");
         }
     }
 
@@ -2046,8 +2324,12 @@ namespace ams::dmnt {
 
         /* If doing a fresh read, generate the thread list. */
         if (offset == 0 || g_annex_buffer_contents != AnnexBufferContents_Threads) {
+            /* Prepare to write to annex buffer. */
+            char *dst_cur = g_annex_buffer;
+            char *dst_end = g_annex_buffer + sizeof(g_annex_buffer);
+
             /* Set header. */
-            SetReply(g_annex_buffer, "<threads>");
+            AppendReplyFormat(dst_cur, dst_end, "<threads>");
 
             /* Get the thread list. */
             u64 thread_ids[DebugProcess::ThreadCountMax];
@@ -2066,18 +2348,23 @@ namespace ams::dmnt {
                     u32 core = 0;
                     m_debug_process.GetThreadCurrentCore(std::addressof(core), thread_ids[i]);
 
-                    /* TODO: `name=\"%s\"`? */
-                    AppendReply(g_annex_buffer, "<thread id=\"p%lx.%lx\" core=\"%u\"/>", m_process_id.value, thread_ids[i], core);
+                    /* Get the thread name. */
+                    char name[os::ThreadNameLengthMax + 1];
+                    m_debug_process.GetThreadName(name, thread_ids[i]);
+                    name[sizeof(name) - 1] = '\x00';
+
+                    /* Set the thread entry */
+                    AppendReplyFormat(dst_cur, dst_end, "<thread id=\"p%lx.%lx\" core=\"%u\" name=\"%s\" />", m_process_id.value, thread_ids[i], core, name);
                 }
             }
 
-            AppendReply(g_annex_buffer, "</threads>");
+            AppendReplyFormat(dst_cur, dst_end, "</threads>");
 
             g_annex_buffer_contents = AnnexBufferContents_Threads;
         }
 
         /* Copy out the threads list. */
-        GetAnnexBufferContents(m_reply_packet, offset, length);
+        GetAnnexBufferContents(m_reply_cur, offset, length);
 
         return true;
     }
@@ -2088,7 +2375,7 @@ namespace ams::dmnt {
 
         /* Decode the type. */
         if (!('0' <= m_receive_packet[0] && m_receive_packet[0] <= '4') || m_receive_packet[1] != ',') {
-            SetReplyError(m_reply_packet, "E01");
+            AppendReplyError(m_reply_cur, m_reply_end, "E01");
             return;
         }
 
@@ -2098,7 +2385,7 @@ namespace ams::dmnt {
         /* Decode the address/length. */
         const char *comma = std::strchr(m_receive_packet, ',');
         if (comma == nullptr) {
-            SetReplyError(m_reply_packet, "E01");
+            AppendReplyError(m_reply_cur, m_reply_end, "E01");
             return;
         }
 
@@ -2110,18 +2397,18 @@ namespace ams::dmnt {
             case 0: /* SW */
                 {
                     if (R_SUCCEEDED(m_debug_process.ClearBreakPoint(address, length))) {
-                        SetReplyOk(m_reply_packet);
+                        AppendReplyOk(m_reply_cur, m_reply_end);
                     } else {
-                        SetReplyError(m_reply_packet, "E01");
+                        AppendReplyError(m_reply_cur, m_reply_end, "E01");
                     }
                 }
                 break;
             case 1: /* HW */
                 {
                     if (R_SUCCEEDED(m_debug_process.ClearHardwareBreakPoint(address, length))) {
-                        SetReplyOk(m_reply_packet);
+                        AppendReplyOk(m_reply_cur, m_reply_end);
                     } else {
-                        SetReplyError(m_reply_packet, "E01");
+                        AppendReplyError(m_reply_cur, m_reply_end, "E01");
                     }
                 }
                 break;
@@ -2130,9 +2417,9 @@ namespace ams::dmnt {
             case 4: /* Watch-A */
                 {
                     if (R_SUCCEEDED(m_debug_process.ClearWatchPoint(address, length))) {
-                        SetReplyOk(m_reply_packet);
+                        AppendReplyOk(m_reply_cur, m_reply_end);
                     } else {
-                        SetReplyError(m_reply_packet, "E01");
+                        AppendReplyError(m_reply_cur, m_reply_end, "E01");
                     }
                 }
                 break;
@@ -2144,12 +2431,12 @@ namespace ams::dmnt {
     void GdbServerImpl::QuestionMark() {
         if (m_debug_process.IsValid()) {
             if (m_debug_process.GetLastThreadId() == 0) {
-                SetReply(m_reply_packet, "X01");
+                AppendReplyFormat(m_reply_cur, m_reply_end, "X01");
             } else {
-                this->SetStopReplyPacket(m_debug_process.GetLastSignal());
+                this->AppendStopReplyPacket(m_debug_process.GetLastSignal());
             }
         } else {
-            SetReply(m_reply_packet, "W00");
+            AppendReplyFormat(m_reply_cur, m_reply_end, "W00");
         }
     }
 
