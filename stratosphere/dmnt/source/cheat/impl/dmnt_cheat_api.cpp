@@ -61,6 +61,7 @@ namespace ams::dmnt::cheat::impl {
         };
 
         constinit os::SdkMutex g_text_file_buffer_lock;
+		//modded by ELY M.
         constinit char g_text_file_buffer[512_KB];  //was 64_KB  //I need my 95kb cheat txts to work!!!!!   ELY M.    
 		/*
 		

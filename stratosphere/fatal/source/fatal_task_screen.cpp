@@ -234,7 +234,7 @@ namespace ams::fatal::srv {
             font::AddSpacingLines(0.5f);
             font::PrintFormatLine(  "Program:  %016lX", static_cast<u64>(m_context->program_id));
             font::AddSpacingLines(0.5f);
-
+			//Modded by ELY M.
             font::PrintFormatLine("Firmware: %s (Atmosphère-elys %u.%u.%u-%s)", config.GetFirmwareVersion().display_version, ATMOSPHERE_RELEASE_VERSION, ams::GetGitRevision());
             font::AddSpacingLines(1.5f);
             if (!exosphere::ResultVersionMismatch::Includes(m_context->result)) {

@@ -89,6 +89,7 @@ namespace ams::fatal::srv {
                     if (strlen(m_context->proc_name)) {
                         file.WriteFormat("Process Name:                    %s\n", m_context->proc_name);
                     }
+					//Modded by ELY M.  
                     file.WriteFormat("Firmware:                        %s (Atmosphère-elys %u.%u.%u-%s)\n", GetFatalConfig().GetFirmwareVersion().display_version, ATMOSPHERE_RELEASE_VERSION, ams::GetGitRevision());
 
                     if (m_context->cpu_ctx.architecture == CpuContext::Architecture_Aarch32) {
