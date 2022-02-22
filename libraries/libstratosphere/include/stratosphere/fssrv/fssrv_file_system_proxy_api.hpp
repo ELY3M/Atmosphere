@@ -32,4 +32,6 @@ namespace ams::fssrv {
 
     void InitializeForFileSystemProxy(fscreator::FileSystemCreatorInterfaces *fs_creator_interfaces, fssystem::IBufferManager *buffer_manager, bool is_development_function_enabled);
 
+    void InitializeFileSystemProxyServer(int threads);
+
 }
