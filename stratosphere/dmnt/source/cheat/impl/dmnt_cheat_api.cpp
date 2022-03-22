@@ -13,7 +13,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
- //Modded by ELY M. 
+//Modded by ELY M. 
 #include <stratosphere.hpp>
 #include "dmnt_cheat_api.hpp"
 #include "dmnt_cheat_vm.hpp"
@@ -199,7 +199,11 @@ namespace ams::dmnt::cheat::impl {
                         m_unsafe_break_event.Signal();
 
                         /* Knock out the debug events thread. */
-                        os::CancelThreadSynchronization(std::addressof(m_debug_events_thread));
+                        {
+                            std::scoped_lock lk(util::GetReference(m_debug_events_thread.cs_thread));
+
+                            R_ABORT_UNLESS(svc::CancelSynchronization(m_debug_events_thread.thread_impl->handle));
+                        }
 
                         /* Close resources. */
                         R_ABORT_UNLESS(svc::CloseHandle(m_cheat_process_debug_handle));

@@ -13,6 +13,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+//Modded by ELY M.
 #include <stratosphere.hpp>
 #include "amsmitm_initialization.hpp"
 #include "amsmitm_fs_utils.hpp"
@@ -64,9 +65,16 @@ namespace ams::mitm {
         /* Emummc file protection. */
         FsFile g_emummc_file;
 
+        /*
+		Why do we have to protect those files?   
+		I have got so many questions from ppl who cant overwrite those files using FTP.  
+		it is a bit complex to use hekate USB method.   
+		It is ridiculous    
+		Also, it would wear out the internal sd reader...   
+		*/
         /* Maintain exclusive access to the fusee external package. */
-        FsFile g_stratosphere_file;
-        FsFile g_package3_file;
+        ///FsFile g_stratosphere_file;
+        ///FsFile g_package3_file;
 
         constexpr inline bool IsHexadecimal(const char *str) {
             while (*str) {
@@ -138,10 +146,24 @@ namespace ams::mitm {
             /* As upcoming/current atmosphere releases may contain more than one zip which users much choose between, */
             /* maintaining an open reference prevents cleanly the issue of "automatic" updaters selecting the incorrect */
             /* zip, and encourages good updating hygiene -- atmosphere should not be updated on SD while HOS is alive. */
+			
+			/*
+			Why do we have to protect those files?   
+			I have got so many questions from ppl who cant overwrite those files using FTP.  
+			it is a bit complex to use hekate USB method.   
+			It is ridiculous    
+			Also, it would wear out the internal sd reader...   
+			*/
+		
+		    ///those stupid file protections!  
+			/*
             {
                 R_ABORT_UNLESS(mitm::fs::OpenSdFile(std::addressof(g_package3_file),     "/atmosphere/package3", ams::fs::OpenMode_Read));
                 R_ABORT_UNLESS(mitm::fs::OpenSdFile(std::addressof(g_stratosphere_file), "/atmosphere/stratosphere.romfs",  ams::fs::OpenMode_Read));
             }
+			*/
+			
+			
         }
 
         /* Initialization implementation */
