@@ -65,7 +65,7 @@ namespace ams::fssystem {
         /* Create the header storage. */
         const u8 header_iv[AesXtsStorageForNcaHeader::IvSize] = {};
         std::unique_ptr<fs::IStorage> work_header_storage = std::make_unique<AesXtsStorageForNcaHeader>(base_storage, header_decryption_keys[0], header_decryption_keys[1], AesXtsStorageForNcaHeader::KeySize, header_iv, AesXtsStorageForNcaHeader::IvSize, NcaHeader::XtsBlockSize);
-        R_UNLESS(work_header_storage != nullptr, fs::ResultAllocationFailureInNcaReaderA());
+        R_UNLESS(work_header_storage != nullptr, fs::ResultAllocationMemoryFailedInNcaReaderA());
 
         /* Read the header. */
         R_TRY(work_header_storage->Read(0, std::addressof(m_header), sizeof(m_header)));
@@ -83,7 +83,7 @@ namespace ams::fssystem {
             s64 base_storage_size;
             R_TRY(base_storage->GetSize(std::addressof(base_storage_size)));
             work_header_storage.reset(new fs::SubStorage(base_storage, 0, base_storage_size));
-            R_UNLESS(work_header_storage != nullptr, fs::ResultAllocationFailureInNcaReaderA());
+            R_UNLESS(work_header_storage != nullptr, fs::ResultAllocationMemoryFailedInNcaReaderA());
 
             /* Set encryption type as plaintext. */
             m_header_encryption_type = NcaHeader::EncryptionType::None;
@@ -103,8 +103,13 @@ namespace ams::fssystem {
             const u8 *msg         = static_cast<const u8 *>(static_cast<const void *>(std::addressof(m_header.magic)));
             const size_t msg_size = NcaHeader::Size - NcaHeader::HeaderSignSize * NcaHeader::HeaderSignCount;
 
-            const bool is_signature_valid = crypto::VerifyRsa2048PssSha256(sig, sig_size, mod, mod_size, exp, exp_size, msg, msg_size);
-            R_UNLESS(is_signature_valid, fs::ResultNcaHeaderSignature1VerificationFailed());
+            m_is_header_sign1_signature_valid = crypto::VerifyRsa2048PssSha256(sig, sig_size, mod, mod_size, exp, exp_size, msg, msg_size);
+
+            #if defined(ATMOSPHERE_BOARD_NINTENDO_NX)
+            R_UNLESS(m_is_header_sign1_signature_valid, fs::ResultNcaHeaderSignature1VerificationFailed());
+            #else
+            R_UNLESS(m_is_header_sign1_signature_valid || crypto_cfg.is_unsigned_header_available_for_host_tool, fs::ResultNcaHeaderSignature1VerificationFailed());
+            #endif
         }
 
         /* Validate the sdk version. */
@@ -118,6 +123,13 @@ namespace ams::fssystem {
         if (crypto::IsSameBytes(ZeroRightsId, m_header.rights_id, NcaHeader::RightsIdSize)) {
             /* If we do, then we don't have an external key, so we need to generate decryption keys. */
             crypto_cfg.generate_key(m_decryption_keys[NcaHeader::DecryptionKey_AesCtr], crypto::AesDecryptor128::KeySize, m_header.encrypted_key_area + NcaHeader::DecryptionKey_AesCtr * crypto::AesDecryptor128::KeySize, crypto::AesDecryptor128::KeySize, GetKeyTypeValue(m_header.key_index, m_header.GetProperKeyGeneration()), crypto_cfg);
+
+            /* If we're building for non-nx board (i.e., a host tool), generate all keys for debug. */
+            #if !defined(ATMOSPHERE_BOARD_NINTENDO_NX)
+            crypto_cfg.generate_key(m_decryption_keys[NcaHeader::DecryptionKey_AesXts1], crypto::AesDecryptor128::KeySize, m_header.encrypted_key_area + NcaHeader::DecryptionKey_AesXts1 * crypto::AesDecryptor128::KeySize, crypto::AesDecryptor128::KeySize, GetKeyTypeValue(m_header.key_index, m_header.GetProperKeyGeneration()), crypto_cfg);
+            crypto_cfg.generate_key(m_decryption_keys[NcaHeader::DecryptionKey_AesXts2], crypto::AesDecryptor128::KeySize, m_header.encrypted_key_area + NcaHeader::DecryptionKey_AesXts2 * crypto::AesDecryptor128::KeySize, crypto::AesDecryptor128::KeySize, GetKeyTypeValue(m_header.key_index, m_header.GetProperKeyGeneration()), crypto_cfg);
+            crypto_cfg.generate_key(m_decryption_keys[NcaHeader::DecryptionKey_AesCtrEx], crypto::AesDecryptor128::KeySize, m_header.encrypted_key_area + NcaHeader::DecryptionKey_AesCtrEx * crypto::AesDecryptor128::KeySize, crypto::AesDecryptor128::KeySize, GetKeyTypeValue(m_header.key_index, m_header.GetProperKeyGeneration()), crypto_cfg);
+            #endif
 
             /* Copy the hardware speed emulation key. */
             std::memcpy(m_decryption_keys[NcaHeader::DecryptionKey_AesCtrHw], m_header.encrypted_key_area + NcaHeader::DecryptionKey_AesCtrHw * crypto::AesDecryptor128::KeySize, crypto::AesDecryptor128::KeySize);
@@ -162,6 +174,11 @@ namespace ams::fssystem {
     NcaHeader::ContentType NcaReader::GetContentType() const {
         AMS_ASSERT(m_body_storage != nullptr);
         return m_header.content_type;
+    }
+
+    u8 NcaReader::GetHeaderSign1KeyGeneration() const {
+        AMS_ASSERT(m_body_storage != nullptr);
+        return m_header.header1_signature_key_generation;
     }
 
     u8 NcaReader::GetKeyGeneration() const {
@@ -351,14 +368,22 @@ namespace ams::fssystem {
         return m_header_storage->Read(offset, dst, sizeof(NcaFsHeader));
     }
 
-    void NcaReader::GetHeaderSign2(void *dst, size_t size) {
+    bool NcaReader::GetHeaderSign1Valid() const {
+        #if defined(ATMOSPHERE_BOARD_NINTENDO_NX)
+        AMS_ABORT_UNLESS(m_is_header_sign1_signature_valid);
+        #endif
+
+        return m_is_header_sign1_signature_valid;
+    }
+
+    void NcaReader::GetHeaderSign2(void *dst, size_t size) const {
         AMS_ASSERT(dst != nullptr);
         AMS_ASSERT(size == NcaHeader::HeaderSignSize);
 
         std::memcpy(dst, m_header.header_sign_2, size);
     }
 
-    void NcaReader::GetHeaderSign2TargetHash(void *dst, size_t size) {
+    void NcaReader::GetHeaderSign2TargetHash(void *dst, size_t size) const {
         AMS_ASSERT(m_hash_generator_factory != nullptr);
         AMS_ASSERT(dst != nullptr);
         AMS_ASSERT(size == IHash256Generator::HashSize);
@@ -375,7 +400,7 @@ namespace ams::fssystem {
 
         /* Generate the hash. */
         Hash hash;
-        crypto::GenerateSha256Hash(std::addressof(hash), sizeof(hash), std::addressof(m_data), sizeof(NcaFsHeader));
+        crypto::GenerateSha256(std::addressof(hash), sizeof(hash), std::addressof(m_data), sizeof(NcaFsHeader));
 
         /* Validate the hash. */
         R_UNLESS(crypto::IsSameBytes(std::addressof(reader.GetFsHeaderHash(index)), std::addressof(hash), sizeof(Hash)), fs::ResultNcaFsHeaderHashVerificationFailed());

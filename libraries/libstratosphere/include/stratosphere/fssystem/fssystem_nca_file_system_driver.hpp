@@ -21,7 +21,7 @@
 #include <stratosphere/fssystem/fssystem_i_hash_256_generator.hpp>
 #include <stratosphere/fssystem/fssystem_asynchronous_access.hpp>
 #include <stratosphere/fssystem/fssystem_nca_header.hpp>
-#include <stratosphere/fssystem/buffers/fssystem_i_buffer_manager.hpp>
+#include <stratosphere/fs/fs_i_buffer_manager.hpp>
 
 namespace ams::fssystem {
 
@@ -58,6 +58,10 @@ namespace ams::fssystem {
         DecryptAesCtrFunction decrypt_aes_ctr;
         DecryptAesCtrFunction decrypt_aes_ctr_external;
         bool is_plaintext_header_available;
+
+        #if !defined(ATMOSPHERE_BOARD_NINTENDO_NX)
+        bool is_unsigned_header_available_for_host_tool;
+        #endif
     };
     static_assert(util::is_pod<NcaCryptoConfiguration>::value);
 
@@ -103,6 +107,7 @@ namespace ams::fssystem {
             DecryptAesCtrFunction m_decrypt_aes_ctr_external;
             bool m_is_software_aes_prioritized;
             NcaHeader::EncryptionType m_header_encryption_type;
+            bool m_is_header_sign1_signature_valid;
             GetDecompressorFunction m_get_decompressor;
             IHash256GeneratorFactory *m_hash_generator_factory;
         public:
@@ -115,6 +120,7 @@ namespace ams::fssystem {
             u32 GetMagic() const;
             NcaHeader::DistributionType GetDistributionType() const;
             NcaHeader::ContentType GetContentType() const;
+            u8  GetHeaderSign1KeyGeneration() const;
             u8  GetKeyGeneration() const;
             u8  GetKeyIndex() const;
             u64 GetContentSize() const;
@@ -148,8 +154,10 @@ namespace ams::fssystem {
             GetDecompressorFunction GetDecompressor() const;
             IHash256GeneratorFactory *GetHashGeneratorFactory() const;
 
-            void GetHeaderSign2(void *dst, size_t size);
-            void GetHeaderSign2TargetHash(void *dst, size_t size);
+            bool GetHeaderSign1Valid() const;
+
+            void GetHeaderSign2(void *dst, size_t size) const;
+            void GetHeaderSign2TargetHash(void *dst, size_t size) const;
     };
 
     class NcaFsHeaderReader : public ::ams::fs::impl::Newable {
@@ -192,7 +200,11 @@ namespace ams::fssystem {
     class NcaFileSystemDriver : public ::ams::fs::impl::Newable {
         NON_COPYABLE(NcaFileSystemDriver);
         NON_MOVEABLE(NcaFileSystemDriver);
+        #if defined(ATMOSPHERE_BOARD_NINTENDO_NX)
         private:
+        #else
+        public:
+        #endif
             struct StorageContext {
                 bool open_raw_storage;
                 std::shared_ptr<fs::IStorage> body_substorage;
@@ -209,8 +221,11 @@ namespace ams::fssystem {
                 std::shared_ptr<fs::IStorage> fs_data_storage;
                 std::shared_ptr<fs::IStorage> compressed_storage_meta_storage;
                 std::shared_ptr<fssystem::CompressedStorage> compressed_storage;
-            };
 
+                /* For tools. */
+                std::shared_ptr<fs::IStorage> external_original_storage;
+            };
+        private:
             enum AlignmentStorageRequirement {
                 /* TODO */
                 AlignmentStorageRequirement_CacheBlockSize = 0,
@@ -220,22 +235,37 @@ namespace ams::fssystem {
             std::shared_ptr<NcaReader> m_original_reader;
             std::shared_ptr<NcaReader> m_reader;
             MemoryResource * const m_allocator;
-            fssystem::IBufferManager * const m_buffer_manager;
+            fs::IBufferManager * const m_buffer_manager;
             fssystem::IHash256GeneratorFactorySelector * const m_hash_generator_factory_selector;
         public:
             static Result SetupFsHeaderReader(NcaFsHeaderReader *out, const NcaReader &reader, s32 fs_index);
         public:
-            NcaFileSystemDriver(std::shared_ptr<NcaReader> reader, MemoryResource *allocator, IBufferManager *buffer_manager, IHash256GeneratorFactorySelector *hgf_selector) : m_original_reader(), m_reader(reader), m_allocator(allocator), m_buffer_manager(buffer_manager), m_hash_generator_factory_selector(hgf_selector) {
+            NcaFileSystemDriver(std::shared_ptr<NcaReader> reader, MemoryResource *allocator, fs::IBufferManager *buffer_manager, IHash256GeneratorFactorySelector *hgf_selector) : m_original_reader(), m_reader(reader), m_allocator(allocator), m_buffer_manager(buffer_manager), m_hash_generator_factory_selector(hgf_selector) {
                 AMS_ASSERT(m_reader != nullptr);
                 AMS_ASSERT(m_hash_generator_factory_selector != nullptr);
             }
 
-            NcaFileSystemDriver(std::shared_ptr<NcaReader> original_reader, std::shared_ptr<NcaReader> reader, MemoryResource *allocator, IBufferManager *buffer_manager, IHash256GeneratorFactorySelector *hgf_selector) : m_original_reader(original_reader), m_reader(reader), m_allocator(allocator), m_buffer_manager(buffer_manager), m_hash_generator_factory_selector(hgf_selector) {
+            NcaFileSystemDriver(std::shared_ptr<NcaReader> original_reader, std::shared_ptr<NcaReader> reader, MemoryResource *allocator, fs::IBufferManager *buffer_manager, IHash256GeneratorFactorySelector *hgf_selector) : m_original_reader(original_reader), m_reader(reader), m_allocator(allocator), m_buffer_manager(buffer_manager), m_hash_generator_factory_selector(hgf_selector) {
                 AMS_ASSERT(m_reader != nullptr);
                 AMS_ASSERT(m_hash_generator_factory_selector != nullptr);
             }
 
-            Result OpenStorage(std::shared_ptr<fs::IStorage> *out, std::shared_ptr<IAsynchronousAccessSplitter> *out_splitter, NcaFsHeaderReader *out_header_reader, s32 fs_index);
+            Result OpenStorageWithContext(std::shared_ptr<fs::IStorage> *out, std::shared_ptr<IAsynchronousAccessSplitter> *out_splitter, NcaFsHeaderReader *out_header_reader, s32 fs_index, StorageContext *ctx);
+
+            Result OpenStorage(std::shared_ptr<fs::IStorage> *out, std::shared_ptr<IAsynchronousAccessSplitter> *out_splitter, NcaFsHeaderReader *out_header_reader, s32 fs_index) {
+                /* Create a storage context. */
+                StorageContext ctx{};
+
+                /* Open the storage. */
+                R_RETURN(OpenStorageWithContext(out, out_splitter, out_header_reader, fs_index, std::addressof(ctx)));
+            }
+
+        #if defined(ATMOSPHERE_BOARD_NINTENDO_NX)
+        private:
+        #else
+        public:
+        #endif
+            Result CreateStorageByRawStorage(std::shared_ptr<fs::IStorage> *out, const NcaFsHeaderReader *header_reader, std::shared_ptr<fs::IStorage> raw_storage, StorageContext *ctx);
         private:
             Result OpenStorageImpl(std::shared_ptr<fs::IStorage> *out, NcaFsHeaderReader *out_header_reader, s32 fs_index, StorageContext *ctx);
 
@@ -262,7 +292,7 @@ namespace ams::fssystem {
 
             Result CreateCompressedStorage(std::shared_ptr<fs::IStorage> *out, std::shared_ptr<fssystem::CompressedStorage> *out_cmp, std::shared_ptr<fs::IStorage> *out_meta, std::shared_ptr<fs::IStorage> base_storage, const NcaCompressionInfo &compression_info);
         public:
-            Result CreateCompressedStorage(std::shared_ptr<fs::IStorage> *out, std::shared_ptr<fssystem::CompressedStorage> *out_cmp, std::shared_ptr<fs::IStorage> *out_meta, std::shared_ptr<fs::IStorage> base_storage, const NcaCompressionInfo &compression_info, GetDecompressorFunction get_decompressor, MemoryResource *allocator, IBufferManager *buffer_manager);
+            Result CreateCompressedStorage(std::shared_ptr<fs::IStorage> *out, std::shared_ptr<fssystem::CompressedStorage> *out_cmp, std::shared_ptr<fs::IStorage> *out_meta, std::shared_ptr<fs::IStorage> base_storage, const NcaCompressionInfo &compression_info, GetDecompressorFunction get_decompressor, MemoryResource *allocator, fs::IBufferManager *buffer_manager);
     };
 
 }

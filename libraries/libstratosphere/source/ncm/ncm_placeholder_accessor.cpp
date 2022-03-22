@@ -30,20 +30,13 @@ namespace ams::ncm {
         constexpr inline size_t PlaceHolderFileNameLength = PlaceHolderFileNameLengthWithoutExtension + PlaceHolderExtensionLength;
 
         void MakeBasePlaceHolderDirectoryPath(PathString *out, const char *root_path) {
-            out->SetFormat("%s%s", root_path, BasePlaceHolderDirectory);
+            out->AssignFormat("%s%s", root_path, BasePlaceHolderDirectory);
         }
 
         void MakePlaceHolderFilePath(PathString *out, PlaceHolderId id, MakePlaceHolderPathFunction func, const char *root_path) {
             PathString path;
             MakeBasePlaceHolderDirectoryPath(std::addressof(path), root_path);
             func(out, id, path);
-        }
-
-        ALWAYS_INLINE Result ConvertNotFoundResult(Result r) {
-            R_TRY_CATCH(r) {
-                R_CONVERT(ams::fs::ResultPathNotFound, ncm::ResultPlaceHolderNotFound())
-            } R_END_TRY_CATCH;
-            return ResultSuccess();
         }
 
     }
@@ -59,7 +52,7 @@ namespace ams::ncm {
     Result PlaceHolderAccessor::EnsurePlaceHolderDirectory(PlaceHolderId placeholder_id) {
         PathString path;
         this->MakePath(std::addressof(path), placeholder_id);
-        return fs::EnsureParentDirectoryRecursively(path);
+        return fs::EnsureParentDirectory(path);
     }
 
     Result PlaceHolderAccessor::GetPlaceHolderIdFromFileName(PlaceHolderId *out, const char *name) {
@@ -71,7 +64,7 @@ namespace ams::ncm {
         PlaceHolderId placeholder_id = {};
         for (size_t i = 0; i < sizeof(placeholder_id); i++) {
             char tmp[3];
-            strlcpy(tmp, name + i * 2, sizeof(tmp));
+            util::Strlcpy(tmp, name + i * 2, sizeof(tmp));
 
             char *err = nullptr;
             reinterpret_cast<u8 *>(std::addressof(placeholder_id))[i] = static_cast<u8>(std::strtoul(tmp, std::addressof(err), 16));

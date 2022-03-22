@@ -24,6 +24,19 @@ namespace ams::kern {
 
 }
 
+namespace ams::diag {
+
+    NORETURN ALWAYS_INLINE void OnAssertionFailure(AssertionType type, const char *expr, const char *func, const char *file, int line) {
+        #if defined(MESOSPHERE_ENABLE_DEBUG_PRINT)
+        ::ams::kern::Panic(file, line, "ams::diag::OnAssertionFailure: %d %s:%s", (type == AssertionType_Audit), func, expr);
+        #else
+        ::ams::kern::Panic();
+        AMS_UNUSED(type, expr, func, file, line);
+        #endif
+    }
+
+}
+
 #define MESOSPHERE_UNUSED(...) AMS_UNUSED(__VA_ARGS__)
 
 #ifdef MESOSPHERE_ENABLE_DEBUG_PRINT

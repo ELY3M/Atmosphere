@@ -17,14 +17,14 @@
 
 namespace ams::fssystem {
 
-    Result IntegrityRomFsStorage::Initialize(save::HierarchicalIntegrityVerificationInformation level_hash_info, Hash master_hash, save::HierarchicalIntegrityVerificationStorage::HierarchicalStorageInformation storage_info, IBufferManager *bm, IHash256GeneratorFactory *hgf) {
+    Result IntegrityRomFsStorage::Initialize(HierarchicalIntegrityVerificationInformation level_hash_info, Hash master_hash, HierarchicalIntegrityVerificationStorage::HierarchicalStorageInformation storage_info, fs::IBufferManager *bm, IHash256GeneratorFactory *hgf) {
         /* Validate preconditions. */
         AMS_ASSERT(bm != nullptr);
 
         /* Set master hash. */
         m_master_hash = master_hash;
         m_master_hash_storage = std::make_unique<fs::MemoryStorage>(std::addressof(m_master_hash), sizeof(Hash));
-        R_UNLESS(m_master_hash_storage != nullptr, fs::ResultAllocationFailureInIntegrityRomFsStorageA());
+        R_UNLESS(m_master_hash_storage != nullptr, fs::ResultAllocationMemoryFailedInIntegrityRomFsStorageA());
 
         /* Set the master hash storage. */
         storage_info[0] = fs::SubStorage(m_master_hash_storage.get(), 0, sizeof(Hash));

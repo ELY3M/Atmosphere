@@ -25,7 +25,7 @@ namespace ams::fatal::srv {
 
         /* Helpers. */
         void TryEnsureReportDirectories() {
-            fs::EnsureDirectoryRecursively("sdmc:/atmosphere/fatal_reports/dumps");
+            fs::EnsureDirectory("sdmc:/atmosphere/fatal_reports/dumps");
         }
 
         bool TryGetCurrentTimestamp(u64 *out) {

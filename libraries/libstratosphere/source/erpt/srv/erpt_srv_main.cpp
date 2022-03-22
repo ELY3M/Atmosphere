@@ -25,7 +25,7 @@
 namespace ams::erpt::srv {
 
     constinit lmem::HeapHandle g_heap_handle;
-    constinit ams::sf::ExpHeapAllocator g_sf_allocator;
+    constinit ams::sf::ExpHeapAllocator g_sf_allocator = {};
 
     namespace {
 
@@ -33,6 +33,8 @@ namespace ams::erpt::srv {
         constexpr                  u32 SystemSaveDataFlags       = fs::SaveDataFlags_KeepAfterResettingSystemSaveDataWithoutUserSaveData;
         constexpr                  s64 SystemSaveDataSize        = 11_MB;
         constexpr                  s64 SystemSaveDataJournalSize = 2720_KB;
+
+        constinit bool g_automatic_report_cleanup_enabled = true;
 
         Result ExtendSystemSaveData() {
             s64 cur_journal_size;
@@ -80,6 +82,24 @@ namespace ams::erpt::srv {
         fs::SetEnabledAutoAbort(false);
 
         R_ABORT_UNLESS(fs::MountSdCardErrorReportDirectoryForAtmosphere(ReportOnSdStoragePath));
+
+        if (g_automatic_report_cleanup_enabled) {
+            constexpr s64 MinimumReportCountForCleanup = 1000;
+            s64 report_count = MinimumReportCountForCleanup;
+
+            fs::DirectoryHandle dir;
+            if (R_SUCCEEDED(fs::OpenDirectory(std::addressof(dir), ReportOnSdStoragePath, fs::OpenDirectoryMode_All))) {
+                ON_SCOPE_EXIT { fs::CloseDirectory(dir); };
+
+                if (R_FAILED(fs::GetDirectoryEntryCount(std::addressof(report_count), dir))) {
+                    report_count = MinimumReportCountForCleanup;
+                }
+            }
+
+            if (report_count >= MinimumReportCountForCleanup) {
+                fs::CleanDirectoryRecursively(ReportOnSdStoragePath);
+            }
+        }
 
         R_ABORT_UNLESS(MountSystemSaveData());
 
@@ -134,6 +154,11 @@ namespace ams::erpt::srv {
 
     Result SetRedirectNewReportsToSdCard(bool redirect) {
         Reporter::SetRedirectNewReportsToSdCard(redirect);
+        return ResultSuccess();
+    }
+
+    Result SetEnabledAutomaticReportCleanup(bool en) {
+        g_automatic_report_cleanup_enabled = en;
         return ResultSuccess();
     }
 

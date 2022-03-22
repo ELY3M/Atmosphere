@@ -111,7 +111,7 @@ namespace ams::fssystem {
                 u8 m_encrypted_key[KeySize];
             public:
                 AesCtrStorageExternal(std::shared_ptr<fs::IStorage> bs, const void *enc_key, size_t enc_key_size, const void *iv, size_t iv_size, DecryptAesCtrFunction df, s32 kidx) : m_base_storage(std::move(bs)), m_decrypt_function(df), m_key_index(kidx) {
-                    AMS_ASSERT(bs != nullptr);
+                    AMS_ASSERT(m_base_storage != nullptr);
                     AMS_ASSERT(enc_key_size == KeySize);
                     AMS_ASSERT(iv != nullptr);
                     AMS_ASSERT(iv_size == IvSize);
@@ -212,12 +212,12 @@ namespace ams::fssystem {
 
                 virtual Result Write(s64 offset, const void *buffer, size_t size) override {
                     AMS_UNUSED(offset, buffer, size);
-                    return fs::ResultUnsupportedOperationInAesCtrStorageExternalA();
+                    return fs::ResultUnsupportedWriteForAesCtrStorageExternal();
                 }
 
                 virtual Result SetSize(s64 size) override {
                     AMS_UNUSED(size);
-                    return fs::ResultUnsupportedOperationInAesCtrStorageExternalB();
+                    return fs::ResultUnsupportedSetSizeForAesCtrStorageExternal();
                 }
         };
 
@@ -254,7 +254,7 @@ namespace ams::fssystem {
                                 return ResultSuccess();
                             }
                         default:
-                            return fs::ResultUnsupportedOperationInSwitchStorageA();
+                            return fs::ResultUnsupportedOperateRangeForSwitchStorage();
                     }
                 }
 
@@ -292,30 +292,19 @@ namespace ams::fssystem {
         using IntegrityLevelInfo = NcaFsHeader::HashData::IntegrityMetaInfo::LevelHashInfo;
         using IntegrityDataInfo  = IntegrityLevelInfo::HierarchicalIntegrityVerificationLevelInformation;
 
-        inline const Sha256DataRegion &GetSha256DataRegion(const NcaFsHeader::HashData &hash_data) {
-            return hash_data.hierarchical_sha256_data.hash_layer_region[1];
-        }
-
-        inline const IntegrityDataInfo &GetIntegrityDataInfo(const NcaFsHeader::HashData &hash_data) {
-            return hash_data.integrity_meta_info.level_hash_info.info[hash_data.integrity_meta_info.level_hash_info.max_layers - 2];
-        }
-
     }
 
-    Result NcaFileSystemDriver::OpenStorage(std::shared_ptr<fs::IStorage> *out, std::shared_ptr<IAsynchronousAccessSplitter> *out_splitter, NcaFsHeaderReader *out_header_reader, s32 fs_index) {
-        /* Create a storage context. */
-        StorageContext ctx{};
-
+    Result NcaFileSystemDriver::OpenStorageWithContext(std::shared_ptr<fs::IStorage> *out, std::shared_ptr<IAsynchronousAccessSplitter> *out_splitter, NcaFsHeaderReader *out_header_reader, s32 fs_index, StorageContext *ctx) {
         /* Open storage. */
-        R_TRY(this->OpenStorageImpl(out, out_header_reader, fs_index, std::addressof(ctx)));
+        R_TRY(this->OpenStorageImpl(out, out_header_reader, fs_index, ctx));
 
         /* If we have a compressed storage, use it as splitter. */
-        if (ctx.compressed_storage != nullptr) {
-            *out_splitter = std::move(ctx.compressed_storage);
+        if (ctx->compressed_storage != nullptr) {
+            *out_splitter = ctx->compressed_storage;
         } else {
             /* Otherwise, allocate a default splitter. */
             *out_splitter = fssystem::AllocateShared<DefaultAsynchronousAccessSplitter>();
-            R_UNLESS(*out_splitter != nullptr, fs::ResultAllocationFailureInAllocateShared());
+            R_UNLESS(*out_splitter != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
         }
 
         return ResultSuccess();
@@ -427,10 +416,13 @@ namespace ams::fssystem {
 
                 /* Open original indirectable storage. */
                 R_TRY(original_driver.OpenIndirectableStorageAsOriginal(std::addressof(original_indirectable_storage), std::addressof(original_header_reader), ctx));
+            } else if (ctx != nullptr && ctx->external_original_storage != nullptr) {
+                /* Use the external original storage. */
+                original_indirectable_storage = ctx->external_original_storage;
             } else {
                 /* Allocate a dummy memory storage as original storage. */
                 original_indirectable_storage = fssystem::AllocateShared<fs::MemoryStorage>(nullptr, 0);
-                R_UNLESS(original_indirectable_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+                R_UNLESS(original_indirectable_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
             }
 
             /* Create the indirect storage. */
@@ -447,21 +439,29 @@ namespace ams::fssystem {
             return ResultSuccess();
         }
 
+        /* Create the non-raw storage. */
+        R_RETURN(this->CreateStorageByRawStorage(out, out_header_reader, std::move(storage), ctx));
+    }
+
+    Result NcaFileSystemDriver::CreateStorageByRawStorage(std::shared_ptr<fs::IStorage> *out, const NcaFsHeaderReader *header_reader, std::shared_ptr<fs::IStorage> raw_storage, StorageContext *ctx) {
+        /* Initialize storage as raw storage. */
+        std::shared_ptr<fs::IStorage> storage = std::move(raw_storage);
+
         /* Process hash/integrity layer. */
-        switch (out_header_reader->GetHashType()) {
+        switch (header_reader->GetHashType()) {
             case NcaFsHeader::HashType::HierarchicalSha256Hash:
-                R_TRY(this->CreateSha256Storage(std::addressof(storage), std::move(storage), out_header_reader->GetHashData().hierarchical_sha256_data));
+                R_TRY(this->CreateSha256Storage(std::addressof(storage), std::move(storage), header_reader->GetHashData().hierarchical_sha256_data));
                 break;
             case NcaFsHeader::HashType::HierarchicalIntegrityHash:
-                R_TRY(this->CreateIntegrityVerificationStorage(std::addressof(storage), std::move(storage), out_header_reader->GetHashData().integrity_meta_info));
+                R_TRY(this->CreateIntegrityVerificationStorage(std::addressof(storage), std::move(storage), header_reader->GetHashData().integrity_meta_info));
                 break;
             default:
                 return fs::ResultInvalidNcaFsHeaderHashType();
         }
 
         /* Process compression layer. */
-        if (out_header_reader->ExistsCompressionLayer()) {
-            R_TRY(this->CreateCompressedStorage(std::addressof(storage), ctx != nullptr ? std::addressof(ctx->compressed_storage) : nullptr, ctx != nullptr ? std::addressof(ctx->compressed_storage_meta_storage) : nullptr, std::move(storage), out_header_reader->GetCompressionInfo()));
+        if (header_reader->ExistsCompressionLayer()) {
+            R_TRY(this->CreateCompressedStorage(std::addressof(storage), ctx != nullptr ? std::addressof(ctx->compressed_storage) : nullptr, ctx != nullptr ? std::addressof(ctx->compressed_storage_meta_storage) : nullptr, std::move(storage), header_reader->GetCompressionInfo()));
         }
 
         /* Set output storage. */
@@ -517,7 +517,7 @@ namespace ams::fssystem {
     Result NcaFileSystemDriver::CreateBodySubStorage(std::shared_ptr<fs::IStorage> *out, s64 offset, s64 size) {
         /* Create the body storage. */
         auto body_storage = fssystem::AllocateShared<SharedNcaBodyStorage>(m_reader->GetSharedBodyStorage(), m_reader);
-        R_UNLESS(body_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+        R_UNLESS(body_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
 
         /* Get the body storage size. */
         s64 body_size = 0;
@@ -528,7 +528,7 @@ namespace ams::fssystem {
 
         /* Create substorage. */
         auto body_substorage = fssystem::AllocateShared<fs::SubStorage>(std::move(body_storage), offset, size);
-        R_UNLESS(body_substorage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+        R_UNLESS(body_substorage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
 
         /* Set the output storage. */
         *out = std::move(body_substorage);
@@ -549,8 +549,8 @@ namespace ams::fssystem {
                     R_TRY(base_storage->GetSize(std::addressof(base_size)));
 
                     /* Create buffered storage. */
-                    auto buffered_storage = fssystem::AllocateShared<save::BufferedStorage>();
-                    R_UNLESS(buffered_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+                    auto buffered_storage = fssystem::AllocateShared<BufferedStorage>();
+                    R_UNLESS(buffered_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
 
                     /* Initialize the buffered storage. */
                     R_TRY(buffered_storage->Initialize(fs::SubStorage(std::move(base_storage), 0, base_size), m_buffer_manager, AesCtrStorageCacheBlockSize, AesCtrStorageCacheCount));
@@ -576,20 +576,20 @@ namespace ams::fssystem {
         std::shared_ptr<fs::IStorage> aes_ctr_storage;
         if (m_reader->HasExternalDecryptionKey()) {
             aes_ctr_storage = fssystem::AllocateShared<AesCtrStorageExternal>(std::move(base_storage), m_reader->GetExternalDecryptionKey(), AesCtrStorageExternal::KeySize, iv, AesCtrStorageExternal::IvSize, m_reader->GetExternalDecryptAesCtrFunctionForExternalKey(), -1);
-            R_UNLESS(aes_ctr_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+            R_UNLESS(aes_ctr_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
         } else {
             /* Create software decryption storage. */
             auto sw_storage = fssystem::AllocateShared<AesCtrStorageBySharedPointer>(base_storage, m_reader->GetDecryptionKey(NcaHeader::DecryptionKey_AesCtr), AesCtrStorageBySharedPointer::KeySize, iv, AesCtrStorageBySharedPointer::IvSize);
-            R_UNLESS(sw_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+            R_UNLESS(sw_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
 
             /* If we have a hardware key and should use it, make the hardware decryption storage. */
             if (m_reader->HasInternalDecryptionKeyForAesHw() && !m_reader->IsSoftwareAesPrioritized()) {
                 auto hw_storage = fssystem::AllocateShared<AesCtrStorageExternal>(base_storage, m_reader->GetDecryptionKey(NcaHeader::DecryptionKey_AesCtrHw), AesCtrStorageExternal::KeySize, iv, AesCtrStorageExternal::IvSize, m_reader->GetExternalDecryptAesCtrFunction(), GetKeyTypeValue(m_reader->GetKeyIndex(), m_reader->GetKeyGeneration()));
-                R_UNLESS(hw_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+                R_UNLESS(hw_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
 
                 /* Create the selection storage. */
                 auto switch_storage = fssystem::AllocateShared<SwitchStorage<bool (*)()>>(std::move(hw_storage), std::move(sw_storage), IsUsingHwAesCtrForSpeedEmulation);
-                R_UNLESS(switch_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+                R_UNLESS(switch_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
 
                 /* Use the selection storage. */
                 aes_ctr_storage = std::move(switch_storage);
@@ -601,7 +601,7 @@ namespace ams::fssystem {
 
         /* Create alignment matching storage. */
         auto aligned_storage = fssystem::AllocateShared<AlignmentMatchingStorage<NcaHeader::CtrBlockSize, 1>>(std::move(aes_ctr_storage));
-        R_UNLESS(aligned_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+        R_UNLESS(aligned_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
 
         /* Set the out storage. */
         *out = std::move(aligned_storage);
@@ -621,11 +621,11 @@ namespace ams::fssystem {
         const auto * const key1 = m_reader->GetDecryptionKey(NcaHeader::DecryptionKey_AesXts1);
         const auto * const key2 = m_reader->GetDecryptionKey(NcaHeader::DecryptionKey_AesXts2);
         auto xts_storage = fssystem::AllocateShared<AesXtsStorageBySharedPointer>(std::move(base_storage), key1, key2, AesXtsStorageBySharedPointer::KeySize, iv, AesXtsStorageBySharedPointer::IvSize, NcaHeader::XtsBlockSize);
-        R_UNLESS(xts_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+        R_UNLESS(xts_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
 
         /* Create alignment matching storage. */
         auto aligned_storage = fssystem::AllocateShared<AlignmentMatchingStorage<NcaHeader::XtsBlockSize, 1>>(std::move(xts_storage));
-        R_UNLESS(aligned_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+        R_UNLESS(aligned_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
 
         /* Set the out storage. */
         *out = std::move(aligned_storage);
@@ -648,15 +648,15 @@ namespace ams::fssystem {
 
         /* Create the encrypted storage. */
         auto enc_storage = fssystem::AllocateShared<fs::SubStorage>(std::move(base_storage), meta_offset, meta_size);
-        R_UNLESS(enc_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+        R_UNLESS(enc_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
 
         /* Create the decrypted storage. */
         std::shared_ptr<fs::IStorage> decrypted_storage;
         R_TRY(this->CreateAesCtrStorage(std::addressof(decrypted_storage), std::move(enc_storage), offset + meta_offset, sparse_info.MakeAesCtrUpperIv(upper_iv), AlignmentStorageRequirement_None));
 
         /* Create meta storage. */
-        auto meta_storage = fssystem::AllocateShared<save::BufferedStorage>();
-        R_UNLESS(meta_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+        auto meta_storage = fssystem::AllocateShared<BufferedStorage>();
+        R_UNLESS(meta_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
 
         /* Initialize the meta storage. */
         R_TRY(meta_storage->Initialize(fs::SubStorage(std::move(decrypted_storage), 0, meta_size), m_buffer_manager, SparseTableCacheBlockSize, SparseTableCacheCount));
@@ -685,7 +685,7 @@ namespace ams::fssystem {
 
         /* Create the sparse storage. */
         auto sparse_storage = fssystem::AllocateShared<fssystem::SparseStorage>();
-        R_UNLESS(sparse_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+        R_UNLESS(sparse_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
 
         /* Sanity check that we can be doing this. */
         AMS_ASSERT(header.entry_count != 0);
@@ -706,7 +706,7 @@ namespace ams::fssystem {
     Result NcaFileSystemDriver::CreateSparseStorage(std::shared_ptr<fs::IStorage> *out, s64 *out_fs_data_offset, std::shared_ptr<fssystem::SparseStorage> *out_sparse_storage, std::shared_ptr<fs::IStorage> *out_meta_storage, s32 index, const NcaAesCtrUpperIv &upper_iv, const NcaSparseInfo &sparse_info) {
         /* Validate preconditions. */
         AMS_ASSERT(out != nullptr);
-        AMS_ASSERT(base_storage != nullptr);
+        AMS_ASSERT(out_fs_data_offset != nullptr);
 
         /* Check the sparse info generation. */
         R_UNLESS(sparse_info.generation != 0, fs::ResultInvalidNcaHeader());
@@ -742,7 +742,7 @@ namespace ams::fssystem {
         } else {
             /* If there are no entries, there's nothing to actually do. */
             sparse_storage = fssystem::AllocateShared<fssystem::SparseStorage>();
-            R_UNLESS(sparse_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+            R_UNLESS(sparse_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
 
             sparse_storage->Initialize(fs_size);
         }
@@ -777,20 +777,20 @@ namespace ams::fssystem {
 
         /* Get and validate the meta extents. */
         const s64 meta_offset = patch_info.aes_ctr_ex_offset;
-        const s64 meta_size   = util::AlignUp(patch_info.aes_ctr_ex_size, NcaHeader::XtsBlockSize);
+        const s64 meta_size   = util::AlignUp(static_cast<s64>(patch_info.aes_ctr_ex_size), NcaHeader::XtsBlockSize);
         R_UNLESS(meta_offset + meta_size <= base_size, fs::ResultNcaBaseStorageOutOfRangeB());
 
         /* Create the encrypted storage. */
         auto enc_storage = fssystem::AllocateShared<fs::SubStorage>(std::move(base_storage), meta_offset, meta_size);
-        R_UNLESS(enc_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+        R_UNLESS(enc_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
 
         /* Create the decrypted storage. */
         std::shared_ptr<fs::IStorage> decrypted_storage;
         R_TRY(this->CreateAesCtrStorage(std::addressof(decrypted_storage), std::move(enc_storage), offset + meta_offset, upper_iv, AlignmentStorageRequirement_None));
 
         /* Create meta storage. */
-        auto meta_storage = fssystem::AllocateShared<save::BufferedStorage>();
-        R_UNLESS(meta_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+        auto meta_storage = fssystem::AllocateShared<BufferedStorage>();
+        R_UNLESS(meta_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
 
         /* Initialize the meta storage. */
         R_TRY(meta_storage->Initialize(fs::SubStorage(std::move(decrypted_storage), 0, meta_size), m_buffer_manager, AesCtrExTableCacheBlockSize, AesCtrExTableCacheCount));
@@ -798,7 +798,7 @@ namespace ams::fssystem {
         /* Create an alignment-matching storage. */
         using AlignedStorage = AlignmentMatchingStorage<NcaHeader::CtrBlockSize, 1>;
         auto aligned_storage = fssystem::AllocateShared<AlignedStorage>(std::move(meta_storage));
-        R_UNLESS(aligned_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+        R_UNLESS(aligned_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
 
         /* Set the output. */
         *out = std::move(aligned_storage);
@@ -843,7 +843,7 @@ namespace ams::fssystem {
 
             /* Create the aes ctr ex storage. */
             auto impl_storage = fssystem::AllocateShared<AesCtrCounterExtendedStorage>();
-            R_UNLESS(impl_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+            R_UNLESS(impl_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
 
             /* Initialize the aes ctr ex storage. */
             R_TRY(impl_storage->Initialize(m_allocator, m_reader->GetExternalDecryptionKey(), AesCtrStorageBySharedPointer::KeySize, secure_value, counter_offset, data_storage, node_storage, entry_storage, entry_count, std::move(decryptor)));
@@ -862,7 +862,7 @@ namespace ams::fssystem {
 
             /* Make the software storage. */
             auto sw_storage = fssystem::AllocateShared<AesCtrCounterExtendedStorage>();
-            R_UNLESS(sw_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+            R_UNLESS(sw_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
 
             /* Initialize the software storage. */
             R_TRY(sw_storage->Initialize(m_allocator, m_reader->GetDecryptionKey(NcaHeader::DecryptionKey_AesCtr), AesCtrStorageBySharedPointer::KeySize, secure_value, counter_offset, data_storage, node_storage, entry_storage, entry_count, std::move(sw_decryptor)));
@@ -880,14 +880,14 @@ namespace ams::fssystem {
 
                 /* Create the hardware storage. */
                 auto hw_storage = fssystem::AllocateShared<AesCtrCounterExtendedStorage>();
-                R_UNLESS(hw_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+                R_UNLESS(hw_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
 
                 /* Initialize the hardware storage. */
                 R_TRY(hw_storage->Initialize(m_allocator, m_reader->GetDecryptionKey(NcaHeader::DecryptionKey_AesCtrHw), AesCtrStorageBySharedPointer::KeySize, secure_value, counter_offset, data_storage, node_storage, entry_storage, entry_count, std::move(hw_decryptor)));
 
                 /* Create the selection storage. */
                 auto switch_storage = fssystem::AllocateShared<SwitchStorage<bool (*)()>>(std::move(hw_storage), std::move(sw_storage), IsUsingHwAesCtrForSpeedEmulation);
-                R_UNLESS(switch_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+                R_UNLESS(switch_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
 
                 /* Set the implementation storage. */
                 aes_ctr_ex_storage = std::move(switch_storage);
@@ -900,7 +900,7 @@ namespace ams::fssystem {
         /* Create an alignment-matching storage. */
         using AlignedStorage = AlignmentMatchingStorage<NcaHeader::CtrBlockSize, 1>;
         auto aligned_storage = fssystem::AllocateShared<AlignedStorage>(std::move(aes_ctr_ex_storage));
-        R_UNLESS(aligned_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+        R_UNLESS(aligned_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
 
         /* Set the output. */
         *out = std::move(aligned_storage);
@@ -921,8 +921,8 @@ namespace ams::fssystem {
         R_UNLESS(patch_info.indirect_offset + patch_info.indirect_size <= base_size, fs::ResultNcaBaseStorageOutOfRangeE());
 
         /* Allocate the meta storage. */
-        auto meta_storage = fssystem::AllocateShared<save::BufferedStorage>();
-        R_UNLESS(meta_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+        auto meta_storage = fssystem::AllocateShared<BufferedStorage>();
+        R_UNLESS(meta_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
 
         /* Initialize the meta storage. */
         R_TRY(meta_storage->Initialize(fs::SubStorage(base_storage, patch_info.indirect_offset, patch_info.indirect_size), m_buffer_manager, IndirectTableCacheBlockSize, IndirectTableCacheCount));
@@ -954,8 +954,8 @@ namespace ams::fssystem {
         AMS_ASSERT(util::IsAligned(indirect_data_size, NcaHeader::XtsBlockSize));
 
         /* Create the indirect data storage. */
-        auto indirect_data_storage = fssystem::AllocateShared<save::BufferedStorage>();
-        R_UNLESS(indirect_data_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+        auto indirect_data_storage = fssystem::AllocateShared<BufferedStorage>();
+        R_UNLESS(indirect_data_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
 
         /* Initialize the indirect data storage. */
         R_TRY(indirect_data_storage->Initialize(fs::SubStorage(base_storage, 0, indirect_data_size), m_buffer_manager, IndirectDataCacheBlockSize, IndirectDataCacheCount));
@@ -965,7 +965,7 @@ namespace ams::fssystem {
 
         /* Create the indirect storage. */
         auto indirect_storage = fssystem::AllocateShared<IndirectStorage>();
-        R_UNLESS(indirect_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+        R_UNLESS(indirect_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
 
         /* Initialize the indirect storage. */
         R_TRY(indirect_storage->Initialize(m_allocator, fs::SubStorage(meta_storage, 0, node_size), fs::SubStorage(meta_storage, node_size, entry_size), header.entry_count));
@@ -1014,8 +1014,8 @@ namespace ams::fssystem {
 
         /* Make a buffer holder storage. */
         auto buffer_hold_storage = fssystem::AllocateShared<MemoryResourceBufferHoldStorage>(std::move(base_storage), m_allocator, total_buffer_size);
-        R_UNLESS(buffer_hold_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
-        R_UNLESS(buffer_hold_storage->IsValid(), fs::ResultAllocationFailureInNcaFileSystemDriverI());
+        R_UNLESS(buffer_hold_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
+        R_UNLESS(buffer_hold_storage->IsValid(), fs::ResultAllocationMemoryFailedInNcaFileSystemDriverI());
 
         /* Get storage size. */
         s64 base_size;
@@ -1030,7 +1030,7 @@ namespace ams::fssystem {
 
         /* Make the verification storage. */
         auto verification_storage = fssystem::AllocateShared<VerificationStorage>();
-        R_UNLESS(verification_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+        R_UNLESS(verification_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
 
         /* Make layer storages. */
         fs::SubStorage layer_storages[VerificationStorage::LayerCount] = {
@@ -1044,11 +1044,11 @@ namespace ams::fssystem {
 
         /* Make the cache storage. */
         auto cache_storage = fssystem::AllocateShared<CacheStorage>(std::move(verification_storage), hash_data.hash_block_size, static_cast<char *>(buffer_hold_storage->GetBuffer()) + hash_buffer_size, cache_buffer_size, CacheBlockCount);
-        R_UNLESS(cache_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+        R_UNLESS(cache_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
 
         /* Make the aligned storage. */
         auto aligned_storage = fssystem::AllocateShared<AlignedStorage>(std::move(cache_storage), hash_data.hash_block_size);
-        R_UNLESS(aligned_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+        R_UNLESS(aligned_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
 
         /* Set the output. */
         *out = std::move(aligned_storage);
@@ -1061,15 +1061,15 @@ namespace ams::fssystem {
         AMS_ASSERT(base_storage != nullptr);
 
         /* Define storage types. */
-        using VerificationStorage = save::HierarchicalIntegrityVerificationStorage;
+        using VerificationStorage = HierarchicalIntegrityVerificationStorage;
         using StorageInfo         = VerificationStorage::HierarchicalStorageInformation;
 
         /* Validate the meta info. */
-        save::HierarchicalIntegrityVerificationInformation level_hash_info;
+        HierarchicalIntegrityVerificationInformation level_hash_info;
         std::memcpy(std::addressof(level_hash_info), std::addressof(meta_info.level_hash_info), sizeof(level_hash_info));
 
-        R_UNLESS(save::IntegrityMinLayerCount <= level_hash_info.max_layers,   fs::ResultInvalidHierarchicalIntegrityVerificationLayerCount());
-        R_UNLESS(level_hash_info.max_layers   <= save::IntegrityMaxLayerCount, fs::ResultInvalidHierarchicalIntegrityVerificationLayerCount());
+        R_UNLESS(IntegrityMinLayerCount <= level_hash_info.max_layers,   fs::ResultInvalidHierarchicalIntegrityVerificationLayerCount());
+        R_UNLESS(level_hash_info.max_layers   <= IntegrityMaxLayerCount, fs::ResultInvalidHierarchicalIntegrityVerificationLayerCount());
 
         /* Get the base storage size. */
         s64 base_storage_size;
@@ -1091,7 +1091,7 @@ namespace ams::fssystem {
 
         /* Make the integrity romfs storage. */
         auto integrity_storage = fssystem::AllocateShared<fssystem::IntegrityRomFsStorage>();
-        R_UNLESS(integrity_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+        R_UNLESS(integrity_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
 
         /* Initialize the integrity storage. */
         R_TRY(integrity_storage->Initialize(level_hash_info, meta_info.master_hash, storage_info, m_buffer_manager, m_hash_generator_factory_selector->GetFactory()));
@@ -1105,7 +1105,7 @@ namespace ams::fssystem {
         return this->CreateCompressedStorage(out, out_cmp, out_meta, std::move(base_storage), compression_info, m_reader->GetDecompressor(), m_allocator, m_buffer_manager);
     }
 
-    Result NcaFileSystemDriver::CreateCompressedStorage(std::shared_ptr<fs::IStorage> *out, std::shared_ptr<fssystem::CompressedStorage> *out_cmp, std::shared_ptr<fs::IStorage> *out_meta, std::shared_ptr<fs::IStorage> base_storage, const NcaCompressionInfo &compression_info, GetDecompressorFunction get_decompressor, MemoryResource *allocator, IBufferManager *buffer_manager) {
+    Result NcaFileSystemDriver::CreateCompressedStorage(std::shared_ptr<fs::IStorage> *out, std::shared_ptr<fssystem::CompressedStorage> *out_cmp, std::shared_ptr<fs::IStorage> *out_meta, std::shared_ptr<fs::IStorage> base_storage, const NcaCompressionInfo &compression_info, GetDecompressorFunction get_decompressor, MemoryResource *allocator, fs::IBufferManager *buffer_manager) {
         /* Check pre-conditions. */
         AMS_ASSERT(out != nullptr);
         AMS_ASSERT(base_storage != nullptr);
@@ -1126,14 +1126,14 @@ namespace ams::fssystem {
         /* If we should, set the output meta storage. */
         if (out_meta != nullptr) {
             auto meta_storage = fssystem::AllocateShared<fs::SubStorage>(base_storage, table_offset, table_size);
-            R_UNLESS(meta_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+            R_UNLESS(meta_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
 
             *out_meta = std::move(meta_storage);
         }
 
         /* Allocate the compressed storage. */
         auto compressed_storage = fssystem::AllocateShared<fssystem::CompressedStorage>();
-        R_UNLESS(compressed_storage != nullptr, fs::ResultAllocationFailureInAllocateShared());
+        R_UNLESS(compressed_storage != nullptr, fs::ResultAllocationMemoryFailedAllocateShared());
 
         /* Initialize the compressed storage. */
         R_TRY(compressed_storage->Initialize(allocator, buffer_manager, fs::SubStorage(base_storage, 0, table_offset), fs::SubStorage(base_storage, table_offset, node_size), fs::SubStorage(base_storage, table_offset + node_size, entry_size), header.entry_count, 64_KB, 640_KB, get_decompressor, 16_KB, 16_KB, 32));

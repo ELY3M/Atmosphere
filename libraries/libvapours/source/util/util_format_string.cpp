@@ -17,8 +17,7 @@
 
 namespace ams::util {
 
-    #pragma GCC push_options
-    #pragma GCC optimize ("-Os")
+    AMS_PRAGMA_BEGIN_OPTIMIZE("-Os")
 
     namespace {
 
@@ -395,7 +394,9 @@ namespace ams::util {
 
             /* Ensure null termination. */
             WriteCharacter('\0');
-            dst[dst_size - 1] = '\0';
+            if (dst_size > 0) {
+                dst[dst_size - 1] = '\0';
+            }
 
             /* Return number of characters that would have been printed sans the null terminator. */
             return static_cast<int>(dst_index) - 1;
@@ -403,7 +404,7 @@ namespace ams::util {
 
     }
 
-    #pragma GCC pop_options
+    AMS_PRAGMA_END_OPTIMIZE()
 
     int TVSNPrintf(char *dst, size_t dst_size, const char *fmt, std::va_list vl) {
         return TVSNPrintfImpl(dst, dst_size, fmt, vl);

@@ -50,7 +50,7 @@ namespace ams::fssrv::fscreator {
     Result StorageOnNcaCreator::CreateNcaReader(std::shared_ptr<fssystem::NcaReader> *out, std::shared_ptr<fs::IStorage> storage) {
         /* Create a reader. */
         std::shared_ptr reader = fssystem::AllocateShared<fssystem::NcaReader>();
-        R_UNLESS(reader != nullptr, fs::ResultAllocationFailureInStorageOnNcaCreatorB());
+        R_UNLESS(reader != nullptr, fs::ResultAllocationMemoryFailedInStorageOnNcaCreatorB());
 
         /* Initialize the reader. */
         R_TRY(reader->Initialize(std::move(storage), m_nca_crypto_cfg, m_nca_compression_cfg, m_hash_generator_factory_selector));
@@ -59,5 +59,53 @@ namespace ams::fssrv::fscreator {
         *out = std::move(reader);
         return ResultSuccess();
     }
+
+    #if !defined(ATMOSPHERE_BOARD_NINTENDO_NX)
+    Result StorageOnNcaCreator::CreateWithContext(std::shared_ptr<fs::IStorage> *out, std::shared_ptr<fssystem::IAsynchronousAccessSplitter> *out_splitter, fssystem::NcaFsHeaderReader *out_header_reader, void *ctx, std::shared_ptr<fssystem::NcaReader> nca_reader, s32 index) {
+        /* Create a fs driver. */
+        fssystem::NcaFileSystemDriver nca_fs_driver(nca_reader, m_allocator, m_buffer_manager, m_hash_generator_factory_selector);
+
+        /* Open the storage. */
+        std::shared_ptr<fs::IStorage> storage;
+        std::shared_ptr<fssystem::IAsynchronousAccessSplitter> splitter;
+        R_TRY(nca_fs_driver.OpenStorageWithContext(std::addressof(storage), std::addressof(splitter), out_header_reader, index, static_cast<fssystem::NcaFileSystemDriver::StorageContext *>(ctx)));
+
+        /* Set the out storage. */
+        *out = std::move(storage);
+        *out_splitter = std::move(splitter);
+        return ResultSuccess();
+    }
+
+    Result StorageOnNcaCreator::CreateWithPatchWithContext(std::shared_ptr<fs::IStorage> *out, std::shared_ptr<fssystem::IAsynchronousAccessSplitter> *out_splitter, fssystem::NcaFsHeaderReader *out_header_reader, void *ctx, std::shared_ptr<fssystem::NcaReader> original_nca_reader, std::shared_ptr<fssystem::NcaReader> current_nca_reader, s32 index) {
+        /* Create a fs driver. */
+        fssystem::NcaFileSystemDriver nca_fs_driver(original_nca_reader, current_nca_reader, m_allocator, m_buffer_manager, m_hash_generator_factory_selector);
+
+        /* Open the storage. */
+        std::shared_ptr<fs::IStorage> storage;
+        std::shared_ptr<fssystem::IAsynchronousAccessSplitter> splitter;
+        R_TRY(nca_fs_driver.OpenStorageWithContext(std::addressof(storage), std::addressof(splitter), out_header_reader, index, static_cast<fssystem::NcaFileSystemDriver::StorageContext *>(ctx)));
+
+        /* Set the out storage. */
+        *out = std::move(storage);
+        *out_splitter = std::move(splitter);
+        return ResultSuccess();
+    }
+
+    Result StorageOnNcaCreator::CreateByRawStorage(std::shared_ptr<fs::IStorage> *out, std::shared_ptr<fssystem::IAsynchronousAccessSplitter> *out_splitter, const fssystem::NcaFsHeaderReader *header_reader, std::shared_ptr<fs::IStorage> raw_storage, void *ctx, std::shared_ptr<fssystem::NcaReader> nca_reader) {
+        /* Create a fs driver. */
+        fssystem::NcaFileSystemDriver nca_fs_driver(nca_reader, m_allocator, m_buffer_manager, m_hash_generator_factory_selector);
+
+        /* Open the storage. */
+        auto *storage_ctx = static_cast<fssystem::NcaFileSystemDriver::StorageContext *>(ctx);
+        R_TRY(nca_fs_driver.CreateStorageByRawStorage(out, header_reader, std::move(raw_storage), storage_ctx));
+
+        /* Update the splitter. */
+        if (storage_ctx->compressed_storage != nullptr) {
+            *out_splitter = storage_ctx->compressed_storage;
+        }
+
+        R_SUCCEED();
+    }
+    #endif
 
 }

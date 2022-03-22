@@ -32,7 +32,7 @@ namespace ams::fssystem {
 
     template<typename BasePointer>
     AesCtrStorage<BasePointer>::AesCtrStorage(BasePointer base, const void *key, size_t key_size, const void *iv, size_t iv_size) : m_base_storage(std::move(base)) {
-        AMS_ASSERT(base != nullptr);
+        AMS_ASSERT(m_base_storage != nullptr);
         AMS_ASSERT(key  != nullptr);
         AMS_ASSERT(iv   != nullptr);
         AMS_ASSERT(key_size == KeySize);
@@ -135,7 +135,7 @@ namespace ams::fssystem {
     template<typename BasePointer>
     Result AesCtrStorage<BasePointer>::SetSize(s64 size) {
         AMS_UNUSED(size);
-        return fs::ResultUnsupportedOperationInAesCtrStorageA();
+        return fs::ResultUnsupportedSetSizeForAesCtrStorage();
     }
 
     template<typename BasePointer>

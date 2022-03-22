@@ -255,18 +255,18 @@ namespace ams::ncm {
 
         /* Print the savedata path. */
         PathString savedata_db_path;
-        savedata_db_path.SetFormat("%s/%s", root->path, "imkvdb.arc");
+        savedata_db_path.AssignFormat("%s/%s", root->path, "imkvdb.arc");
 
         /* Print a path for the mounted partition. */
         PathString bis_db_path;
-        bis_db_path.SetFormat("%s:/%s", import_mount_name, path);
+        bis_db_path.AssignFormat("%s:/%s", import_mount_name, path);
 
         /* Mount the savedata. */
         R_TRY(fs::MountSystemSaveData(root->mount_name, root->info.space_id, root->info.id));
         ON_SCOPE_EXIT { fs::Unmount(root->mount_name); };
 
         /* Ensure the path exists for us to import to. */
-        R_TRY(fs::EnsureDirectoryRecursively(root->path));
+        R_TRY(fs::EnsureDirectory(root->path));
 
         /* Copy the file from bis to our save. */
         R_TRY(impl::CopyFile(savedata_db_path, bis_db_path));
@@ -395,7 +395,7 @@ namespace ams::ncm {
         ON_SCOPE_EXIT { fs::Unmount(root->mount_name); };
 
         /* Ensure the content storage root's path exists. */
-        R_TRY(fs::EnsureDirectoryRecursively(root->path));
+        R_TRY(fs::EnsureDirectory(root->path));
 
         /* Initialize content and placeholder directories for the root. */
         return ContentStorageImpl::InitializeBase(root->path);
@@ -415,7 +415,7 @@ namespace ams::ncm {
         ON_SCOPE_EXIT { fs::Unmount(root->mount_name); };
 
         /* Ensure the content meta database root's path exists. */
-        R_TRY(fs::EnsureDirectoryRecursively(root->path));
+        R_TRY(fs::EnsureDirectory(root->path));
 
         /* Commit our changes. */
         return fs::CommitSaveData(root->mount_name);
@@ -542,7 +542,7 @@ namespace ams::ncm {
 
         /* Mount based on the storage type. */
         if (storage_id == StorageId::GameCard) {
-            fs::GameCardHandle handle;
+            fs::GameCardHandle handle{};
             R_TRY(fs::GetGameCardHandle(std::addressof(handle)));
             R_TRY(fs::MountGameCardPartition(root->mount_name, handle, fs::GameCardPartition::Secure));
         } else {
