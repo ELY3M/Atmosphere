@@ -180,6 +180,11 @@ namespace ams::fssystem {
         cfg->decrypt_aes_ctr_external      = DecryptAesCtrForPreparedKey;
         cfg->is_plaintext_header_available = !prod;
 
+        /* TODO: Should this default to false for host tools with api to set explicitly? */
+        #if !defined(ATMOSPHERE_BOARD_NINTENDO_NX)
+        cfg->is_unsigned_header_available_for_host_tool = true;
+        #endif
+
         return cfg;
     }
 
@@ -206,7 +211,7 @@ namespace ams::fssystem {
 
         /* Setup the keyslot cache. */
         for (s32 i = 0; i < KeySlotCacheEntryCount; i++) {
-            s32 slot_index;
+            s32 slot_index = -1;
             R_ABORT_UNLESS(spl::AllocateAesKeySlot(std::addressof(slot_index)));
             g_key_slot_cache_entry[i].emplace(slot_index);
             g_key_slot_cache.AddEntry(std::addressof(g_key_slot_cache_entry[i].value()));

@@ -32,12 +32,14 @@ namespace ams::spl::impl {
         using Drbg = CtrDrbg<crypto::AesEncryptor128, AesKeySize, false>;
 
         /* Convenient defines. */
+        #if defined(ATMOSPHERE_OS_HORIZON)
         constexpr size_t DeviceAddressSpaceAlign = 4_MB;
 
         constexpr u32 WorkBufferBase       = 0x80000000u;
         constexpr u32 ComputeAesInMapBase  = 0x90000000u;
         constexpr u32 ComputeAesOutMapBase = 0xC0000000u;
         constexpr size_t ComputeAesSizeMax = static_cast<size_t>(ComputeAesOutMapBase - ComputeAesInMapBase);
+        #endif
 
         constexpr size_t DeviceUniqueDataIvSize       = 0x10;
         constexpr size_t DeviceUniqueDataPaddingSize  = 0x08;
@@ -64,7 +66,7 @@ namespace ams::spl::impl {
 
         /* KeySlot management. */
         constinit AesKeySlotCache g_aes_keyslot_cache;
-        constinit util::optional<AesKeySlotCacheEntry> g_aes_keyslot_cache_entry[PhysicalAesKeySlotCount];
+        constinit util::optional<AesKeySlotCacheEntry> g_aes_keyslot_cache_entry[PhysicalAesKeySlotCount] = {};
 
         constinit bool g_is_physical_keyslot_allowed  = false;
         constinit bool g_is_modern_device_unique_data = true;
@@ -84,7 +86,7 @@ namespace ams::spl::impl {
 
         constexpr inline s32 MakeVirtualAesKeySlot(s32 index) {
             const s32 virt_slot = index + AesKeySlotMin;
-            AMS_ASSERT(IsVirtualKeySlot(virt_slot));
+            AMS_ASSERT(IsVirtualAesKeySlot(virt_slot));
             return virt_slot;
         }
 
@@ -108,8 +110,8 @@ namespace ams::spl::impl {
         };
 
         constinit bool g_is_aes_keyslot_allocated[AesKeySlotCount];
-        constinit AesKeySlotContents g_aes_keyslot_contents[AesKeySlotCount];
-        constinit AesKeySlotContents g_aes_physical_keyslot_contents_for_backwards_compatibility[PhysicalAesKeySlotCount];
+        constinit AesKeySlotContents g_aes_keyslot_contents[AesKeySlotCount] = {};
+        constinit AesKeySlotContents g_aes_physical_keyslot_contents_for_backwards_compatibility[PhysicalAesKeySlotCount] = {};
 
         void ClearPhysicalAesKeySlot(s32 keyslot) {
             AMS_ASSERT(IsPhysicalAesKeySlot(keyslot));
@@ -204,27 +206,37 @@ namespace ams::spl::impl {
 
         /* Global variables. */
         alignas(os::MemoryPageSize) constinit u8      g_work_buffer[WorkBufferSizeMax];
-        constinit util::TypedStorage<Drbg>            g_drbg;
+        constinit util::TypedStorage<Drbg>            g_drbg = {};
         constinit os::InterruptName                   g_interrupt_name;
-        constinit os::InterruptEventType              g_interrupt;
-        constinit util::TypedStorage<os::SystemEvent> g_aes_keyslot_available_event;
+        constinit os::InterruptEventType              g_interrupt = {};
+        constinit util::TypedStorage<os::SystemEvent> g_aes_keyslot_available_event = {};
         constinit os::SdkMutex                        g_operation_lock;
-        constinit dd::DeviceAddressSpaceType          g_device_address_space;
+        constinit dd::DeviceAddressSpaceType          g_device_address_space = {};
+
+        #if defined(ATMOSPHERE_OS_HORIZON)
         constinit u32                                 g_work_buffer_mapped_address;
+        #else
+        constinit uintptr_t                           g_work_buffer_mapped_address;
+        #endif
 
         constinit BootReasonValue                     g_boot_reason;
         constinit bool                                g_is_boot_reason_initialized;
 
         /* Initialization functionality. */
         void InitializeAsyncOperation() {
+            #if defined(ATMOSPHERE_OS_HORIZON)
             u64 interrupt_number;
             impl::GetConfig(std::addressof(interrupt_number), ConfigItem::SecurityEngineInterruptNumber);
             g_interrupt_name = static_cast<os::InterruptName>(interrupt_number);
 
             os::InitializeInterruptEvent(std::addressof(g_interrupt), g_interrupt_name, os::EventClearMode_AutoClear);
+            #else
+            AMS_UNUSED(g_interrupt_name, g_interrupt);
+            #endif
         }
 
         void InitializeDeviceAddressSpace() {
+            #if defined(ATMOSPHERE_OS_HORIZON)
             /* Create device address space. */
             R_ABORT_UNLESS(dd::CreateDeviceAddressSpace(std::addressof(g_device_address_space), 0, (1ul << 32)));
 
@@ -236,6 +248,11 @@ namespace ams::spl::impl {
             g_work_buffer_mapped_address = WorkBufferBase + (work_buffer_address % DeviceAddressSpaceAlign);
 
             R_ABORT_UNLESS(dd::MapDeviceAddressSpaceAligned(std::addressof(g_device_address_space), dd::GetCurrentProcessHandle(), work_buffer_address, dd::DeviceAddressSpaceMemoryRegionAlignment, g_work_buffer_mapped_address, dd::MemoryPermission_ReadWrite));
+            #else
+            /* Just set the work buffer address directly. */
+            AMS_UNUSED(g_device_address_space);
+            g_work_buffer_mapped_address = reinterpret_cast<uintptr_t>(g_work_buffer);
+            #endif
         }
 
         void InitializeCtrDrbg() {
@@ -261,7 +278,9 @@ namespace ams::spl::impl {
         }
 
         void WaitOperation() {
+            #if defined(ATMOSPHERE_OS_HORIZON)
             os::WaitInterruptEvent(std::addressof(g_interrupt));
+            #endif
         }
 
         smc::Result WaitAndGetResult(smc::AsyncOperationKey op_key) {
@@ -294,6 +313,7 @@ namespace ams::spl::impl {
                 u8 out_buffer[crypto::AesEncryptor128::BlockSize];
             };
 
+            #if defined(ATMOSPHERE_OS_HORIZON)
             auto &layout = *reinterpret_cast<DecryptAesLayout *>(g_work_buffer);
 
             layout.crypt_ctx.in.num_entries  = 0;
@@ -326,8 +346,33 @@ namespace ams::spl::impl {
                 }
             }
             os::FlushDataCache(std::addressof(layout.out_buffer), sizeof(layout.out_buffer));
-
             std::memcpy(dst, layout.out_buffer, sizeof(layout.out_buffer));
+            #else
+            {
+                /* Set up buffers. */
+                u8 in_buffer[crypto::AesEncryptor128::BlockSize];
+                u8 out_buffer[crypto::AesEncryptor128::BlockSize];
+                std::memcpy(in_buffer, src, sizeof(in_buffer));
+
+                std::scoped_lock lk(g_operation_lock);
+
+                /* On generic os, we don't worry about the security engine. */
+                smc::AsyncOperationKey op_key;
+                const IvCtr iv_ctr    = {};
+                const u32 mode        = smc::GetComputeAesMode(smc::CipherMode::CbcDecrypt, GetPhysicalAesKeySlot(keyslot, true));
+                smc::Result res = smc::ComputeAes(std::addressof(op_key), reinterpret_cast<uintptr_t>(out_buffer), mode, iv_ctr, reinterpret_cast<uintptr_t>(in_buffer), sizeof(in_buffer));
+                if (res != smc::Result::Success) {
+                    return res;
+                }
+
+                res = WaitAndGetResult(op_key);
+                if (res != smc::Result::Success) {
+                    return res;
+                }
+
+                std::memcpy(dst, out_buffer, sizeof(out_buffer));
+            }
+            #endif
 
             return smc::Result::Success;
         }
@@ -626,6 +671,7 @@ namespace ams::spl::impl {
         R_UNLESS(src_size <= dst_size,                    spl::ResultInvalidBufferSize());
         R_UNLESS(util::IsAligned(src_size, AesBlockSize), spl::ResultInvalidBufferSize());
 
+        #if defined(ATMOSPHERE_OS_HORIZON)
         /* We can only map 4_MB aligned buffers for the SE, so determine where to map our buffers. */
         const uintptr_t src_addr = reinterpret_cast<uintptr_t>(src);
         const uintptr_t dst_addr = reinterpret_cast<uintptr_t>(dst);
@@ -681,6 +727,25 @@ namespace ams::spl::impl {
             }
         }
         os::FlushDataCache(dst, dst_size);
+        #else
+        {
+            std::scoped_lock lk(g_operation_lock);
+
+            const u32 mode = smc::GetComputeAesMode(smc::CipherMode::Ctr, GetPhysicalAesKeySlot(keyslot, true));
+
+            /* On generic os, we don't worry about the security engine. */
+            smc::AsyncOperationKey op_key;
+            smc::Result res = smc::ComputeAes(std::addressof(op_key), reinterpret_cast<uintptr_t>(dst), mode, iv_ctr, reinterpret_cast<uintptr_t>(src), src_size);
+            if (res != smc::Result::Success) {
+                return smc::ConvertResult(res);
+            }
+
+            res = WaitAndGetResult(op_key);
+            if (res != smc::Result::Success) {
+                return smc::ConvertResult(res);
+            }
+        }
+        #endif
 
         return ResultSuccess();
     }

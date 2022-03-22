@@ -20,7 +20,7 @@
 
 namespace ams::fssrv::sf {
 
-    struct Path : ams::sf::LargeData {
+    struct Path : public ams::sf::LargeData {
         char str[fs::EntryNameLengthMax + 1];
 
         static constexpr Path Encode(const char *p) {
@@ -42,8 +42,11 @@ namespace ams::fssrv::sf {
             return len;
         }
     };
+    static_assert(util::is_pod<Path>::value);
 
-    static_assert(util::is_pod<Path>::value && sizeof(Path) == FS_MAX_PATH);
+    #if defined(ATMOSPHERE_OS_HORIZON)
+    static_assert(sizeof(Path) == FS_MAX_PATH);
+    #endif
 
     using FspPath = Path;
 

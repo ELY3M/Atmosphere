@@ -69,7 +69,7 @@ namespace ams::mitm::sysupdater {
             char path[ams::fs::EntryNameLengthMax];
             R_TRY(ConvertToFsCommonPath(path, sizeof(path), package_root_path, entry.name));
 
-            return ncm::ReadContentMetaPath(out, path);
+            return ncm::ReadContentMetaPathAlongWithExtendedDataAndDigest(out, path);
         }
 
         Result ReadContentMetaPath(ncm::AutoBuffer *out, const char *package_root, const ncm::ContentInfo &content_info) {
@@ -84,7 +84,7 @@ namespace ams::mitm::sysupdater {
             R_TRY(ConvertToFsCommonPath(content_path.str, sizeof(content_path.str), package_root, cnmt_nca_name));
 
             /* Read the content meta path. */
-            return ncm::ReadContentMetaPath(out, content_path.str);
+            return ncm::ReadContentMetaPathAlongWithExtendedDataAndDigest(out, content_path.str);
         }
 
         Result GetSystemUpdateUpdateContentInfoFromPackage(ncm::ContentInfo *out, const char *package_root) {
@@ -147,7 +147,7 @@ namespace ams::mitm::sysupdater {
 
                 data_buffer_size /= 2;
             } while (data_buffer_size >= 16_KB);
-            R_UNLESS(data_buffer != nullptr, fs::ResultAllocationFailureInNew());
+            R_UNLESS(data_buffer != nullptr, fs::ResultAllocationMemoryFailedNew());
 
             ON_SCOPE_EXIT { std::free(data_buffer); };
 
@@ -506,7 +506,7 @@ namespace ams::mitm::sysupdater {
         R_TRY(FormatUserPackagePath(std::addressof(package_root), path));
 
         /* Ensure that we can create an update context. */
-        R_TRY(fs::EnsureDirectoryRecursively("@Sdcard:/atmosphere/update/"));
+        R_TRY(fs::EnsureDirectory("@Sdcard:/atmosphere/update/"));
         const char *context_path = "@Sdcard:/atmosphere/update/cup.ctx";
 
         /* Create and initialize the update task. */

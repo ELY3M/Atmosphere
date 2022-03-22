@@ -86,11 +86,11 @@ namespace ams::fs {
                 R_UNLESS(IStorage::CheckOffsetAndSize(offset, size), fs::ResultOutOfRange());
                 return m_base_file->OperateRange(dst, dst_size, op_id, offset, size, src, src_size);
             default:
-                return fs::ResultUnsupportedOperationInFileStorageA();
+                return fs::ResultUnsupportedOperateRangeForFileStorage();
         }
     }
 
-    Result FileStorageBasedFileSystem::Initialize(std::shared_ptr<fs::fsa::IFileSystem> base_file_system, const char *path, fs::OpenMode mode) {
+    Result FileStorageBasedFileSystem::Initialize(std::shared_ptr<fs::fsa::IFileSystem> base_file_system, const fs::Path &path, fs::OpenMode mode) {
         /* Open the file. */
         std::unique_ptr<fs::fsa::IFile> base_file;
         R_TRY(base_file_system->OpenFile(std::addressof(base_file), path, mode));
@@ -171,7 +171,7 @@ namespace ams::fs {
 
                 return QueryRange(static_cast<QueryRangeInfo *>(dst), m_handle, offset, size);
             default:
-                return fs::ResultUnsupportedOperationInFileStorageB();
+                return fs::ResultUnsupportedOperateRangeForFileHandleStorage();
         }
     }
 

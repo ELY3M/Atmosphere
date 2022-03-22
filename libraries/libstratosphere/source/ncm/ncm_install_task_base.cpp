@@ -14,6 +14,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <stratosphere.hpp>
+#include "ncm_extended_data_mapper.hpp"
 
 namespace ams::ncm {
 
@@ -202,7 +203,7 @@ namespace ams::ncm {
         /* Obtain a reader and get the storage id. */
         const auto reader = content_meta.GetReader();
         const auto storage_id = reader.GetStorageId();
-        R_SUCCEED_IF(storage_id== StorageId::None);
+        R_SUCCEED_IF(storage_id == StorageId::None);
 
         /* Open the relevant content storage. */
         ContentStorage content_storage;
@@ -340,10 +341,10 @@ namespace ams::ncm {
             InstallContentMeta content_meta;
             R_TRY(m_data->Get(std::addressof(content_meta), i));
 
-            /* Update the data (and check result) when we are done. */
-            const auto DoUpdate = [&]() ALWAYS_INLINE_LAMBDA { return m_data->Update(content_meta, i); };
+            /* Write all prepared content infos. */
             {
-                auto update_guard = SCOPE_GUARD { DoUpdate(); };
+                /* If we fail while writing, update (but don't check the result). */
+                ON_RESULT_FAILURE { m_data->Update(content_meta, i); };
 
                 /* Create a writer. */
                 const auto writer = content_meta.GetWriter();
@@ -358,11 +359,10 @@ namespace ams::ncm {
                         content_info->install_state = InstallState::Installed;
                     }
                 }
-
-                /* Cancel so we can check the result of updating. */
-                update_guard.Cancel();
             }
-            R_TRY(DoUpdate());
+
+            /* Update our data. */
+            R_TRY(m_data->Update(content_meta, i));
         }
 
         /* Execution has finished, signal this and update the state. */
@@ -370,7 +370,7 @@ namespace ams::ncm {
 
         this->SetProgressState(InstallProgressState::Downloaded);
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result InstallTaskBase::PrepareAndExecute() {
@@ -446,13 +446,10 @@ namespace ams::ncm {
                 continue;
             }
 
-            /* Helper for performing an update. */
-            const auto DoUpdate = [&]() ALWAYS_INLINE_LAMBDA { return m_data->Update(content_meta, i); };
-
             /* Commit the current meta. */
             {
                 /* Ensure that if something goes wrong during commit, we still try to update. */
-                auto update_guard = SCOPE_GUARD { DoUpdate(); };
+                ON_RESULT_FAILURE { m_data->Update(content_meta, i); };
 
                 /* Open a writer. */
                 const auto writer = content_meta.GetWriter();
@@ -488,13 +485,10 @@ namespace ams::ncm {
 
                 /* Mark storage id to be committed later. */
                 commit_list.Push(reader.GetStorageId());
-
-                /* We successfully commited this meta, so we want to check for errors when updating. */
-                update_guard.Cancel();
             }
 
-            /* Try to update, checking for failure. */
-            R_TRY(DoUpdate());
+            /* Try to update our data. */
+            R_TRY(m_data->Update(content_meta, i));
         }
 
         /* Commit all applicable content meta databases. */
@@ -513,10 +507,9 @@ namespace ams::ncm {
     }
 
     Result InstallTaskBase::Commit(const StorageContentMetaKey *keys, s32 num_keys) {
-        auto fatal_guard = SCOPE_GUARD { SetProgressState(InstallProgressState::Fatal); };
-        R_TRY(this->SetLastResultOnFailure(this->CommitImpl(keys, num_keys)));
-        fatal_guard.Cancel();
-        return ResultSuccess();
+        ON_RESULT_FAILURE { this->SetProgressState(InstallProgressState::Fatal); };
+
+        R_RETURN(this->SetLastResultOnFailure(this->CommitImpl(keys, num_keys)));
     }
 
     Result InstallTaskBase::IncludesExFatDriver(bool *out) {
@@ -642,9 +635,8 @@ namespace ams::ncm {
             R_TRY(m_data->Get(std::addressof(content_meta), i));
 
             /* Update the data (and check result) when we are done. */
-            const auto DoUpdate = [&]() ALWAYS_INLINE_LAMBDA { return m_data->Update(content_meta, i); };
             {
-                auto update_guard = SCOPE_GUARD { DoUpdate(); };
+                ON_RESULT_FAILURE { m_data->Update(content_meta, i); };
 
                 /* Automatically choose a suitable storage id. */
                 auto reader = content_meta.GetReader();
@@ -705,15 +697,14 @@ namespace ams::ncm {
                     /* Add the size of this content info to the total size. */
                     total_size += content_info->GetSize();
                 }
-
-                /* Cancel so that we can check the result of updating. */
-                update_guard.Cancel();
             }
-            R_TRY(DoUpdate());
+
+            /* Try to update our data. */
+            R_TRY(m_data->Update(content_meta, i));
         }
 
         this->SetTotalSize(total_size);
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result InstallTaskBase::WriteContentMetaToPlaceHolder(InstallContentInfo *out_install_content_info, ContentStorage *storage, const InstallContentMetaInfo &meta_info, util::optional<bool> is_temporary) {
@@ -722,7 +713,7 @@ namespace ams::ncm {
 
         /* Create the placeholder. */
         R_TRY(storage->CreatePlaceHolder(placeholder_id, meta_info.content_id, meta_info.content_size));
-        auto placeholder_guard = SCOPE_GUARD { storage->DeletePlaceHolder(placeholder_id); };
+        ON_RESULT_FAILURE { storage->DeletePlaceHolder(placeholder_id); };
 
         /* Output install content info. */
         *out_install_content_info = this->MakeInstallContentInfoFrom(meta_info, placeholder_id, is_temporary);
@@ -731,9 +722,8 @@ namespace ams::ncm {
         R_TRY(this->WritePlaceHolder(meta_info.key, out_install_content_info));
 
         /* Don't delete the placeholder. Set state to installed. */
-        placeholder_guard.Cancel();
         out_install_content_info->install_state = InstallState::Installed;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result InstallTaskBase::PrepareContentMeta(const InstallContentMetaInfo &meta_info, util::optional<ContentMetaKey> expected_key, util::optional<u32> source_version) {
@@ -749,10 +739,11 @@ namespace ams::ncm {
         Path path;
         content_storage.GetPlaceHolderPath(std::addressof(path), content_info.GetPlaceHolderId());
 
-        const bool is_temporary = content_info.is_temporary;
-        auto temporary_guard = SCOPE_GUARD { content_storage.DeletePlaceHolder(content_info.GetPlaceHolderId()); };
+        /* If we fail, delete the placeholder. */
+        ON_RESULT_FAILURE { content_storage.DeletePlaceHolder(content_info.GetPlaceHolderId()); };
 
         /* Create a new temporary InstallContentInfo if relevant. */
+        const bool is_temporary = content_info.is_temporary;
         if (is_temporary) {
             content_info = {
                 .digest         = content_info.digest,
@@ -782,11 +773,12 @@ namespace ams::ncm {
         /* Push the data. */
         R_TRY(m_data->Push(meta.Get(), meta.GetSize()));
 
-        /* Don't delete the placeholder if not temporary. */
-        if (!is_temporary) {
-            temporary_guard.Cancel();
+        /* If the placeholder is temporary, delete it. */
+        if (is_temporary) {
+            content_storage.DeletePlaceHolder(content_info.GetPlaceHolderId());
         }
-        return ResultSuccess();
+
+        R_SUCCEED();
     }
 
     Result InstallTaskBase::PrepareContentMeta(ContentId content_id, s64 size, ContentMetaType meta_type, AutoBuffer *buffer) {
@@ -815,7 +807,7 @@ namespace ams::ncm {
 
     Result InstallTaskBase::PrepareSystemUpdateDependency() {
         /* Cleanup on failure. */
-        auto guard = SCOPE_GUARD { this->Cleanup(); };
+        ON_RESULT_FAILURE { this->Cleanup(); };
 
         /* Count the number of content meta entries. */
         s32 count;
@@ -852,8 +844,7 @@ namespace ams::ncm {
             }
         }
 
-        guard.Cancel();
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result InstallTaskBase::GetSystemUpdateTaskApplyInfo(SystemUpdateTaskApplyInfo *out) {
@@ -999,10 +990,7 @@ namespace ams::ncm {
 
     Result InstallTaskBase::GetInstallContentMetaDataFromPath(AutoBuffer *out, const Path &path, const InstallContentInfo &content_info, util::optional<u32> source_version) {
         AutoBuffer meta;
-        {
-            fs::ScopedAutoAbortDisabler aad;
-            R_TRY(ReadContentMetaPath(std::addressof(meta), path.str));
-        }
+        R_TRY(ReadContentMetaPathWithoutExtendedDataOrDigestSuppressingFsAbort(std::addressof(meta), path.str));
 
         /* Create a reader. */
         PackagedContentMetaReader reader(meta.Get(), meta.GetSize());
@@ -1010,10 +998,20 @@ namespace ams::ncm {
 
         AutoBuffer install_meta_data;
         if (source_version) {
-            /* Convert to fragment only install content meta. */
-            R_TRY(reader.CalculateConvertFragmentOnlyInstallContentMetaSize(std::addressof(meta_size), *source_version));
-            R_TRY(install_meta_data.Initialize(meta_size));
-            reader.ConvertToFragmentOnlyInstallContentMeta(install_meta_data.Get(), install_meta_data.GetSize(), content_info, *source_version);
+            /* Declare buffers. */
+            constexpr size_t BufferCount = 2;
+            constexpr size_t BufferSize  = 3_KB;
+            u8 buffers[BufferCount][BufferSize];
+
+            /* Create a mapper. */
+            auto mapper = MultiCacheReadonlyMapper<4>(Span<u8>(buffers[0], sizeof(buffers[0])), Span<u8>(buffers[1], sizeof(buffers[1])));
+            R_TRY(mapper.Initialize(path.str, true));
+
+            /* Create an accessor. */
+            auto accessor = PatchMetaExtendedDataAccessor{std::addressof(mapper)};
+
+            /* Convert to fragment only install meta. */
+            R_TRY(MetaConverter::GetFragmentOnlyInstallContentMeta(std::addressof(install_meta_data), content_info, reader, std::addressof(accessor), source_version.value()));
         } else {
             /* Convert to install content meta. */
             meta_size = reader.CalculateConvertInstallContentMetaSize();
