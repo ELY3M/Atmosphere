@@ -105,6 +105,7 @@ dist-no-debug: package3 $(CURRENT_DIRECTORY)/$(ATMOSPHERE_OUT_DIR)
 	@build_romfs $(DIST_DIR)/stratosphere_romfs $(DIST_DIR)/atmosphere/stratosphere.romfs
 	rm -r $(DIST_DIR)/stratosphere_romfs
 	cp troposphere/reboot_to_payload/reboot_to_payload.nro $(DIST_DIR)/switch/reboot_to_payload.nro
+	cp troposphere/reboot_to_hekate/reboot_to_hekate.nro $(DIST_DIR)/switch/reboot_to_hekate.nro	
 	cp troposphere/daybreak/daybreak.nro $(DIST_DIR)/switch/daybreak.nro
 	cd $(DIST_DIR); zip -r ../atmosphere-$(ATMOSPHERE_VERSION).zip ./*; cd ../;
 	rm -rf $(DIST_DIR)
