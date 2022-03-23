@@ -13,23 +13,14 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <stratosphere.hpp>
-#include "usb_remote_ds_root_service.hpp"
-#include "usb_remote_ds_service.hpp"
+#pragma once
 
-namespace ams::usb {
+#ifdef ATMOSPHERE_ARCH_ARM64
 
-    #if defined(ATMOSPHERE_OS_HORIZON)
-    Result RemoteDsRootService::GetService(sf::Out<sf::SharedPointer<usb::ds::IDsService>> out) {
-        Service srv;
+    #include <mesosphere/arch/arm64/kern_assembly_macros.h>
 
-        serviceAssumeDomain(std::addressof(m_srv));
-        R_TRY(serviceDispatch(std::addressof(m_srv), 0, .out_num_objects = 1, .out_objects = std::addressof(srv)));
+#else
 
-        *out = ObjectFactory::CreateSharedEmplaced<ds::IDsService, RemoteDsService>(m_allocator, srv, m_allocator);
+    #error "Unknown architecture for CPU"
 
-        return ResultSuccess();
-    }
-    #endif
-
-}
+#endif

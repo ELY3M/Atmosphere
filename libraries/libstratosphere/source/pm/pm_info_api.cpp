@@ -28,6 +28,16 @@ namespace ams::pm::info {
         return pminfoAtmosphereGetProcessId(reinterpret_cast<u64 *>(out_process_id), static_cast<u64>(program_id));
     }
 
+    Result GetAppletCurrentResourceLimitValues(pm::ResourceLimitValues *out) {
+        static_assert(sizeof(pm::ResourceLimitValues) == sizeof(::PmResourceLimitValues));
+        return pminfoGetAppletCurrentResourceLimitValues(reinterpret_cast<PmResourceLimitValues *>(out));
+    }
+
+    Result GetAppletPeakResourceLimitValues(pm::ResourceLimitValues *out) {
+        static_assert(sizeof(pm::ResourceLimitValues) == sizeof(::PmResourceLimitValues));
+        return pminfoGetAppletPeakResourceLimitValues(reinterpret_cast<PmResourceLimitValues *>(out));
+    }
+
     Result GetProcessInfo(ncm::ProgramLocation *out_loc, cfg::OverrideStatus *out_status, os::ProcessId process_id) {
         *out_loc = {};
         *out_status = {};

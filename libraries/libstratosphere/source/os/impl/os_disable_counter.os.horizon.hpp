@@ -16,23 +16,23 @@
 #pragma once
 #include <stratosphere.hpp>
 
-namespace ams::usb {
+namespace ams::os::impl {
 
-    #if defined(ATMOSPHERE_OS_HORIZON)
-    class RemoteDsRootService {
-        private:
-            using Allocator     = sf::ExpHeapAllocator;
-            using ObjectFactory = sf::ObjectFactory<Allocator::Policy>;
-        private:
-            Service m_srv;
-            Allocator *m_allocator;
+    class CheckBusyMutexPermission {
         public:
-            RemoteDsRootService(Service &srv, sf::ExpHeapAllocator *allocator) : m_srv(srv), m_allocator(allocator) { /* ... */ }
-            virtual ~RemoteDsRootService() { serviceClose(std::addressof(m_srv)); }
-        public:
-            Result GetService(sf::Out<sf::SharedPointer<usb::ds::IDsService>> out);
+            CheckBusyMutexPermission() {
+                /* In order to use the disable counter, we must support SynchronizePreemptionState. */
+                u64 value;
+                R_ABORT_UNLESS(svc::GetInfo(std::addressof(value), svc::InfoType_IsSvcPermitted, 0, svc::SvcId_SynchronizePreemptionState));
+
+                /* Verify that it's supported. */
+                AMS_ABORT_UNLESS(value != 0);
+            }
     };
-    static_assert(ds::IsIDsRootService<RemoteDsRootService>);
-    #endif
+
+    ALWAYS_INLINE void CallCheckBusyMutexPermission() {
+        AMS_FUNCTION_LOCAL_STATIC(CheckBusyMutexPermission, s_check);
+        AMS_UNUSED(s_check);
+    }
 
 }

@@ -160,6 +160,7 @@ namespace ams::kern {
             constexpr State GetState() const { return m_state; }
 
             constexpr u64 GetCoreMask() const { return m_capabilities.GetCoreMask(); }
+            constexpr u64 GetPhysicalCoreMask() const { return m_capabilities.GetPhysicalCoreMask(); }
             constexpr u64 GetPriorityMask() const { return m_capabilities.GetPriorityMask(); }
 
             constexpr s32 GetIdealCoreId() const { return m_ideal_core_id; }
@@ -192,6 +193,10 @@ namespace ams::kern {
 
             constexpr bool IsAttachedToDebugger() const {
                 return m_attached_object != nullptr;
+            }
+
+            constexpr bool IsPermittedSvc(svc::SvcId svc_id) const {
+                return m_capabilities.IsPermittedSvc(svc_id);
             }
 
             constexpr bool IsPermittedInterrupt(int32_t interrupt_id) const {
@@ -229,25 +234,7 @@ namespace ams::kern {
                 return m_pinned_threads[core_id];
             }
 
-            void CopySvcPermissionsTo(KThread::StackParameters &sp) {
-                m_capabilities.CopySvcPermissionsTo(sp);
-            }
-
-            void CopyPinnedSvcPermissionsTo(KThread::StackParameters &sp) {
-                m_capabilities.CopyPinnedSvcPermissionsTo(sp);
-            }
-
-            void CopyUnpinnedSvcPermissionsTo(KThread::StackParameters &sp) {
-                m_capabilities.CopyUnpinnedSvcPermissionsTo(sp);
-            }
-
-            void CopyEnterExceptionSvcPermissionsTo(KThread::StackParameters &sp) {
-                m_capabilities.CopyEnterExceptionSvcPermissionsTo(sp);
-            }
-
-            void CopyLeaveExceptionSvcPermissionsTo(KThread::StackParameters &sp) {
-                m_capabilities.CopyLeaveExceptionSvcPermissionsTo(sp);
-            }
+            const svc::SvcAccessFlagSet &GetSvcPermissions() const { return m_capabilities.GetSvcPermissions(); }
 
             constexpr KResourceLimit *GetResourceLimit() const { return m_resource_limit; }
 

@@ -27,7 +27,11 @@ namespace ams::kern {
         m_program_type            = 0;
 
         /* Initial processes may run on all cores. */
-        m_core_mask = cpu::VirtualCoreMask;
+        constexpr u64 VirtMask = cpu::VirtualCoreMask;
+        constexpr u64 PhysMask = cpu::ConvertVirtualCoreMaskToPhysical(VirtMask);
+
+        m_core_mask      = VirtMask;
+        m_phys_core_mask = PhysMask;
 
         /* Initial processes may use any user priority they like. */
         m_priority_mask = ~0xFul;
@@ -60,7 +64,7 @@ namespace ams::kern {
 
     Result KCapabilities::SetCorePriorityCapability(const util::BitPack32 cap) {
         /* We can't set core/priority if we've already set them. */
-        R_UNLESS(m_core_mask    == 0,  svc::ResultInvalidArgument());
+        R_UNLESS(m_core_mask     == 0, svc::ResultInvalidArgument());
         R_UNLESS(m_priority_mask == 0, svc::ResultInvalidArgument());
 
         /* Validate the core/priority. */
@@ -80,6 +84,9 @@ namespace ams::kern {
             m_core_mask |= (1ul << core_id);
         }
         MESOSPHERE_ASSERT((m_core_mask & cpu::VirtualCoreMask) == m_core_mask);
+
+        /* Set physical core mask. */
+        m_phys_core_mask = cpu::ConvertVirtualCoreMaskToPhysical(m_core_mask);
 
         /* Set priority mask. */
         for (auto prio = min_prio; prio <= max_prio; prio++) {
@@ -156,9 +163,10 @@ namespace ams::kern {
         R_RETURN(page_table->MapIo(phys_addr, size, KMemoryPermission_UserReadWrite));
     }
 
-    Result KCapabilities::MapRegion(const util::BitPack32 cap, KProcessPageTable *page_table) {
+    template<typename F>
+    ALWAYS_INLINE Result KCapabilities::ProcessMapRegionCapability(const util::BitPack32 cap, F f) {
         /* Define the allowed memory regions. */
-        constexpr KMemoryRegionType MemoryRegions[] = {
+        constexpr const KMemoryRegionType MemoryRegions[] = {
             KMemoryRegionType_None,
             KMemoryRegionType_KernelTraceBuffer,
             KMemoryRegionType_OnMemoryBootImage,
@@ -173,12 +181,12 @@ namespace ams::kern {
             const auto type = types[i];
             const auto perm = ro[i] ? KMemoryPermission_UserRead : KMemoryPermission_UserReadWrite;
             switch (type) {
-                case RegionType::None:
+                case RegionType::NoMapping:
                     break;
                 case RegionType::KernelTraceBuffer:
                 case RegionType::OnMemoryBootImage:
                 case RegionType::DTB:
-                    R_TRY(page_table->MapRegion(MemoryRegions[static_cast<u32>(type)], perm));
+                    R_TRY(f(MemoryRegions[static_cast<u32>(type)], perm));
                     break;
                 default:
                     R_THROW(svc::ResultNotFound());
@@ -186,6 +194,22 @@ namespace ams::kern {
         }
 
         R_SUCCEED();
+    }
+
+    Result KCapabilities::MapRegion(const util::BitPack32 cap, KProcessPageTable *page_table) {
+        /* Map each region into the process's page table. */
+        R_RETURN(ProcessMapRegionCapability(cap, [page_table] ALWAYS_INLINE_LAMBDA (KMemoryRegionType region_type, KMemoryPermission perm) -> Result {
+            R_RETURN(page_table->MapRegion(region_type, perm));
+        }));
+    }
+
+    Result KCapabilities::CheckMapRegion(const util::BitPack32 cap) {
+        /* Check that each region has a physical backing store. */
+        R_RETURN(ProcessMapRegionCapability(cap, [] ALWAYS_INLINE_LAMBDA (KMemoryRegionType region_type, KMemoryPermission perm) -> Result {
+            MESOSPHERE_UNUSED(perm);
+            R_UNLESS(KMemoryLayout::GetPhysicalMemoryRegionTree().FindFirstDerived(region_type) != nullptr, svc::ResultOutOfRange());
+            R_SUCCEED();
+        }));
     }
 
     Result KCapabilities::SetInterruptPairCapability(const util::BitPack32 cap) {
@@ -314,6 +338,23 @@ namespace ams::kern {
                 R_TRY(this->MapRange(cap, size_cap, page_table));
             } else {
                 R_TRY(this->SetCapability(cap, set_flags, set_svc, page_table));
+            }
+        }
+
+        R_SUCCEED();
+    }
+
+    Result KCapabilities::CheckCapabilities(svc::KUserPointer<const u32 *> user_caps, s32 num_caps) {
+        for (s32 i = 0; i < num_caps; ++i) {
+            /* Read the cap from userspace. */
+            u32 cap0;
+            R_TRY(user_caps.CopyArrayElementTo(std::addressof(cap0), i));
+
+            /* Check the capability refers to a valid region. */
+
+            const util::BitPack32 cap = { cap0 };
+            if (GetCapabilityType(cap) == CapabilityType::MapRegion) {
+                R_TRY(CheckMapRegion(cap));
             }
         }
 
