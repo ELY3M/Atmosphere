@@ -20,6 +20,7 @@
 
 namespace ams::fs {
 
+    /* ACCURATE_TO_VERSION: Unknown */
     class IStorage {
         public:
             virtual ~IStorage() { /* ... */ }
@@ -108,5 +109,8 @@ namespace ams::fs {
                 return fs::ResultUnsupportedOperation();
             }
     };
+
+    template<typename T>
+    concept PointerToStorage = ::ams::util::RawOrSmartPointerTo<T, ::ams::fs::IStorage>;
 
 }

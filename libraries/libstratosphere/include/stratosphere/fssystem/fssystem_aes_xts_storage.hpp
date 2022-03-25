@@ -21,7 +21,8 @@
 
 namespace ams::fssystem {
 
-    template<typename BasePointer>
+    /* ACCURATE_TO_VERSION: Unknown */
+    template<fs::PointerToStorage BasePointer>
     class AesXtsStorage : public ::ams::fs::IStorage, public ::ams::fs::impl::Newable {
         NON_COPYABLE(AesXtsStorage);
         NON_MOVEABLE(AesXtsStorage);

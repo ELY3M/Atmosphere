@@ -22,6 +22,7 @@
 
 namespace ams::fs::fsa {
 
+    /* ACCURATE_TO_VERSION: Unknown */
     class IFile;
     class IDirectory;
 
@@ -179,5 +180,8 @@ namespace ams::fs::fsa {
                 R_THROW(fs::ResultNotImplemented());
             }
     };
+
+    template<typename T>
+    concept PointerToFileSystem = ::ams::util::RawOrSmartPointerTo<T, ::ams::fs::fsa::IFileSystem>;
 
 }
