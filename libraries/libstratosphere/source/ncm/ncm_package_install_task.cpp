@@ -23,12 +23,12 @@ namespace ams::ncm {
     }
 
     Result PackageInstallTask::Initialize(const char *package_root, StorageId storage_id, void *buffer, size_t buffer_size, bool ignore_ticket) {
-        return PackageInstallTaskBase::Initialize(package_root, buffer, buffer_size, storage_id, std::addressof(m_data), ignore_ticket ? InstallConfig_IgnoreTicket : InstallConfig_None);
+        R_RETURN(PackageInstallTaskBase::Initialize(package_root, buffer, buffer_size, storage_id, std::addressof(m_data), ignore_ticket ? InstallConfig_IgnoreTicket : InstallConfig_None));
     }
 
     Result PackageInstallTask::GetInstallContentMetaInfo(InstallContentMetaInfo *out_info, const ContentMetaKey &key) {
         AMS_UNUSED(out_info, key);
-        return ncm::ResultContentNotFound();
+        R_THROW(ncm::ResultContentNotFound());
     }
 
     Result PackageInstallTask::PrepareInstallContentMetaData() {
@@ -57,7 +57,7 @@ namespace ams::ncm {
             }
         }
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
 }

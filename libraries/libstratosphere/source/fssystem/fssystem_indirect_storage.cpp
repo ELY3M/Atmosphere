@@ -30,7 +30,7 @@ namespace ams::fssystem {
         const auto entry_storage_offset = node_storage_offset + node_storage_size;
 
         /* Initialize. */
-        return this->Initialize(allocator, fs::SubStorage(std::addressof(table_storage), node_storage_offset, node_storage_size), fs::SubStorage(std::addressof(table_storage), entry_storage_offset, entry_storage_size), header.entry_count);
+        R_RETURN(this->Initialize(allocator, fs::SubStorage(std::addressof(table_storage), node_storage_offset, node_storage_size), fs::SubStorage(std::addressof(table_storage), entry_storage_offset, entry_storage_size), header.entry_count));
     }
 
     void IndirectStorage::Finalize() {
@@ -122,6 +122,11 @@ namespace ams::fssystem {
     }
 
     Result IndirectStorage::OperateRange(void *dst, size_t dst_size, fs::OperationId op_id, s64 offset, s64 size, const void *src, size_t src_size) {
+        /* Validate pre-conditions. */
+        AMS_ASSERT(offset >= 0);
+        AMS_ASSERT(size >= 0);
+        AMS_ASSERT(this->IsInitialized());
+
         switch (op_id) {
             case fs::OperationId::Invalidate:
                 {
@@ -171,7 +176,7 @@ namespace ams::fssystem {
                     R_SUCCEED();
                 }
             default:
-                return fs::ResultUnsupportedOperateRangeForIndirectStorage();
+                R_THROW(fs::ResultUnsupportedOperateRangeForIndirectStorage());
         }
 
         R_SUCCEED();

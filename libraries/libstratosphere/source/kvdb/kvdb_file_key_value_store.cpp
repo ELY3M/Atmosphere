@@ -40,7 +40,7 @@ namespace ams::kvdb {
             R_UNLESS(m_entries != nullptr, kvdb::ResultBufferInsufficient());
         }
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     void FileKeyValueStore::Cache::Invalidate() {
@@ -170,11 +170,11 @@ namespace ams::kvdb {
         }
 
         *out_size = key_size;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result FileKeyValueStore::Initialize(const char *dir) {
-        return this->InitializeWithCache(dir, nullptr, 0, 0);
+        R_RETURN(this->InitializeWithCache(dir, nullptr, 0, 0));
     }
 
     Result FileKeyValueStore::InitializeWithCache(const char *dir, void *cache_buffer, size_t cache_buffer_size, size_t cache_capacity) {
@@ -188,7 +188,7 @@ namespace ams::kvdb {
 
         /* Initialize our cache. */
         R_TRY(m_cache.Initialize(cache_buffer, cache_buffer_size, cache_capacity));
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result FileKeyValueStore::Get(size_t *out_size, void *out_value, size_t max_out_size, const void *key, size_t key_size) {
@@ -202,7 +202,7 @@ namespace ams::kvdb {
             auto size = m_cache.TryGet(out_value, max_out_size, key, key_size);
             if (size) {
                 *out_size = *size;
-                return ResultSuccess();
+                R_SUCCEED();
             }
         }
 
@@ -227,7 +227,7 @@ namespace ams::kvdb {
 
         /* Cache the newly read value. */
         m_cache.Set(key, key_size, out_value, value_size);
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result FileKeyValueStore::GetSize(size_t *out_size, const void *key, size_t key_size) {
@@ -241,7 +241,7 @@ namespace ams::kvdb {
             auto size = m_cache.TryGetSize(key, key_size);
             if (size) {
                 *out_size = *size;
-                return ResultSuccess();
+                R_SUCCEED();
             }
         }
 
@@ -257,7 +257,7 @@ namespace ams::kvdb {
         R_TRY(fs::GetFileSize(std::addressof(file_size), file));
 
         *out_size = static_cast<size_t>(file_size);
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result FileKeyValueStore::Set(const void *key, size_t key_size, const void *value, size_t value_size) {
@@ -286,7 +286,7 @@ namespace ams::kvdb {
         /* Write the value file and flush. */
         R_TRY(fs::WriteFile(file, 0, value, value_size, fs::WriteOption::Flush));
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result FileKeyValueStore::Remove(const void *key, size_t key_size) {
@@ -305,7 +305,7 @@ namespace ams::kvdb {
             R_CONVERT(fs::ResultPathNotFound, kvdb::ResultKeyNotFound())
         } R_END_TRY_CATCH;
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
 }

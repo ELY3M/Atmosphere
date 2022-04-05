@@ -66,12 +66,12 @@ namespace ams::erpt::srv {
                             {
                                 auto intf = ams::sf::ObjectFactory<ams::sf::ExpHeapAllocator::Policy>::CreateSharedEmplaced<erpt::sf::ISession, erpt::srv::SessionImpl>(std::addressof(g_sf_allocator));
                                 AMS_ABORT_UNLESS(intf != nullptr);
-                                return this->AcceptImpl(server, intf);
+                                R_RETURN(this->AcceptImpl(server, intf));
                             }
                         case PortIndex_Context:
-                            return AcceptImpl(server, m_context_session_object.GetShared());
+                            R_RETURN(AcceptImpl(server, m_context_session_object.GetShared()));
                         default:
-                            return erpt::ResultNotSupported();
+                            R_THROW(erpt::ResultNotSupported());
                     }
                 }
             public:
@@ -86,7 +86,7 @@ namespace ams::erpt::srv {
 
                     os::StartThread(std::addressof(m_thread));
 
-                    return ResultSuccess();
+                    R_SUCCEED();
                 }
 
                 void Wait() {
@@ -144,7 +144,7 @@ namespace ams::erpt::srv {
 
     Result InitializeService() {
         util::ConstructAt(g_erpt_server_manager);
-        return util::GetReference(g_erpt_server_manager).Initialize();
+        R_RETURN(util::GetReference(g_erpt_server_manager).Initialize());
     }
 
     void WaitService() {

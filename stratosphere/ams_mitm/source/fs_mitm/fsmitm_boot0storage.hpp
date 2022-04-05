@@ -36,12 +36,12 @@ namespace ams::mitm::fs {
 
                 /* Check if we have nothing to do. */
                 if (size == 0) {
-                    return ResultSuccess();
+                    R_SUCCEED();
                 }
 
                 /* Fast case. */
                 if (sector_ofs == 0 && util::IsAligned(size, SectorSize)) {
-                    return Base::Read(offset, buffer, size);
+                    R_RETURN(Base::Read(offset, buffer, size));
                 }
 
                 R_TRY(Base::Read(seek, m_sector_buf, SectorSize));
@@ -69,7 +69,7 @@ namespace ams::mitm::fs {
                     }
                 }
 
-                return ResultSuccess();
+                R_SUCCEED();
             }
 
             virtual Result Write(s64 offset, const void *_buffer, size_t size) override {
@@ -80,12 +80,12 @@ namespace ams::mitm::fs {
 
                 /* Check if we have nothing to do. */
                 if (size == 0) {
-                    return ResultSuccess();
+                    R_SUCCEED();
                 }
 
                 /* Fast case. */
                 if (sector_ofs == 0 && util::IsAligned(size, SectorSize)) {
-                    return Base::Write(offset, buffer, size);
+                    R_RETURN(Base::Write(offset, buffer, size));
                 }
 
                 /* Load existing sector data. */
@@ -117,7 +117,7 @@ namespace ams::mitm::fs {
                     }
                 }
 
-                return ResultSuccess();
+                R_SUCCEED();
             }
     };
 

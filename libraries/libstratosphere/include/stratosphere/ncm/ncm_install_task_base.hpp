@@ -99,7 +99,7 @@ namespace ams::ncm {
                 if (R_FAILED(result)) {
                     this->SetLastResult(result);
                 }
-                return result;
+                R_RETURN(result);
             }
         public:
             InstallTaskBase() : m_data(), m_progress(), m_progress_mutex(), m_cancel_mutex(), m_cancel_requested(), m_throughput_mutex() { /* ... */ }
@@ -113,12 +113,12 @@ namespace ams::ncm {
             Result CalculateRequiredSize(s64 *out_size);
             Result Cleanup();
             Result ListContentMetaKey(s32 *out_keys_written, StorageContentMetaKey *out_keys, s32 out_keys_count, s32 offset, ListContentMetaKeyFilter filter);
-            Result ListContentMetaKey(s32 *out_keys_written, StorageContentMetaKey *out_keys, s32 out_keys_count, s32 offset) { return this->ListContentMetaKey(out_keys_written, out_keys, out_keys_count, offset, ListContentMetaKeyFilter::All); }
+            Result ListContentMetaKey(s32 *out_keys_written, StorageContentMetaKey *out_keys, s32 out_keys_count, s32 offset) { R_RETURN(this->ListContentMetaKey(out_keys_written, out_keys, out_keys_count, offset, ListContentMetaKeyFilter::All)); }
             Result ListApplicationContentMetaKey(s32 *out_keys_written, ApplicationContentMetaKey *out_keys, s32 out_keys_count, s32 offset);
             Result Execute();
             Result PrepareAndExecute();
             Result Commit(const StorageContentMetaKey *keys, s32 num_keys);
-            Result Commit() { return this->Commit(nullptr, 0); }
+            Result Commit() { R_RETURN(this->Commit(nullptr, 0)); }
             virtual InstallProgress GetProgress();
             void ResetLastResult();
             Result IncludesExFatDriver(bool *out);
@@ -149,7 +149,7 @@ namespace ams::ncm {
 
             StorageId GetInstallStorage() const { return m_install_storage; }
 
-            virtual Result OnPrepareComplete() { return ResultSuccess(); }
+            virtual Result OnPrepareComplete() { R_SUCCEED(); }
 
             Result GetSystemUpdateTaskApplyInfo(SystemUpdateTaskApplyInfo *out);
 
@@ -164,9 +164,9 @@ namespace ams::ncm {
             Result VerifyAllNotCommitted(const StorageContentMetaKey *keys, s32 num_keys);
 
             virtual Result PrepareInstallContentMetaData() = 0;
-            virtual Result GetLatestVersion(util::optional<u32> *out_version, u64 id) { AMS_UNUSED(out_version, id); return ncm::ResultContentMetaNotFound(); }
+            virtual Result GetLatestVersion(util::optional<u32> *out_version, u64 id) { AMS_UNUSED(out_version, id); R_THROW(ncm::ResultContentMetaNotFound()); }
 
-            virtual Result OnExecuteComplete() { return ResultSuccess(); }
+            virtual Result OnExecuteComplete() { R_SUCCEED(); }
 
             Result WritePlaceHolder(const ContentMetaKey &key, InstallContentInfo *content_info);
             virtual Result OnWritePlaceHolder(const ContentMetaKey &key, InstallContentInfo *content_info) = 0;
@@ -194,7 +194,7 @@ namespace ams::ncm {
             Result ReadContentMetaInfoList(s32 *out_count, std::unique_ptr<ContentMetaInfo[]> *out_meta_infos, const ContentMetaKey &key);
             Result ListRightsIdsByInstallContentMeta(s32 *out_count, Span<RightsId> out_span, const InstallContentMeta &content_meta, s32 offset);
         public:
-            virtual Result CheckInstallable() { return ResultSuccess(); }
+            virtual Result CheckInstallable() { R_SUCCEED(); }
 
             void SetFirmwareVariationId(FirmwareVariationId id) { m_firmware_variation_id = id; }
             Result ListRightsIds(s32 *out_count, Span<RightsId> out_span, const ContentMetaKey &key, s32 offset);

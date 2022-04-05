@@ -49,7 +49,7 @@ namespace ams::erpt::srv {
                 }
             }
 
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         Result MountSystemSaveData() {
@@ -66,7 +66,7 @@ namespace ams::erpt::srv {
                 }
             } R_END_TRY_CATCH;
 
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
     }
@@ -115,7 +115,7 @@ namespace ams::erpt::srv {
         Reporter::UpdatePowerOnTime();
         Reporter::UpdateAwakeTime();
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result InitializeAndStartService() {
@@ -123,11 +123,11 @@ namespace ams::erpt::srv {
         /* NOTE: Nintendo does not check error code here. */
         InitializeForcedShutdownDetection();
 
-        return InitializeService();
+        R_RETURN(InitializeService());
     }
 
     Result SetSerialNumberAndOsVersion(const char *sn, u32 sn_len, const char *os, u32 os_len, const char *os_priv, u32 os_priv_len) {
-        return Reporter::SetSerialNumberAndOsVersion(sn, sn_len, os, os_len, os_priv, os_priv_len);
+        R_RETURN(Reporter::SetSerialNumberAndOsVersion(sn, sn_len, os, os_len, os_priv, os_priv_len));
     }
 
     Result SetProductModel(const char *model, u32 model_len) {
@@ -138,7 +138,7 @@ namespace ams::erpt::srv {
         R_TRY(record->Add(FieldId_ProductModel, model, model_len));
         R_TRY(Context::SubmitContextRecord(std::move(record)));
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result SetRegionSetting(const char *region, u32 region_len) {
@@ -149,17 +149,17 @@ namespace ams::erpt::srv {
         R_TRY(record->Add(FieldId_RegionSetting, region, region_len));
         R_TRY(Context::SubmitContextRecord(std::move(record)));
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result SetRedirectNewReportsToSdCard(bool redirect) {
         Reporter::SetRedirectNewReportsToSdCard(redirect);
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result SetEnabledAutomaticReportCleanup(bool en) {
         g_automatic_report_cleanup_enabled = en;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     void Wait() {

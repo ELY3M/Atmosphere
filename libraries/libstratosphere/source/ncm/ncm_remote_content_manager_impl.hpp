@@ -31,19 +31,19 @@ namespace ams::ncm {
             ~RemoteContentManagerImpl() { ::ncmExit(); }
         public:
             Result CreateContentStorage(StorageId storage_id) {
-                return ::ncmCreateContentStorage(static_cast<NcmStorageId>(storage_id));
+                R_RETURN(::ncmCreateContentStorage(static_cast<NcmStorageId>(storage_id)));
             }
 
             Result CreateContentMetaDatabase(StorageId storage_id) {
-                return ::ncmCreateContentMetaDatabase(static_cast<NcmStorageId>(storage_id));
+                R_RETURN(::ncmCreateContentMetaDatabase(static_cast<NcmStorageId>(storage_id)));
             }
 
             Result VerifyContentStorage(StorageId storage_id) {
-                return ::ncmVerifyContentStorage(static_cast<NcmStorageId>(storage_id));
+                R_RETURN(::ncmVerifyContentStorage(static_cast<NcmStorageId>(storage_id)));
             }
 
             Result VerifyContentMetaDatabase(StorageId storage_id) {
-                return ::ncmVerifyContentMetaDatabase(static_cast<NcmStorageId>(storage_id));
+                R_RETURN(::ncmVerifyContentMetaDatabase(static_cast<NcmStorageId>(storage_id)));
             }
 
             Result OpenContentStorage(sf::Out<sf::SharedPointer<IContentStorage>> out, StorageId storage_id) {
@@ -51,7 +51,7 @@ namespace ams::ncm {
                 R_TRY(::ncmOpenContentStorage(std::addressof(cs), static_cast<NcmStorageId>(storage_id)));
 
                 out.SetValue(ObjectFactory::CreateSharedEmplaced<IContentStorage, RemoteContentStorageImpl>(cs));
-                return ResultSuccess();
+                R_SUCCEED();
             }
 
             Result OpenContentMetaDatabase(sf::Out<sf::SharedPointer<IContentMetaDatabase>> out, StorageId storage_id) {
@@ -59,39 +59,39 @@ namespace ams::ncm {
                 R_TRY(::ncmOpenContentMetaDatabase(std::addressof(db), static_cast<NcmStorageId>(storage_id)));
 
                 out.SetValue(ObjectFactory::CreateSharedEmplaced<IContentMetaDatabase, RemoteContentMetaDatabaseImpl>(db));
-                return ResultSuccess();
+                R_SUCCEED();
             }
 
             Result CloseContentStorageForcibly(StorageId storage_id) {
-                return ::ncmCloseContentStorageForcibly(static_cast<NcmStorageId>(storage_id));
+                R_RETURN(::ncmCloseContentStorageForcibly(static_cast<NcmStorageId>(storage_id)));
             }
 
             Result CloseContentMetaDatabaseForcibly(StorageId storage_id) {
-                return ::ncmCloseContentMetaDatabaseForcibly(static_cast<NcmStorageId>(storage_id));
+                R_RETURN(::ncmCloseContentMetaDatabaseForcibly(static_cast<NcmStorageId>(storage_id)));
             }
 
             Result CleanupContentMetaDatabase(StorageId storage_id) {
-                return ::ncmCleanupContentMetaDatabase(static_cast<NcmStorageId>(storage_id));
+                R_RETURN(::ncmCleanupContentMetaDatabase(static_cast<NcmStorageId>(storage_id)));
             }
 
             Result ActivateContentStorage(StorageId storage_id) {
-                return ::ncmActivateContentStorage(static_cast<NcmStorageId>(storage_id));
+                R_RETURN(::ncmActivateContentStorage(static_cast<NcmStorageId>(storage_id)));
             }
 
             Result InactivateContentStorage(StorageId storage_id) {
-                return ::ncmInactivateContentStorage(static_cast<NcmStorageId>(storage_id));
+                R_RETURN(::ncmInactivateContentStorage(static_cast<NcmStorageId>(storage_id)));
             }
 
             Result ActivateContentMetaDatabase(StorageId storage_id) {
-                return ::ncmActivateContentMetaDatabase(static_cast<NcmStorageId>(storage_id));
+                R_RETURN(::ncmActivateContentMetaDatabase(static_cast<NcmStorageId>(storage_id)));
             }
 
             Result InactivateContentMetaDatabase(StorageId storage_id) {
-                return ::ncmInactivateContentMetaDatabase(static_cast<NcmStorageId>(storage_id));
+                R_RETURN(::ncmInactivateContentMetaDatabase(static_cast<NcmStorageId>(storage_id)));
             }
 
             Result InvalidateRightsIdCache() {
-                return ::ncmInvalidateRightsIdCache();
+                R_RETURN(::ncmInvalidateRightsIdCache());
             }
 
             Result GetMemoryReport(sf::Out<MemoryReport> out) {

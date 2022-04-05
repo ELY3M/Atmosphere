@@ -78,7 +78,7 @@ namespace ams::fssystem {
         m_hash_generator_factory->GenerateHash(calc_hash, sizeof(calc_hash), m_hash_buffer, static_cast<size_t>(hash_storage_size));
         R_UNLESS(crypto::IsSameBytes(master_hash, calc_hash, HashSize), fs::ResultHierarchicalSha256HashVerificationFailed());
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     template<typename BaseStorageType>
@@ -126,7 +126,7 @@ namespace ams::fssystem {
             remaining_size -= cur_size;
         }
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     template<typename BaseStorageType>
@@ -169,13 +169,13 @@ namespace ams::fssystem {
             remaining_size -= cur_size;
         }
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     template<typename BaseStorageType>
     Result HierarchicalSha256Storage<BaseStorageType>::OperateRange(void *dst, size_t dst_size, fs::OperationId op_id, s64 offset, s64 size, const void *src, size_t src_size) {
         if (op_id == fs::OperationId::Invalidate) {
-            return m_base_storage->OperateRange(fs::OperationId::Invalidate, offset, size);
+            R_RETURN(m_base_storage->OperateRange(fs::OperationId::Invalidate, offset, size));
         } else {
             /* Succeed if zero-size. */
             R_SUCCEED_IF(size == 0);
@@ -188,7 +188,7 @@ namespace ams::fssystem {
             const auto reduced_size = std::min<s64>(m_base_storage_size, util::AlignUp(offset + size, m_hash_target_block_size)) - offset;
 
             /* Operate on the base storage. */
-            return m_base_storage->OperateRange(dst, dst_size, op_id, offset, reduced_size, src, src_size);
+            R_RETURN(m_base_storage->OperateRange(dst, dst_size, op_id, offset, reduced_size, src, src_size));
         }
     }
 

@@ -28,7 +28,7 @@ namespace ams::erpt::srv {
 
     Result Stream::DeleteStream(const char *path) {
         R_UNLESS(s_can_access_fs, erpt::ResultInvalidPowerState());
-        return fs::DeleteFile(path);
+        R_RETURN(fs::DeleteFile(path));
     }
 
     Result Stream::CommitStream() {
@@ -37,7 +37,7 @@ namespace ams::erpt::srv {
         std::scoped_lock lk(s_fs_commit_mutex);
 
         fs::CommitSaveData(ReportStoragePath);
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result Stream::GetStreamSize(s64 *out, const char *path) {
@@ -47,7 +47,7 @@ namespace ams::erpt::srv {
         R_TRY(fs::OpenFile(std::addressof(file), path, fs::OpenMode_Read));
         ON_SCOPE_EXIT { fs::CloseFile(file); };
 
-        return fs::GetFileSize(out, file);
+        R_RETURN(fs::GetFileSize(out, file));
     }
 
     Stream::Stream() : m_buffer_size(0), m_file_position(0), m_buffer_count(0), m_buffer(nullptr), m_stream_mode(StreamMode_Invalid), m_initialized(false) {
@@ -109,7 +109,7 @@ namespace ams::erpt::srv {
 
         file_guard.Cancel();
         lock_guard.Cancel();
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result Stream::ReadStream(u32 *out, u8 *dst, u32 dst_size) {
@@ -153,7 +153,7 @@ namespace ams::erpt::srv {
             read_count = static_cast<u32>(fs_read_size);
         }
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result Stream::WriteStream(const u8 *src, u32 src_size) {
@@ -180,7 +180,7 @@ namespace ams::erpt::srv {
             m_file_position += src_size;
         }
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     void Stream::CloseStream() {
@@ -206,7 +206,7 @@ namespace ams::erpt::srv {
     }
 
     Result Stream::GetStreamSize(s64 *out) const {
-        return GetStreamSize(out, m_file_name);
+        R_RETURN(GetStreamSize(out, m_file_name));
     }
 
     Result Stream::Flush() {
@@ -217,7 +217,7 @@ namespace ams::erpt::srv {
 
         m_file_position += m_buffer_count;
         m_buffer_count = 0;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
 }

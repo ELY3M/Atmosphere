@@ -36,15 +36,15 @@ namespace ams::fs {
                 virtual ~ReadOnlyFile() { /* ... */ }
             private:
                 virtual Result DoRead(size_t *out, s64 offset, void *buffer, size_t size, const fs::ReadOption &option) override final {
-                    return m_base_file->Read(out, offset, buffer, size, option);
+                    R_RETURN(m_base_file->Read(out, offset, buffer, size, option));
                 }
 
                 virtual Result DoGetSize(s64 *out) override final {
-                    return m_base_file->GetSize(out);
+                    R_RETURN(m_base_file->GetSize(out));
                 }
 
                 virtual Result DoFlush() override final {
-                    return ResultSuccess();
+                    R_SUCCEED();
                 }
 
                 virtual Result DoWrite(s64 offset, const void *buffer, size_t size, const fs::WriteOption &option) override final {
@@ -54,21 +54,21 @@ namespace ams::fs {
                     AMS_ASSERT(!need_append);
 
                     AMS_UNUSED(buffer);
-                    return fs::ResultUnsupportedWriteForReadOnlyFile();
+                    R_THROW(fs::ResultUnsupportedWriteForReadOnlyFile());
                 }
 
                 virtual Result DoSetSize(s64 size) override final {
                     R_TRY(this->DrySetSize(size, fs::OpenMode_Read));
-                    return fs::ResultUnsupportedWriteForReadOnlyFile();
+                    R_THROW(fs::ResultUnsupportedWriteForReadOnlyFile());
                 }
 
                 virtual Result DoOperateRange(void *dst, size_t dst_size, fs::OperationId op_id, s64 offset, s64 size, const void *src, size_t src_size) override final {
                     switch (op_id) {
                         case OperationId::Invalidate:
                         case OperationId::QueryRange:
-                            return m_base_file->OperateRange(dst, dst_size, op_id, offset, size, src, src_size);
+                            R_RETURN(m_base_file->OperateRange(dst, dst_size, op_id, offset, size, src, src_size));
                         default:
-                            return fs::ResultUnsupportedOperateRangeForReadOnlyFile();
+                            R_THROW(fs::ResultUnsupportedOperateRangeForReadOnlyFile());
                     }
                 }
             public:
@@ -100,74 +100,73 @@ namespace ams::fs {
                 R_UNLESS(read_only_file != nullptr, fs::ResultAllocationMemoryFailedInReadOnlyFileSystemA());
 
                 *out_file = std::move(read_only_file);
-                return ResultSuccess();
+                R_SUCCEED();
             }
 
             virtual Result DoOpenDirectory(std::unique_ptr<fsa::IDirectory> *out_dir, const fs::Path &path, OpenDirectoryMode mode) override final {
-                return m_base_fs->OpenDirectory(out_dir, path, mode);
+                R_RETURN(m_base_fs->OpenDirectory(out_dir, path, mode));
             }
 
             virtual Result DoGetEntryType(DirectoryEntryType *out, const fs::Path &path) override final {
-                return m_base_fs->GetEntryType(out, path);
+                R_RETURN(m_base_fs->GetEntryType(out, path));
             }
 
             virtual Result DoCommit() override final {
-                return ResultSuccess();
+                R_SUCCEED();
             }
 
             virtual Result DoCreateFile(const fs::Path &path, s64 size, int flags) override final {
                 AMS_UNUSED(path, size, flags);
-                return fs::ResultUnsupportedWriteForReadOnlyFileSystem();
+                R_THROW(fs::ResultUnsupportedWriteForReadOnlyFileSystem());
             }
 
             virtual Result DoDeleteFile(const fs::Path &path) override final {
                 AMS_UNUSED(path);
-                return fs::ResultUnsupportedWriteForReadOnlyFileSystem();
+                R_THROW(fs::ResultUnsupportedWriteForReadOnlyFileSystem());
             }
 
             virtual Result DoCreateDirectory(const fs::Path &path) override final {
                 AMS_UNUSED(path);
-                return fs::ResultUnsupportedWriteForReadOnlyFileSystem();
+                R_THROW(fs::ResultUnsupportedWriteForReadOnlyFileSystem());
             }
 
             virtual Result DoDeleteDirectory(const fs::Path &path) override final {
                 AMS_UNUSED(path);
-                return fs::ResultUnsupportedWriteForReadOnlyFileSystem();
+                R_THROW(fs::ResultUnsupportedWriteForReadOnlyFileSystem());
             }
 
             virtual Result DoDeleteDirectoryRecursively(const fs::Path &path) override final {
                 AMS_UNUSED(path);
-                return fs::ResultUnsupportedWriteForReadOnlyFileSystem();
+                R_THROW(fs::ResultUnsupportedWriteForReadOnlyFileSystem());
             }
 
             virtual Result DoRenameFile(const fs::Path &old_path, const fs::Path &new_path) override final {
                 AMS_UNUSED(old_path, new_path);
-                return fs::ResultUnsupportedWriteForReadOnlyFileSystem();
+                R_THROW(fs::ResultUnsupportedWriteForReadOnlyFileSystem());
             }
 
             virtual Result DoRenameDirectory(const fs::Path &old_path, const fs::Path &new_path) override final {
                 AMS_UNUSED(old_path, new_path);
-                return fs::ResultUnsupportedWriteForReadOnlyFileSystem();
+                R_THROW(fs::ResultUnsupportedWriteForReadOnlyFileSystem());
             }
 
             virtual Result DoCleanDirectoryRecursively(const fs::Path &path) override final {
                 AMS_UNUSED(path);
-                return fs::ResultUnsupportedWriteForReadOnlyFileSystem();
+                R_THROW(fs::ResultUnsupportedWriteForReadOnlyFileSystem());
             }
 
             virtual Result DoGetFreeSpaceSize(s64 *out, const fs::Path &path) override final {
-                AMS_UNUSED(out, path);
-                return fs::ResultUnsupportedCommitProvisionallyForReadOnlyFileSystem();
+                R_RETURN(m_base_fs->GetFreeSpaceSize(out, path));
             }
 
             virtual Result DoGetTotalSpaceSize(s64 *out, const fs::Path &path) override final {
                 AMS_UNUSED(out, path);
-                return fs::ResultUnsupportedCommitProvisionallyForReadOnlyFileSystem();
+                R_THROW(fs::ResultUnsupportedGetTotalSpaceSizeForReadOnlyFileSystem());
             }
 
             virtual Result DoCommitProvisionally(s64 counter) override final {
                 AMS_UNUSED(counter);
-                return fs::ResultUnsupportedGetTotalSpaceSizeForReadOnlyFileSystem();
+                R_THROW(fs::ResultUnsupportedCommitProvisionallyForReadOnlyFileSystem());
             }
     };
 

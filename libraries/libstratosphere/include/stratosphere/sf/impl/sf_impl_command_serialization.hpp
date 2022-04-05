@@ -52,14 +52,14 @@ namespace ams::sf {
 
         constexpr inline Result MarshalProcessId(ClientProcessId &client, const os::ProcessId &client_process_id) {
             client.SetValue(client_process_id);
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         constexpr inline Result MarshalProcessId(ClientAppletResourceUserId &client, const os::ProcessId &client_process_id) {
             if (client.GetValue() != client_process_id && client.GetValue() != os::ProcessId{}) {
-                return sf::ResultPreconditionViolation();
+                R_THROW(sf::ResultPreconditionViolation());
             }
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
     }
@@ -727,7 +727,7 @@ namespace ams::sf::impl {
                 if constexpr (NumInObjects > 0) {
                     R_TRY(processor->GetInObjects(m_in_object_holders.data()));
                 }
-                return ResultSuccess();
+                R_SUCCEED();
             }
 
             template<typename ServiceImplTuple>
@@ -749,7 +749,7 @@ namespace ams::sf::impl {
                 _SF_IN_OUT_HOLDER_VALIDATE_IN_OBJECT(6);
                 _SF_IN_OUT_HOLDER_VALIDATE_IN_OBJECT(7);
                 #undef _SF_IN_OUT_HOLDER_VALIDATE_IN_OBJECT
-                return ResultSuccess();
+                R_SUCCEED();
             }
 
             template<size_t Index, typename Interface>
@@ -792,7 +792,7 @@ namespace ams::sf::impl {
             virtual Result GetInObjects(cmif::ServiceObjectHolder *in_objects) const override final {
                 /* By default, InObjects aren't supported. */
                 AMS_UNUSED(in_objects);
-                return sf::ResultNotSupported();
+                R_THROW(sf::ResultNotSupported());
             }
     };
 
@@ -820,7 +820,7 @@ namespace ams::sf::impl {
                 is_request_valid &= meta_raw_size >= command_raw_size;
 
                 R_UNLESS(is_request_valid, sf::hipc::ResultInvalidCmifRequest());
-                return ResultSuccess();
+                R_SUCCEED();
             }
 
             virtual HipcRequest PrepareForReply(const cmif::ServiceDispatchContext &ctx, cmif::PointerAndSize &out_raw_data, const cmif::ServerMessageRuntimeMetadata runtime_metadata) override final {
@@ -1022,7 +1022,7 @@ namespace ams::sf::impl {
                 if constexpr (CommandMeta::NumOutHipcPointerBuffers > 0) {
                     R_UNLESS(pointer_buffer_tail <= pointer_buffer_head, sf::hipc::ResultPointerBufferTooSmall());
                 }
-                return ResultSuccess();
+                R_SUCCEED();
             }
 
             NX_CONSTEXPR void SetOutBuffers(const HipcRequest &response, const BufferArrayType &buffers, const std::array<bool, CommandMeta::NumBuffers> &is_buffer_map_alias) {
@@ -1122,7 +1122,7 @@ namespace ams::sf::impl {
         R_UNLESS(out_raw_data.GetSize() >= sizeof(*header), sf::cmif::ResultInvalidHeaderSize());
         out_raw_data = cmif::PointerAndSize(out_raw_data.GetAddress() + sizeof(*header), out_raw_data.GetSize() - sizeof(*header));
         *out_header_ptr = header;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     template<typename CommandMeta, typename... Arguments>
@@ -1197,7 +1197,7 @@ namespace ams::sf::impl {
 
                 sf::IServiceObject * const this_ptr = ctx.srv_obj;
                 command_result = [this_ptr, invoke_impl, &args_tuple]<size_t ...Ix>(std::index_sequence<Ix...>) ALWAYS_INLINE_LAMBDA {
-                    return invoke_impl(this_ptr, std::forward<typename std::tuple_element<Ix, TrueArgumentsTuple>::type>(std::get<Ix>(args_tuple))...);
+                    R_RETURN(invoke_impl(this_ptr, std::forward<typename std::tuple_element<Ix, TrueArgumentsTuple>::type>(std::get<Ix>(args_tuple))...));
                 }(std::make_index_sequence<std::tuple_size<typename CommandMeta::ArgsTypeForInvoke>::value>());
             }
 
@@ -1205,7 +1205,7 @@ namespace ams::sf::impl {
                 cmif::PointerAndSize out_raw_data;
                 ctx.processor->PrepareForErrorReply(ctx, out_raw_data, runtime_metadata);
                 R_TRY(GetCmifOutHeaderPointer(out_header_ptr, out_raw_data));
-                return command_result;
+                R_RETURN(command_result);
             }
         }
 
@@ -1242,7 +1242,7 @@ namespace ams::sf::impl {
         #undef _SF_IMPL_PROCESSOR_MARSHAL_OUT_OBJECT
         in_out_objects_holder.SetOutObjects(ctx, response);
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     template<auto ServiceCommandImpl, typename Return, typename ClassType, typename... Arguments>
@@ -1254,14 +1254,14 @@ namespace ams::sf::impl {
         constexpr bool ReturnsVoid   = std::is_same<Return, void>::value;
         static_assert(ReturnsResult || ReturnsVoid, "Service Commands must return Result or void.");
 
-        return InvokeServiceCommandImplCommon<CommandMeta, Arguments...>(out_header_ptr, ctx, in_raw_data, +[](sf::IServiceObject *srv_obj, Arguments &&... args) -> Result {
+        R_RETURN((InvokeServiceCommandImplCommon<CommandMeta, Arguments...>(out_header_ptr, ctx, in_raw_data, +[](sf::IServiceObject *srv_obj, Arguments &&... args) -> Result {
             if constexpr (ReturnsResult) {
-                return (static_cast<ClassType *>(srv_obj)->*ServiceCommandImpl)(std::forward<Arguments>(args)...);
+                R_RETURN((static_cast<ClassType *>(srv_obj)->*ServiceCommandImpl)(std::forward<Arguments>(args)...));
             } else {
                 (static_cast<ClassType *>(srv_obj)->*ServiceCommandImpl)(std::forward<Arguments>(args)...);
-                return ResultSuccess();
+                R_SUCCEED();
             }
-        });
+        })));
     }
 
 }

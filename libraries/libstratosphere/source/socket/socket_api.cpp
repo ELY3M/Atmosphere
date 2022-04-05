@@ -43,15 +43,15 @@ namespace ams::socket {
     }
 
     Result Initialize(const Config &config) {
-        return impl::Initialize(config);
+        R_RETURN(impl::Initialize(config));
     }
 
     Result Finalize() {
-        return impl::Finalize();
+        R_RETURN(impl::Finalize());
     }
 
     Result InitializeAllocatorForInternal(void *buffer, size_t size) {
-        return impl::InitializeAllocatorForInternal(buffer, size);
+        R_RETURN(impl::InitializeAllocatorForInternal(buffer, size));
     }
 
     ssize_t RecvFrom(s32 desc, void *buffer, size_t buffer_size, MsgFlag flags, SockAddr *out_address, SockLenT *out_addr_len){
@@ -88,6 +88,10 @@ namespace ams::socket {
 
     s32 Bind(s32 desc, const SockAddr *address, SockLenT len) {
         return impl::Bind(desc, address, len);
+    }
+
+    s32 Connect(s32 desc, const SockAddr *address, SockLenT len) {
+        return impl::Connect(desc, address, len);
     }
 
     s32 GetSockName(s32 desc, SockAddr *out_address, SockLenT *out_addr_len) {

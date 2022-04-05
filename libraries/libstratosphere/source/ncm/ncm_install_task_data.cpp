@@ -45,11 +45,11 @@ namespace ams::ncm {
         /* Output the buffer and size. */
         out->data = std::move(buffer);
         out->size = data_size;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result InstallTaskDataBase::Update(const InstallContentMeta &content_meta, s32 index) {
-        return this->Update(index, content_meta.data.get(), content_meta.size);
+        R_RETURN(this->Update(index, content_meta.data.get(), content_meta.size));
     }
 
     Result InstallTaskDataBase::Has(bool *out, u64 id) {
@@ -64,13 +64,13 @@ namespace ams::ncm {
             /* If the id matches we are successful. */
             if (content_meta.GetReader().GetKey().id == id) {
                 *out = true;
-                return ResultSuccess();
+                R_SUCCEED();
             }
         }
 
         /* We didn't find the value. */
         *out = false;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result MemoryInstallTaskData::GetProgress(InstallProgress *out_progress) {
@@ -95,27 +95,27 @@ namespace ams::ncm {
         }
 
         *out_progress = install_progress;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result MemoryInstallTaskData::GetSystemUpdateTaskApplyInfo(SystemUpdateTaskApplyInfo *out_info) {
         *out_info = m_system_update_task_apply_info;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result MemoryInstallTaskData::SetState(InstallProgressState state) {
         m_state = state;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result MemoryInstallTaskData::SetLastResult(Result result) {
         m_last_result = result;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result MemoryInstallTaskData::SetSystemUpdateTaskApplyInfo(SystemUpdateTaskApplyInfo info) {
         m_system_update_task_apply_info = info;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result MemoryInstallTaskData::Push(const void *data, size_t size) {
@@ -137,12 +137,12 @@ namespace ams::ncm {
         /* Relinquish control over the memory allocated to the data holder. */
         holder.release();
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result MemoryInstallTaskData::Count(s32 *out) {
         *out = m_data_list.size();
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result MemoryInstallTaskData::GetSize(size_t *out_size, s32 index) {
@@ -151,7 +151,7 @@ namespace ams::ncm {
         for (auto &data_holder : m_data_list) {
             if (index == count++) {
                 *out_size = data_holder.size;
-                return ResultSuccess();
+                R_SUCCEED();
             }
         }
         /* Out of bounds indexing is an unrecoverable error. */
@@ -165,7 +165,7 @@ namespace ams::ncm {
             if (index == count++) {
                 R_UNLESS(out_size >= data_holder.size, ncm::ResultBufferInsufficient());
                 std::memcpy(out, data_holder.data.get(), data_holder.size);
-                return ResultSuccess();
+                R_SUCCEED();
             }
         }
         /* Out of bounds indexing is an unrecoverable error. */
@@ -179,7 +179,7 @@ namespace ams::ncm {
             if (index == count++) {
                 R_UNLESS(data_size == data_holder.size, ncm::ResultBufferInsufficient());
                 std::memcpy(data_holder.data.get(), data, data_size);
-                return ResultSuccess();
+                R_SUCCEED();
             }
         }
         /* Out of bounds indexing is an unrecoverable error. */
@@ -200,7 +200,7 @@ namespace ams::ncm {
             }
         }
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result MemoryInstallTaskData::Cleanup() {
@@ -209,7 +209,7 @@ namespace ams::ncm {
             m_data_list.pop_front();
             delete data_holder;
         }
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result FileInstallTaskData::Create(const char *path, s32 max_entries) {
@@ -223,13 +223,13 @@ namespace ams::ncm {
 
         /* Create an initial header and write it to the file. */
         const Header header = MakeInitialHeader(max_entries);
-        return fs::WriteFile(file, 0, std::addressof(header), sizeof(Header), fs::WriteOption::Flush);
+        R_RETURN(fs::WriteFile(file, 0, std::addressof(header), sizeof(Header), fs::WriteOption::Flush));
     }
 
     Result FileInstallTaskData::Initialize(const char *path) {
         std::strncpy(m_path, path, sizeof(m_path));
         m_path[sizeof(m_path) - 1] = '\x00';
-        return this->Read(std::addressof(m_header), sizeof(Header), 0);
+        R_RETURN(this->Read(std::addressof(m_header), sizeof(Header), 0));
     }
 
     Result FileInstallTaskData::GetProgress(InstallProgress *out_progress) {
@@ -257,27 +257,27 @@ namespace ams::ncm {
         }
 
         *out_progress = install_progress;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result FileInstallTaskData::GetSystemUpdateTaskApplyInfo(SystemUpdateTaskApplyInfo *out_info) {
         *out_info = m_header.system_update_task_apply_info;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result FileInstallTaskData::SetState(InstallProgressState state) {
         m_header.progress_state = state;
-        return this->WriteHeader();
+        R_RETURN(this->WriteHeader());
     }
 
     Result FileInstallTaskData::SetLastResult(Result result) {
         m_header.last_result = result;
-        return this->WriteHeader();
+        R_RETURN(this->WriteHeader());
     }
 
     Result FileInstallTaskData::SetSystemUpdateTaskApplyInfo(SystemUpdateTaskApplyInfo info) {
         m_header.system_update_task_apply_info = info;
-        return this->WriteHeader();
+        R_RETURN(this->WriteHeader());
     }
 
     Result FileInstallTaskData::Push(const void *data, size_t data_size) {
@@ -297,19 +297,19 @@ namespace ams::ncm {
         m_header.count++;
 
         /* Write the updated header. */
-        return this->WriteHeader();
+        R_RETURN(this->WriteHeader());
     }
 
     Result FileInstallTaskData::Count(s32 *out) {
         *out = m_header.count;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result FileInstallTaskData::GetSize(size_t *out_size, s32 index) {
         EntryInfo entry_info;
         R_TRY(this->GetEntryInfo(std::addressof(entry_info), index));
         *out_size = entry_info.size;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result FileInstallTaskData::Get(s32 index, void *out, size_t out_size) {
@@ -319,7 +319,7 @@ namespace ams::ncm {
 
         /* Read the entry to the output buffer. */
         R_UNLESS(entry_info.size <= static_cast<s64>(out_size), ncm::ResultBufferInsufficient());
-        return this->Read(out, out_size, entry_info.offset);
+        R_RETURN(this->Read(out, out_size, entry_info.offset));
     }
 
     Result FileInstallTaskData::Update(s32 index, const void *data, size_t data_size) {
@@ -329,7 +329,7 @@ namespace ams::ncm {
 
         /* Data size must match existing data size. */
         R_UNLESS(entry_info.size == static_cast<s64>(data_size), ncm::ResultBufferInsufficient());
-        return this->Write(data, data_size, entry_info.offset);
+        R_RETURN(this->Write(data, data_size, entry_info.offset));
     }
 
     Result FileInstallTaskData::Delete(const ContentMetaKey *keys, s32 num_keys) {
@@ -363,35 +363,35 @@ namespace ams::ncm {
         /* Change from our current data to the new data. */
         m_header = install_task_data.m_header;
         R_TRY(fs::DeleteFile(m_path));
-        return fs::RenameFile(tmp_path, m_path);
+        R_RETURN(fs::RenameFile(tmp_path, m_path));
     }
 
     Result FileInstallTaskData::Cleanup() {
         m_header = MakeInitialHeader(m_header.max_entries);
-        return this->WriteHeader();
+        R_RETURN(this->WriteHeader());
     }
 
     Result FileInstallTaskData::GetEntryInfo(EntryInfo *out_entry_info, s32 index) {
         AMS_ABORT_UNLESS(static_cast<u32>(index) < m_header.count);
-        return this->Read(out_entry_info, sizeof(EntryInfo), GetEntryInfoOffset(index));
+        R_RETURN(this->Read(out_entry_info, sizeof(EntryInfo), GetEntryInfoOffset(index)));
     }
 
     Result FileInstallTaskData::Write(const void *data, size_t size, s64 offset) {
         fs::FileHandle file;
         R_TRY(fs::OpenFile(std::addressof(file), m_path, fs::OpenMode_Write | fs::OpenMode_AllowAppend));
         ON_SCOPE_EXIT { fs::CloseFile(file); };
-        return fs::WriteFile(file, offset, data, size, fs::WriteOption::Flush);
+        R_RETURN(fs::WriteFile(file, offset, data, size, fs::WriteOption::Flush));
     }
 
     Result FileInstallTaskData::Read(void *out, size_t out_size, s64 offset) {
         fs::FileHandle file;
         R_TRY(fs::OpenFile(std::addressof(file), m_path, fs::OpenMode_Read));
         ON_SCOPE_EXIT { fs::CloseFile(file); };
-        return fs::ReadFile(file, offset, out, out_size);
+        R_RETURN(fs::ReadFile(file, offset, out, out_size));
     }
 
     Result FileInstallTaskData::WriteHeader() {
-        return this->Write(std::addressof(m_header), sizeof(Header), 0);
+        R_RETURN(this->Write(std::addressof(m_header), sizeof(Header), 0));
     }
 
 }

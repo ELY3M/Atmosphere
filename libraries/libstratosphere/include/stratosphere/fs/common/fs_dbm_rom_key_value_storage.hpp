@@ -19,7 +19,7 @@
 
 namespace ams::fs {
 
-    /* ACCURATE_TO_VERSION: Unknown */
+    /* ACCURATE_TO_VERSION: 14.3.0.0 */
     template<typename KeyType, typename ValueType, size_t MaxAuxiliarySize>
     class KeyValueRomStorageTemplate {
         public:
@@ -27,6 +27,8 @@ namespace ams::fs {
             using Value       = ValueType;
             using Position    = u32;
             using BucketIndex = s64;
+
+            using StorageSizeType = u32;
 
             struct FindIndex {
                 BucketIndex ind;
@@ -40,7 +42,7 @@ namespace ams::fs {
                 Key key;
                 Value value;
                 Position next;
-                u32 size;
+                StorageSizeType size;
             };
             static_assert(util::is_pod<Element>::value);
         private:
@@ -54,52 +56,40 @@ namespace ams::fs {
                 return num * sizeof(Position);
             }
 
-            static constexpr s64 QueryBucketCount(s64 size) {
+            static constexpr s64 QueryBucketCount(StorageSizeType size) {
                 return size / sizeof(Position);
             }
 
-            static constexpr size_t QueryEntrySize(size_t aux_size) {
-                return util::AlignUp(sizeof(Element) + aux_size, alignof(Element));
+            static constexpr size_t QueryEntrySize(StorageSizeType aux_size) {
+                return util::AlignUp<size_t>(sizeof(Element) + aux_size, alignof(Element));
             }
 
-            static Result Format(SubStorage bucket, s64 count) {
+            static Result Format(SubStorage bucket, StorageSizeType count) {
                 const Position pos = InvalidPosition;
-                for (s64 i = 0; i < count; i++) {
+                for (auto i = 0u; i < count; i++) {
                     R_TRY(bucket.Write(i * sizeof(pos), std::addressof(pos), sizeof(pos)));
                 }
-                return ResultSuccess();
+                R_SUCCEED();
             }
         public:
-            KeyValueRomStorageTemplate() : m_bucket_count(), m_bucket_storage(), m_kv_storage(), m_total_entry_size(), m_entry_count() { /* ... */ }
+            constexpr KeyValueRomStorageTemplate() : m_bucket_count(), m_bucket_storage(), m_kv_storage(), m_total_entry_size(), m_entry_count() { /* ... */ }
 
             Result Initialize(const SubStorage &bucket, s64 count, const SubStorage &kv) {
                 AMS_ASSERT(count > 0);
                 m_bucket_storage = bucket;
                 m_bucket_count   = count;
                 m_kv_storage     = kv;
-                return ResultSuccess();
+                R_SUCCEED();
             }
 
             void Finalize() {
                 m_bucket_storage = SubStorage();
-                m_kv_storage     = SubStorage();
                 m_bucket_count   = 0;
+                m_kv_storage     = SubStorage();
             }
 
             s64 GetTotalEntrySize() const {
                 return m_total_entry_size;
-            }
-
-            Result GetFreeSize(s64 *out) {
-                AMS_ASSERT(out != nullptr);
-                s64 kv_size = 0;
-                R_TRY(m_kv_storage.GetSize(std::addressof(kv_size)));
-                *out = kv_size - m_total_entry_size;
-                return ResultSuccess();
-            }
-
-            constexpr u32 GetEntryCount() const {
-                return m_entry_count;
             }
         protected:
             Result AddInternal(Position *out, const Key &key, u32 hash_key, const void *aux, size_t aux_size, const Value &value) {
@@ -117,18 +107,18 @@ namespace ams::fs {
                 }
 
                 Position pos;
-                R_TRY(this->AllocateEntry(std::addressof(pos), aux_size));
+                R_TRY(this->AllocateEntry(std::addressof(pos), static_cast<StorageSizeType>(aux_size)));
 
                 Position next_pos;
                 R_TRY(this->LinkEntry(std::addressof(next_pos), pos, hash_key));
 
-                const Element elem = { key, value, next_pos, static_cast<u32>(aux_size) };
+                const Element elem = { key, value, next_pos, static_cast<StorageSizeType>(aux_size) };
                 R_TRY(this->WriteKeyValue(std::addressof(elem), pos, aux, aux_size));
 
                 *out = pos;
                 m_entry_count++;
 
-                return ResultSuccess();
+                R_SUCCEED();
             }
 
             Result GetInternal(Position *out_pos, Value *out_val, const Key &key, u32 hash_key, const void *aux, size_t aux_size) {
@@ -142,7 +132,7 @@ namespace ams::fs {
 
                 *out_pos = pos;
                 *out_val = elem.value;
-                return ResultSuccess();
+                R_SUCCEED();
             }
 
             Result GetByPosition(Key *out_key, Value *out_val, Position pos) {
@@ -154,7 +144,7 @@ namespace ams::fs {
 
                 *out_key = elem.key;
                 *out_val = elem.value;
-                return ResultSuccess();
+                R_SUCCEED();
             }
 
             Result GetByPosition(Key *out_key, Value *out_val, void *out_aux, size_t *out_aux_size, Position pos) {
@@ -168,14 +158,14 @@ namespace ams::fs {
 
                 *out_key = elem.key;
                 *out_val = elem.value;
-                return ResultSuccess();
+                R_SUCCEED();
             }
 
             Result SetByPosition(Position pos, const Value &value) {
                 Element elem;
                 R_TRY(this->ReadKeyValue(std::addressof(elem), pos));
                 elem.value = value;
-                return this->WriteKeyValue(std::addressof(elem), pos, nullptr, 0);
+                R_RETURN(this->WriteKeyValue(std::addressof(elem), pos, nullptr, 0));
             }
         private:
             BucketIndex HashToBucket(u32 hash_key) const {
@@ -203,17 +193,16 @@ namespace ams::fs {
 
                 R_UNLESS(cur != InvalidPosition, fs::ResultDbmKeyNotFound());
 
-                u8 *buf = static_cast<u8 *>(::ams::fs::impl::Allocate(MaxAuxiliarySize));
-                R_UNLESS(buf != nullptr, fs::ResultAllocationMemoryFailedInDbmRomKeyValueStorage());
-                ON_SCOPE_EXIT { ::ams::fs::impl::Deallocate(buf, MaxAuxiliarySize); };
+                auto buf = ::ams::fs::impl::MakeUnique<u8[]>(MaxAuxiliarySize);
+                R_UNLESS(buf != nullptr, fs::ResultAllocationMemoryFailedMakeUnique());
 
                 while (true) {
                     size_t cur_aux_size;
-                    R_TRY(this->ReadKeyValue(out_elem, buf, std::addressof(cur_aux_size), cur));
+                    R_TRY(this->ReadKeyValue(out_elem, buf.get(), std::addressof(cur_aux_size), cur));
 
-                    if (key.IsEqual(out_elem->key, aux, aux_size, buf, cur_aux_size)) {
+                    if (key.IsEqual(out_elem->key, aux, aux_size, buf.get(), cur_aux_size)) {
                         *out_pos = cur;
-                        return ResultSuccess();
+                        R_SUCCEED();
                     }
 
                     *out_prev = cur;
@@ -222,18 +211,18 @@ namespace ams::fs {
                 }
             }
 
-            Result AllocateEntry(Position *out, size_t aux_size) {
+            Result AllocateEntry(Position *out, StorageSizeType aux_size) {
                 AMS_ASSERT(out != nullptr);
 
                 s64 kv_size;
                 R_TRY(m_kv_storage.GetSize(std::addressof(kv_size)));
-                const size_t end_pos = m_total_entry_size + sizeof(Element) + aux_size;
+                const size_t end_pos = m_total_entry_size + sizeof(Element) + static_cast<size_t>(aux_size);
                 R_UNLESS(end_pos <= static_cast<size_t>(kv_size), fs::ResultDbmKeyFull());
 
                 *out = static_cast<Position>(m_total_entry_size);
 
-                m_total_entry_size = util::AlignUp(static_cast<s64>(end_pos), alignof(Position));
-                return ResultSuccess();
+                m_total_entry_size = util::AlignUp<s64>(static_cast<s64>(end_pos), alignof(Position));
+                R_SUCCEED();
             }
 
             Result LinkEntry(Position *out, Position pos, u32 hash_key) {
@@ -251,7 +240,7 @@ namespace ams::fs {
                 R_TRY(this->WriteBucket(pos, ind));
 
                 *out = next;
-                return ResultSuccess();
+                R_SUCCEED();
             }
 
             Result ReadBucket(Position *out, BucketIndex ind) {
@@ -259,14 +248,14 @@ namespace ams::fs {
                 AMS_ASSERT(ind < m_bucket_count);
 
                 const s64 offset = ind * sizeof(Position);
-                return m_bucket_storage.Read(offset, out, sizeof(*out));
+                R_RETURN(m_bucket_storage.Read(offset, out, sizeof(*out)));
             }
 
             Result WriteBucket(Position pos, BucketIndex ind) {
                 AMS_ASSERT(ind < m_bucket_count);
 
                 const s64 offset = ind * sizeof(Position);
-                return m_bucket_storage.Write(offset, std::addressof(pos), sizeof(pos));
+                R_RETURN(m_bucket_storage.Write(offset, std::addressof(pos), sizeof(pos)));
             }
 
             Result ReadKeyValue(Element *out, Position pos) {
@@ -276,7 +265,7 @@ namespace ams::fs {
                 R_TRY(m_kv_storage.GetSize(std::addressof(kv_size)));
                 AMS_ASSERT(pos < kv_size);
 
-                return m_kv_storage.Read(pos, out, sizeof(*out));
+                R_RETURN(m_kv_storage.Read(pos, out, sizeof(*out)));
             }
 
             Result ReadKeyValue(Element *out, void *out_aux, size_t *out_aux_size, Position pos) {
@@ -291,7 +280,7 @@ namespace ams::fs {
                     R_TRY(m_kv_storage.Read(pos + sizeof(*out), out_aux, out->size));
                 }
 
-                return ResultSuccess();
+                R_SUCCEED();
             }
 
             Result WriteKeyValue(const Element *elem, Position pos, const void *aux, size_t aux_size) {
@@ -308,7 +297,7 @@ namespace ams::fs {
                     R_TRY(m_kv_storage.Write(pos + sizeof(*elem), aux, aux_size));
                 }
 
-                return ResultSuccess();
+                R_SUCCEED();
             }
     };
 

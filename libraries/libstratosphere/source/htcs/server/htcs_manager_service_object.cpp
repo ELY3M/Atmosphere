@@ -35,16 +35,16 @@ namespace ams::htcs::server {
 
     Result ManagerServiceObject::GetPeerNameAny(sf::Out<htcs::HtcsPeerName> out) {
         *out = impl::GetPeerNameAny();
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result ManagerServiceObject::GetDefaultHostName(sf::Out<htcs::HtcsPeerName> out) {
         *out = impl::GetDefaultHostName();
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result ManagerServiceObject::CreateSocketOld(sf::Out<s32> out_err, sf::Out<sf::SharedPointer<tma::ISocket>> out) {
-        return this->CreateSocket(out_err, out, false);
+        R_RETURN(this->CreateSocket(out_err, out, false));
     }
 
     Result ManagerServiceObject::CreateSocket(sf::Out<s32> out_err, sf::Out<sf::SharedPointer<tma::ISocket>> out, bool enable_disconnection_emulation) {
@@ -61,19 +61,19 @@ namespace ams::htcs::server {
         /* Create a new socket object. */
         *out = ServiceObjectFactory::CreateSharedEmplaced<tma::ISocket, SocketServiceObject>(this, desc);
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result ManagerServiceObject::RegisterProcessId(const sf::ClientProcessId &client_pid) {
         /* NOTE: Nintendo does nothing here. */
         AMS_UNUSED(client_pid);
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result ManagerServiceObject::MonitorManager(const sf::ClientProcessId &client_pid) {
         /* NOTE: Nintendo does nothing here. */
         AMS_UNUSED(client_pid);
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result ManagerServiceObject::StartSelect(sf::Out<u32> out_task_id, sf::OutCopyHandle out_event, const sf::InMapAliasArray<s32> &read_handles, const sf::InMapAliasArray<s32> &write_handles, const sf::InMapAliasArray<s32> &exception_handles, s64 tv_sec, s64 tv_usec) {
@@ -86,7 +86,7 @@ namespace ams::htcs::server {
 
         /* Set the output event handle. */
         out_event.SetValue(event_handle, true);
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result ManagerServiceObject::EndSelect(sf::Out<s32> out_err, sf::Out<s32> out_count, const sf::OutMapAliasArray<s32> &read_handles, const sf::OutMapAliasArray<s32> &write_handles, const sf::OutMapAliasArray<s32> &exception_handles, u32 task_id) {
@@ -94,7 +94,7 @@ namespace ams::htcs::server {
         auto *manager = impl::HtcsManagerHolder::GetHtcsManager();
 
         /* End the select. */
-        return manager->EndSelect(out_err.GetPointer(), out_count.GetPointer(), read_handles.ToSpan(), write_handles.ToSpan(), exception_handles.ToSpan(), task_id);
+        R_RETURN(manager->EndSelect(out_err.GetPointer(), out_count.GetPointer(), read_handles.ToSpan(), write_handles.ToSpan(), exception_handles.ToSpan(), task_id));
     }
 
 }

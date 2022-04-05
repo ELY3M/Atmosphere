@@ -53,7 +53,7 @@ namespace ams::psc {
         m_intf = RemoteObjectFactory::CreateSharedEmplaced<psc::sf::IPmModule, RemotePmModule>(module);
         m_system_event.AttachReadableHandle(module.event.revent, false, clear_mode);
         m_initialized = true;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result PmModule::Finalize() {
@@ -63,13 +63,13 @@ namespace ams::psc {
         m_intf = nullptr;
         os::DestroySystemEvent(m_system_event.GetBase());
         m_initialized = false;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result PmModule::GetRequest(PmState *out_state, PmFlagSet *out_flags) {
         R_UNLESS(m_initialized, psc::ResultNotInitialized());
 
-        return m_intf->GetRequest(out_state, out_flags);
+        R_RETURN(m_intf->GetRequest(out_state, out_flags));
     }
 
     Result PmModule::Acknowledge(PmState state, Result res) {
@@ -77,9 +77,9 @@ namespace ams::psc {
         R_UNLESS(m_initialized, psc::ResultNotInitialized());
 
         if (hos::GetVersion() >= hos::Version_5_1_0) {
-            return m_intf->AcknowledgeEx(state);
+            R_RETURN(m_intf->AcknowledgeEx(state));
         } else {
-            return m_intf->Acknowledge();
+            R_RETURN(m_intf->Acknowledge());
         }
     }
 

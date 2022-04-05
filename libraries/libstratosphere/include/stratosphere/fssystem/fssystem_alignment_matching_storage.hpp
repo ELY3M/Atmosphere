@@ -62,9 +62,9 @@ namespace ams::fssystem {
 
                 s64 bs_size = 0;
                 R_TRY(this->GetSize(std::addressof(bs_size)));
-                R_UNLESS(fs::IStorage::CheckAccessRange(offset, size, bs_size), fs::ResultOutOfRange());
+                R_TRY(fs::IStorage::CheckAccessRange(offset, size, bs_size));
 
-                return AlignmentMatchingStorageImpl::Read(m_base_storage, work_buf, sizeof(work_buf), DataAlign, BufferAlign, offset, static_cast<char *>(buffer), size);
+                R_RETURN(AlignmentMatchingStorageImpl::Read(m_base_storage, work_buf, sizeof(work_buf), DataAlign, BufferAlign, offset, static_cast<char *>(buffer), size));
             }
 
             virtual Result Write(s64 offset, const void *buffer, size_t size) override {
@@ -80,18 +80,18 @@ namespace ams::fssystem {
 
                 s64 bs_size = 0;
                 R_TRY(this->GetSize(std::addressof(bs_size)));
-                R_UNLESS(fs::IStorage::CheckAccessRange(offset, size, bs_size), fs::ResultOutOfRange());
+                R_TRY(fs::IStorage::CheckAccessRange(offset, size, bs_size));
 
-                return AlignmentMatchingStorageImpl::Write(m_base_storage, work_buf, sizeof(work_buf), DataAlign, BufferAlign, offset, static_cast<const char *>(buffer), size);
+                R_RETURN(AlignmentMatchingStorageImpl::Write(m_base_storage, work_buf, sizeof(work_buf), DataAlign, BufferAlign, offset, static_cast<const char *>(buffer), size));
             }
 
             virtual Result Flush() override {
-                return m_base_storage->Flush();
+                R_RETURN(m_base_storage->Flush());
             }
 
             virtual Result SetSize(s64 size) override {
                 ON_SCOPE_EXIT { m_is_base_storage_size_dirty = true; };
-                return m_base_storage->SetSize(util::AlignUp(size, DataAlign));
+                R_RETURN(m_base_storage->SetSize(util::AlignUp(size, DataAlign)));
             }
 
             virtual Result GetSize(s64 *out) override {
@@ -106,12 +106,12 @@ namespace ams::fssystem {
                 }
 
                 *out = m_base_storage_size;
-                return ResultSuccess();
+                R_SUCCEED();
             }
 
             virtual Result OperateRange(void *dst, size_t dst_size, fs::OperationId op_id, s64 offset, s64 size, const void *src, size_t src_size) override {
                 if (op_id == fs::OperationId::Invalidate) {
-                    return m_base_storage->OperateRange(fs::OperationId::Invalidate, offset, size);
+                    R_RETURN(m_base_storage->OperateRange(fs::OperationId::Invalidate, offset, size));
                 } else {
                     /* Succeed if zero size. */
                     R_SUCCEED_IF(size == 0);
@@ -119,7 +119,7 @@ namespace ams::fssystem {
                     /* Get the base storage size. */
                     s64 bs_size = 0;
                     R_TRY(this->GetSize(std::addressof(bs_size)));
-                    R_UNLESS(fs::IStorage::CheckOffsetAndSize(offset, size), fs::ResultOutOfRange());
+                    R_TRY(fs::IStorage::CheckOffsetAndSize(offset, size));
 
                     /* Operate on the base storage. */
                     const auto valid_size         = std::min(size, bs_size - offset);
@@ -127,7 +127,7 @@ namespace ams::fssystem {
                     const auto aligned_offset_end = util::AlignUp(offset + valid_size, DataAlign);
                     const auto aligned_size       = aligned_offset_end - aligned_offset;
 
-                    return m_base_storage->OperateRange(dst, dst_size, op_id, aligned_offset, aligned_size, src, src_size);
+                    R_RETURN(m_base_storage->OperateRange(dst, dst_size, op_id, aligned_offset, aligned_size, src, src_size));
                 }
             }
     };
@@ -160,13 +160,13 @@ namespace ams::fssystem {
 
                 s64 bs_size = 0;
                 R_TRY(this->GetSize(std::addressof(bs_size)));
-                R_UNLESS(fs::IStorage::CheckAccessRange(offset, size, bs_size), fs::ResultOutOfRange());
+                R_TRY(fs::IStorage::CheckAccessRange(offset, size, bs_size));
 
                 /* Allocate a pooled buffer. */
                 PooledBuffer pooled_buffer;
                 pooled_buffer.AllocateParticularlyLarge(m_data_align, m_data_align);
 
-                return AlignmentMatchingStorageImpl::Read(m_base_storage, pooled_buffer.GetBuffer(), pooled_buffer.GetSize(), m_data_align, BufferAlign, offset, static_cast<char *>(buffer), size);
+                R_RETURN(AlignmentMatchingStorageImpl::Read(m_base_storage, pooled_buffer.GetBuffer(), pooled_buffer.GetSize(), m_data_align, BufferAlign, offset, static_cast<char *>(buffer), size));
             }
 
             virtual Result Write(s64 offset, const void *buffer, size_t size) override {
@@ -178,22 +178,22 @@ namespace ams::fssystem {
 
                 s64 bs_size = 0;
                 R_TRY(this->GetSize(std::addressof(bs_size)));
-                R_UNLESS(fs::IStorage::CheckAccessRange(offset, size, bs_size), fs::ResultOutOfRange());
+                R_TRY(fs::IStorage::CheckAccessRange(offset, size, bs_size));
 
                 /* Allocate a pooled buffer. */
                 PooledBuffer pooled_buffer;
                 pooled_buffer.AllocateParticularlyLarge(m_data_align, m_data_align);
 
-                return AlignmentMatchingStorageImpl::Write(m_base_storage, pooled_buffer.GetBuffer(), pooled_buffer.GetSize(), m_data_align, BufferAlign, offset, static_cast<const char *>(buffer), size);
+                R_RETURN(AlignmentMatchingStorageImpl::Write(m_base_storage, pooled_buffer.GetBuffer(), pooled_buffer.GetSize(), m_data_align, BufferAlign, offset, static_cast<const char *>(buffer), size));
             }
 
             virtual Result Flush() override {
-                return m_base_storage->Flush();
+                R_RETURN(m_base_storage->Flush());
             }
 
             virtual Result SetSize(s64 size) override {
                 ON_SCOPE_EXIT { m_is_base_storage_size_dirty = true; };
-                return m_base_storage->SetSize(util::AlignUp(size, m_data_align));
+                R_RETURN(m_base_storage->SetSize(util::AlignUp(size, m_data_align)));
             }
 
             virtual Result GetSize(s64 *out) override {
@@ -208,12 +208,12 @@ namespace ams::fssystem {
                 }
 
                 *out = m_base_storage_size;
-                return ResultSuccess();
+                R_SUCCEED();
             }
 
             virtual Result OperateRange(void *dst, size_t dst_size, fs::OperationId op_id, s64 offset, s64 size, const void *src, size_t src_size) override {
                 if (op_id == fs::OperationId::Invalidate) {
-                    return m_base_storage->OperateRange(fs::OperationId::Invalidate, offset, size);
+                    R_RETURN(m_base_storage->OperateRange(fs::OperationId::Invalidate, offset, size));
                 } else {
                     /* Succeed if zero size. */
                     R_SUCCEED_IF(size == 0);
@@ -221,7 +221,7 @@ namespace ams::fssystem {
                     /* Get the base storage size. */
                     s64 bs_size = 0;
                     R_TRY(this->GetSize(std::addressof(bs_size)));
-                    R_UNLESS(fs::IStorage::CheckOffsetAndSize(offset, size), fs::ResultOutOfRange());
+                    R_TRY(fs::IStorage::CheckOffsetAndSize(offset, size));
 
                     /* Operate on the base storage. */
                     const auto valid_size         = std::min(size, bs_size - offset);
@@ -229,7 +229,7 @@ namespace ams::fssystem {
                     const auto aligned_offset_end = util::AlignUp(offset + valid_size, m_data_align);
                     const auto aligned_size       = aligned_offset_end - aligned_offset;
 
-                    return m_base_storage->OperateRange(dst, dst_size, op_id, aligned_offset, aligned_size, src, src_size);
+                    R_RETURN(m_base_storage->OperateRange(dst, dst_size, op_id, aligned_offset, aligned_size, src, src_size));
                 }
             }
     };
@@ -268,20 +268,20 @@ namespace ams::fssystem {
 
                 s64 bs_size = 0;
                 R_TRY(this->GetSize(std::addressof(bs_size)));
-                R_UNLESS(fs::IStorage::CheckAccessRange(offset, size, bs_size), fs::ResultOutOfRange());
+                R_TRY(fs::IStorage::CheckAccessRange(offset, size, bs_size));
 
                 /* Allocate a pooled buffer. */
                 PooledBuffer pooled_buffer(m_data_align, m_data_align);
-                return AlignmentMatchingStorageImpl::Write(m_base_storage, pooled_buffer.GetBuffer(), pooled_buffer.GetSize(), m_data_align, BufferAlign, offset, static_cast<const char *>(buffer), size);
+                R_RETURN(AlignmentMatchingStorageImpl::Write(m_base_storage, pooled_buffer.GetBuffer(), pooled_buffer.GetSize(), m_data_align, BufferAlign, offset, static_cast<const char *>(buffer), size));
             }
 
             virtual Result Flush() override {
-                return m_base_storage->Flush();
+                R_RETURN(m_base_storage->Flush());
             }
 
             virtual Result SetSize(s64 size) override {
                 ON_SCOPE_EXIT { m_base_storage_size = -1; };
-                return m_base_storage->SetSize(util::AlignUp(size, m_data_align));
+                R_RETURN(m_base_storage->SetSize(util::AlignUp(size, m_data_align)));
             }
 
             virtual Result GetSize(s64 *out) override {
@@ -295,12 +295,12 @@ namespace ams::fssystem {
                 }
 
                 *out = m_base_storage_size;
-                return ResultSuccess();
+                R_SUCCEED();
             }
 
             virtual Result OperateRange(void *dst, size_t dst_size, fs::OperationId op_id, s64 offset, s64 size, const void *src, size_t src_size) override {
                 if (op_id == fs::OperationId::Invalidate) {
-                    return m_base_storage->OperateRange(fs::OperationId::Invalidate, offset, size);
+                    R_RETURN(m_base_storage->OperateRange(fs::OperationId::Invalidate, offset, size));
                 } else {
                     /* Succeed if zero size. */
                     R_SUCCEED_IF(size == 0);
@@ -308,7 +308,7 @@ namespace ams::fssystem {
                     /* Get the base storage size. */
                     s64 bs_size = 0;
                     R_TRY(this->GetSize(std::addressof(bs_size)));
-                    R_UNLESS(fs::IStorage::CheckOffsetAndSize(offset, size), fs::ResultOutOfRange());
+                    R_TRY(fs::IStorage::CheckOffsetAndSize(offset, size));
 
                     /* Operate on the base storage. */
                     const auto valid_size         = std::min(size, bs_size - offset);
@@ -316,7 +316,7 @@ namespace ams::fssystem {
                     const auto aligned_offset_end = util::AlignUp(offset + valid_size, m_data_align);
                     const auto aligned_size       = aligned_offset_end - aligned_offset;
 
-                    return m_base_storage->OperateRange(dst, dst_size, op_id, aligned_offset, aligned_size, src, src_size);
+                    R_RETURN(m_base_storage->OperateRange(dst, dst_size, op_id, aligned_offset, aligned_size, src, src_size));
                 }
             }
     };

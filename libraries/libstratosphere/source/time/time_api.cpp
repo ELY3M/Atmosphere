@@ -47,7 +47,7 @@ namespace ams::time {
             if (g_initialize_count > 0) {
                 AMS_ABORT_UNLESS(mode == g_initialize_mode);
                 g_initialize_count++;
-                return ResultSuccess();
+                R_SUCCEED();
             }
 
             #if defined(ATMOSPHERE_OS_HORIZON)
@@ -62,29 +62,29 @@ namespace ams::time {
 
             R_TRY(::timeInitialize());
             #else
-            AMS_ABORT("TODO");
+            // TODO: Real AMS_ABORT("TODO");
             #endif
 
             g_initialize_count++;
             g_initialize_mode = mode;
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
     }
 
     Result Initialize() {
-        return InitializeImpl(InitializeMode_Normal);
+        R_RETURN(InitializeImpl(InitializeMode_Normal));
     }
 
     Result InitializeForSystem() {
-        return InitializeImpl(InitializeMode_System);
+        R_RETURN(InitializeImpl(InitializeMode_System));
     }
 
     Result InitializeForSystemUser() {
         if (hos::GetVersion() >= hos::Version_9_0_0) {
-            return InitializeImpl(InitializeMode_SystemUser);
+            R_RETURN(InitializeImpl(InitializeMode_SystemUser));
         } else {
-            return InitializeImpl(InitializeMode_Normal);
+            R_RETURN(InitializeImpl(InitializeMode_Normal));
         }
     }
 
@@ -96,13 +96,13 @@ namespace ams::time {
                 #if defined(ATMOSPHERE_OS_HORIZON)
                 ::timeExit();
                 #else
-                AMS_ABORT("TODO");
+                // TODO: Real AMS_ABORT("TODO");
                 #endif
                 g_initialize_mode = InitializeMode_None;
             }
         }
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     bool IsInitialized() {
@@ -116,7 +116,7 @@ namespace ams::time {
     }
 
     Result GetElapsedSecondsBetween(s64 *out, const SteadyClockTimePoint &from, const SteadyClockTimePoint &to) {
-        return impl::util::GetSpanBetween(out, from, to);
+        R_RETURN(impl::util::GetSpanBetween(out, from, to));
     }
 
 }

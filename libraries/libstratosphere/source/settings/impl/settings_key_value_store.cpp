@@ -300,7 +300,7 @@ namespace ams::settings::impl {
             AMS_ASSERT(out != nullptr);
 
             /* Get the map. */
-            return GetKeyValueStoreMap(out, false);
+            R_RETURN(GetKeyValueStoreMap(out, false));
         }
 
         Result GetKeyValueStoreMap(Map **out, bool force_load) {
@@ -330,7 +330,7 @@ namespace ams::settings::impl {
 
             /* Set the output pointer. */
             *out = map;
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         Result GetKeyValueStoreMapForciblyForDebug(Map **out) {
@@ -338,7 +338,7 @@ namespace ams::settings::impl {
             AMS_ASSERT(out != nullptr);
 
             /* Get the map. */
-            return GetKeyValueStoreMap(out, true);
+            R_RETURN(GetKeyValueStoreMap(out, true));
         }
 
         Result GetMapValueOfKeyValueStoreItemForDebug(MapValue *out, const KeyValueStoreItemForDebug &item) {
@@ -388,7 +388,7 @@ namespace ams::settings::impl {
             /* Ensure we don't free the value buffers we returned. */
             map_value.current_value = nullptr;
             map_value.default_value = nullptr;
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         template<typename T>
@@ -428,7 +428,7 @@ namespace ams::settings::impl {
 
             /* Set the output pointer. */
             *out_data = data;
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         Result GetSystemSaveData(SystemSaveData **out_data, bool create_save) {
@@ -453,7 +453,7 @@ namespace ams::settings::impl {
 
             /* Set the output pointer. */
             *out_data = data;
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         Result LoadKeyValueStoreMap(Map *out) {
@@ -501,7 +501,7 @@ namespace ams::settings::impl {
                 }
             }
 
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         Result LoadKeyValueStoreMap(Map *out, SplHardwareType hardware_type) {
@@ -510,7 +510,7 @@ namespace ams::settings::impl {
             /* Get the platform configuration system data for the hardware type. */
             switch (hardware_type) {
                 case SplHardwareType_None:
-                    return ResultSuccess();
+                    R_SUCCEED();
                 case SplHardwareType_Icosa:
                     R_TRY(GetSystemData<SystemDataTag::PfCfg>(std::addressof(data), ncm::SystemDataId::PlatformConfigIcosa));
                     break;
@@ -536,7 +536,7 @@ namespace ams::settings::impl {
             AMS_ASSERT(data != nullptr);
 
             /* Load the key value store map. */
-            return LoadKeyValueStoreMapDefault(out, *data);
+            R_RETURN(LoadKeyValueStoreMapDefault(out, *data));
         }
 
         template<typename T>
@@ -579,10 +579,10 @@ namespace ams::settings::impl {
                     }
                 }
 
-                return ResultSuccess();
+                R_SUCCEED();
             }));
 
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         template<typename T>
@@ -636,10 +636,10 @@ namespace ams::settings::impl {
 
                 /* Insert the value into the map. */
                 map[std::move(default_key)] = default_value;
-                return ResultSuccess();
+                R_SUCCEED();
             }));
 
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         template<typename T, typename F>
@@ -657,7 +657,7 @@ namespace ams::settings::impl {
                 R_TRY(LoadKeyValueStoreMapEntry(out, data, offset, load));
             }
 
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         template<typename T, typename F>
@@ -708,7 +708,7 @@ namespace ams::settings::impl {
             }
 
             /* Load the value. */
-            return load(*out, key, type, value_buffer, value_size);
+            R_RETURN(load(*out, key, type, value_buffer, value_size));
         }
 
         Result LoadKeyValueStoreMapForDebug(Map *out, SystemSaveData *system_save_data, SystemSaveData *fwdbg_system_save_data, SystemSaveData *pfcfg_system_save_data) {
@@ -729,7 +729,7 @@ namespace ams::settings::impl {
 
             /* Load the current values for the system save data. */
             R_TRY(LoadKeyValueStoreMapCurrent(out, *system_save_data));
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         template<typename T>
@@ -741,7 +741,7 @@ namespace ams::settings::impl {
 
             /* Increment the offset. */
             offset += static_cast<s64>(size);
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         template<typename T>
@@ -762,7 +762,7 @@ namespace ams::settings::impl {
 
             /* We succeeded. */
             alloc_guard.Cancel();
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         template<typename T>
@@ -788,7 +788,7 @@ namespace ams::settings::impl {
 
             /* Set the count. */
             *out_count = size;
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         Result ReadSystemDataFirmwareDebug(u64 *out_count, char * const out_buffer, size_t out_buffer_size) {
@@ -808,7 +808,7 @@ namespace ams::settings::impl {
                 *out_count = 0;
             }
 
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         Result ReadSystemDataPlatformConfiguration(u64 *out_count, char * const out_buffer, size_t out_buffer_size) {
@@ -821,7 +821,7 @@ namespace ams::settings::impl {
             switch (GetSplHardwareType()) {
                 case SplHardwareType_None:
                     *out_count = 0;
-                    return ResultSuccess();
+                    R_SUCCEED();
                 case SplHardwareType_Icosa:
                     system_data_id = ncm::SystemDataId::PlatformConfigIcosa;
                     break;
@@ -855,7 +855,7 @@ namespace ams::settings::impl {
                 *out_count = 0;
             }
 
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         Result ReadSystemSaveData(u64 *out_count, char * const out_buffer, size_t out_buffer_size) {
@@ -875,7 +875,7 @@ namespace ams::settings::impl {
                 *out_count = 0;
             }
 
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         Result SaveKeyValueStoreMap(const Map &map) {
@@ -885,7 +885,7 @@ namespace ams::settings::impl {
             AMS_ASSERT(system_save_data != nullptr);
 
             /* Save the current values of the key value store map. */
-            return SaveKeyValueStoreMapCurrent(*system_save_data, map);
+            R_RETURN(SaveKeyValueStoreMapCurrent(*system_save_data, map));
         }
 
         template<typename T, typename F>
@@ -933,13 +933,13 @@ namespace ams::settings::impl {
             }
 
             /* Commit the save data. */
-            return data.Commit(false);
+            R_RETURN(data.Commit(false));
         }
 
         template<typename T>
         Result SaveKeyValueStoreMapCurrent(T &data, const Map &map) {
             /* Save the current values in the map to the data. */
-            return SaveKeyValueStoreMap(data, map, [](u8 *out_type, const void **out_value_buffer, u32 *out_value_size, const MapValue &map_value) -> bool {
+            R_RETURN(SaveKeyValueStoreMap(data, map, [](u8 *out_type, const void **out_value_buffer, u32 *out_value_size, const MapValue &map_value) -> bool {
                 /* Check preconditions. */
                 AMS_ASSERT(out_type != nullptr);
                 AMS_ASSERT(out_value_buffer != nullptr);
@@ -955,13 +955,13 @@ namespace ams::settings::impl {
                 *out_value_buffer = map_value.current_value;
                 *out_value_size   = map_value.current_value_size;
                 return true;
-            });
+            }));
         }
 
         template<typename T>
         Result SaveKeyValueStoreMapDefault(T &data, const Map &map) {
             /* Save the default values in the map to the data. */
-            return SaveKeyValueStoreMap(data, map, [](u8 *out_type, const void **out_value_buffer, u32 *out_value_size, const MapValue &map_value) -> bool {
+            R_RETURN(SaveKeyValueStoreMap(data, map, [](u8 *out_type, const void **out_value_buffer, u32 *out_value_size, const MapValue &map_value) -> bool {
                 /* Check preconditions. */
                 AMS_ASSERT(out_type != nullptr);
                 AMS_ASSERT(out_value_buffer != nullptr);
@@ -972,11 +972,11 @@ namespace ams::settings::impl {
                 *out_value_buffer = map_value.default_value;
                 *out_value_size   = map_value.default_value_size;
                 return true;
-            });
+            }));
         }
 
         Result SaveKeyValueStoreMapDefaultForDebug(SystemSaveData &data, const Map &map) {
-            return SaveKeyValueStoreMapDefault(data, map);
+            R_RETURN(SaveKeyValueStoreMapDefault(data, map));
         }
 
         template<typename T>
@@ -1007,7 +1007,7 @@ namespace ams::settings::impl {
                 offset += static_cast<s64>(value_size);
             }
 
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
     }
@@ -1067,7 +1067,7 @@ namespace ams::settings::impl {
             .entire_size = item_map_key_size,
             .map_key     = buffer,
         };
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result KeyValueStore::GetValue(u64 *out_count, char *out_buffer, size_t out_buffer_size, const SettingsItemKey &item_key) {
@@ -1104,7 +1104,7 @@ namespace ams::settings::impl {
 
         /* Set the output count. */
         *out_count = current_value_size;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result KeyValueStore::GetValueSize(u64 *out_value_size, const SettingsItemKey &item_key) {
@@ -1128,7 +1128,7 @@ namespace ams::settings::impl {
 
         /* Output the value size. */
         *out_value_size = it->second.current_value_size;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result KeyValueStore::ResetValue(const SettingsItemKey &item_key) {
@@ -1161,23 +1161,24 @@ namespace ams::settings::impl {
         map_value.current_value_size = map_value.default_value_size;
         map_value.current_value      = map_value.default_value;
 
-        /* Attempt to save the key value store map. */
-        if (const auto result = SaveKeyValueStoreMap(*map); R_FAILED(result)) {
+        /* If we fail, revert the map. */
+        ON_RESULT_FAILURE {
             /* Revert to the previous value. */
             map_value.current_value_size = prev_value_size;
             map_value.current_value      = prev_value;
 
-            /* Attempt to save the map again. Nintendo does not check the result of this. */
             SaveKeyValueStoreMap(*map);
-            return result;
-        }
+        };
+
+        /* Attempt to save the key value store map. */
+        R_TRY(SaveKeyValueStoreMap(*map));
 
         /* If present, free the previous value. */
         if (prev_value != nullptr && prev_value != map_value.default_value) {
             FreeToHeap(prev_value, prev_value_size);
         }
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result KeyValueStore::SetValue(const SettingsItemKey &item_key, const void *buffer, size_t buffer_size) {
@@ -1222,31 +1223,27 @@ namespace ams::settings::impl {
             std::memcpy(value_buffer, buffer, value_size);
         }
 
+        /* When we're done, free the unused value buffer. */
+        ON_SCOPE_EXIT {
+            if (value_buffer != nullptr && value_buffer != map_value.default_value) {
+                FreeToHeap(value_buffer, value_size);
+            }
+        };
+
         /* Swap the current value with the new value. */
         std::swap(map_value.current_value_size, value_size);
         std::swap(map_value.current_value, value_buffer);
 
-        /* Attempt to save the key value store map. */
-        const auto result = SaveKeyValueStoreMap(*map);
-
-        /* If we failed, revert to the previous value. */
-        if (R_FAILED(result)) {
+        /* If we fail, revert. */
+        ON_RESULT_FAILURE {
             std::swap(map_value.current_value_size, value_size);
             std::swap(map_value.current_value, value_buffer);
-        }
 
-        /* Free the now unused value. */
-        if (value_buffer != nullptr && value_buffer != map_value.default_value) {
-            FreeToHeap(value_buffer, value_size);
-        }
-
-        /* If we failed, attempt to save the map again. Note that Nintendo does not check the result of this. */
-        if (R_FAILED(result)) {
             SaveKeyValueStoreMap(*map);
-            return result;
-        }
+        };
 
-       return ResultSuccess();
+        /* Attempt to save the key value store map. */
+        R_RETURN(SaveKeyValueStoreMap(*map));
     }
 
     Result AddKeyValueStoreItemForDebug(const KeyValueStoreItemForDebug * const items, size_t items_count) {
@@ -1298,7 +1295,7 @@ namespace ams::settings::impl {
             map_value.default_value = nullptr;
         }
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result AdvanceKeyValueStoreKeyIterator(KeyValueStoreKeyIterator *out) {
@@ -1350,7 +1347,7 @@ namespace ams::settings::impl {
         out->entire_size = map_key_size;
         out->map_key     = buffer;
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result DestroyKeyValueStoreKeyIterator(KeyValueStoreKeyIterator *out) {
@@ -1370,7 +1367,7 @@ namespace ams::settings::impl {
         out->header_size = 0;
         out->entire_size = 0;
         out->map_key     = nullptr;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result GetKeyValueStoreItemCountForDebug(u64 *out_count) {
@@ -1387,7 +1384,7 @@ namespace ams::settings::impl {
 
         /* Output the item count. */
         *out_count = map->size();
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result GetKeyValueStoreItemForDebug(u64 *out_count, KeyValueStoreItemForDebug * const out_items, size_t out_items_count) {
@@ -1430,7 +1427,7 @@ namespace ams::settings::impl {
 
         /* Set the output count. */
         *out_count = count;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result GetKeyValueStoreKeyIteratorKey(u64 *out_count, char *out_buffer, size_t out_buffer_size, const KeyValueStoreKeyIterator &iterator) {
@@ -1452,7 +1449,7 @@ namespace ams::settings::impl {
 
         /* Output the key size. */
         *out_count = key_size;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result GetKeyValueStoreKeyIteratorKeySize(u64 *out_count, const KeyValueStoreKeyIterator &iterator) {
@@ -1464,7 +1461,7 @@ namespace ams::settings::impl {
 
         /* Output the key size. */
         *out_count = std::min(iterator.entire_size - iterator.header_size, SettingsItemKeyLengthMax + 1);
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result ReadKeyValueStoreFirmwareDebug(u64 *out_count, char * const out_buffer, size_t out_buffer_size) {
@@ -1476,7 +1473,7 @@ namespace ams::settings::impl {
         std::scoped_lock lk(g_key_value_store_mutex);
 
         /* Read the firmware debug system data. */
-        return ReadSystemDataFirmwareDebug(out_count, out_buffer, out_buffer_size);
+        R_RETURN(ReadSystemDataFirmwareDebug(out_count, out_buffer, out_buffer_size));
     }
 
     Result ReadKeyValueStorePlatformConfiguration(u64 *out_count, char * const out_buffer, size_t out_buffer_size) {
@@ -1488,7 +1485,7 @@ namespace ams::settings::impl {
         std::scoped_lock lk(g_key_value_store_mutex);
 
         /* Read the platform configuration system data. */
-        return ReadSystemDataPlatformConfiguration(out_count, out_buffer, out_buffer_size);
+        R_RETURN(ReadSystemDataPlatformConfiguration(out_count, out_buffer, out_buffer_size));
     }
 
     Result ReadKeyValueStoreSaveData(u64 *out_count, char * const out_buffer, size_t out_buffer_size) {
@@ -1500,7 +1497,7 @@ namespace ams::settings::impl {
         std::scoped_lock lk(g_key_value_store_mutex);
 
         /* Read the system save data. */
-        return ReadSystemSaveData(out_count, out_buffer, out_buffer_size);
+        R_RETURN(ReadSystemSaveData(out_count, out_buffer, out_buffer_size));
     }
 
     Result ReloadKeyValueStoreForDebug(SystemSaveData *system_save_data, SystemSaveData *fwdbg_system_data, SystemSaveData *pfcfg_system_data) {
@@ -1518,7 +1515,7 @@ namespace ams::settings::impl {
         AMS_ASSERT(map != nullptr);
 
         /* Load the key value store map. */
-        return LoadKeyValueStoreMapForDebug(map, system_save_data, fwdbg_system_data, pfcfg_system_data);
+        R_RETURN(LoadKeyValueStoreMapForDebug(map, system_save_data, fwdbg_system_data, pfcfg_system_data));
     }
 
     Result ReloadKeyValueStoreForDebug() {
@@ -1531,7 +1528,7 @@ namespace ams::settings::impl {
         AMS_ASSERT(map != nullptr);
 
         /* Load the key value store map. */
-        return LoadKeyValueStoreMap(map);
+        R_RETURN(LoadKeyValueStoreMap(map));
     }
 
     Result ResetKeyValueStoreSaveData() {
@@ -1566,7 +1563,7 @@ namespace ams::settings::impl {
         }
 
         /* Save the key value store map. */
-        return SaveKeyValueStoreMap(*map);
+        R_RETURN(SaveKeyValueStoreMap(*map));
     }
 
     Result SaveKeyValueStoreAllForDebug(SystemSaveData *data) {
@@ -1585,7 +1582,7 @@ namespace ams::settings::impl {
         R_TRY(SaveKeyValueStoreMapDefaultForDebug(*data, *map));
 
         /* Save the key value store map. */
-        return SaveKeyValueStoreMap(*map);
+        R_RETURN(SaveKeyValueStoreMap(*map));
     }
 
 }

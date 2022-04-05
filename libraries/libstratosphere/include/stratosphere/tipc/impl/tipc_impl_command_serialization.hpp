@@ -572,7 +572,7 @@ namespace ams::tipc::impl {
                     R_UNLESS(message_buffer.Get32(SpecialHeaderIndex) == ExpectedSpecialHeader, tipc::ResultInvalidMessageFormat());
                 }
 
-                return ResultSuccess();
+                R_SUCCEED();
             }
 
             template<size_t Ix>
@@ -628,17 +628,17 @@ namespace ams::tipc::impl {
         typename Processor::OutHandleHolderType out_handles_holder;
         const Result command_result = [&]<size_t... Ix>(std::index_sequence<Ix...>) ALWAYS_INLINE_LAMBDA {
             if constexpr (ReturnsResult) {
-                return (object->*ServiceCommandImpl)(Processor::template DeserializeArgument<Ix>(message_buffer, out_raw_holder, out_handles_holder)...);
+                R_RETURN((object->*ServiceCommandImpl)(Processor::template DeserializeArgument<Ix>(message_buffer, out_raw_holder, out_handles_holder)...));
             } else {
                 (object->*ServiceCommandImpl)(Processor::template DeserializeArgument<Ix>(message_buffer, out_raw_holder, out_handles_holder)...);
-                return ResultSuccess();
+                R_SUCCEED();
             }
         }(std::make_index_sequence<std::tuple_size<typename CommandMeta::ArgsType>::value>());
 
         /* Serialize output. */
         Processor::SerializeResults(message_buffer, command_result, out_raw_holder, out_handles_holder);
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
 }

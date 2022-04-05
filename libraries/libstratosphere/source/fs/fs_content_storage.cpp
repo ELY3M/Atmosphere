@@ -38,7 +38,7 @@ namespace ams::fs {
                     AMS_ASSERT(static_cast<size_t>(size) == needed_size - 1);
                     AMS_UNUSED(size);
 
-                    return ResultSuccess();
+                    R_SUCCEED();
                 }
         };
 
@@ -54,7 +54,7 @@ namespace ams::fs {
     }
 
     Result MountContentStorage(ContentStorageId id) {
-        return MountContentStorage(GetContentStorageMountName(id), id);
+        R_RETURN(MountContentStorage(GetContentStorageMountName(id), id));
     }
 
     Result MountContentStorage(const char *name, ContentStorageId id) {

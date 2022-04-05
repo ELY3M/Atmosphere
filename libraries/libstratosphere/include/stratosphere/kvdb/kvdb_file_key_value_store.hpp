@@ -84,7 +84,7 @@ namespace ams::kvdb {
             template<typename Key>
             Result Get(size_t *out_size, void *out_value, size_t max_out_size, const Key &key) {
                 static_assert(util::is_pod<Key>::value && sizeof(Key) <= MaxKeySize, "Invalid FileKeyValueStore Key!");
-                return this->Get(out_size, out_value, max_out_size, std::addressof(key), sizeof(Key));
+                R_RETURN(this->Get(out_size, out_value, max_out_size, std::addressof(key), sizeof(Key)));
             }
 
             template<typename Key, typename Value>
@@ -93,29 +93,29 @@ namespace ams::kvdb {
                 size_t size = 0;
                 R_TRY(this->Get(std::addressof(size), out_value, sizeof(Value), key));
                 AMS_ABORT_UNLESS(size >= sizeof(Value));
-                return ResultSuccess();
+                R_SUCCEED();
             }
 
             template<typename Key>
             Result GetSize(size_t *out_size, const Key &key) {
-                return this->GetSize(out_size, std::addressof(key), sizeof(Key));
+                R_RETURN(this->GetSize(out_size, std::addressof(key), sizeof(Key)));
             }
 
             template<typename Key>
             Result Set(const Key &key, const void *value, size_t value_size) {
                 static_assert(util::is_pod<Key>::value && sizeof(Key) <= MaxKeySize, "Invalid FileKeyValueStore Key!");
-                return this->Set(std::addressof(key), sizeof(Key), value, value_size);
+                R_RETURN(this->Set(std::addressof(key), sizeof(Key), value, value_size));
             }
 
             template<typename Key, typename Value>
             Result Set(const Key &key, const Value &value) {
                 static_assert(util::is_pod<Value>::value && !std::is_pointer<Value>::value, "Invalid FileKeyValueStore Value!");
-                return this->Set(key, std::addressof(value), sizeof(Value));
+                R_RETURN(this->Set(key, std::addressof(value), sizeof(Value)));
             }
 
             template<typename Key>
             Result Remove(const Key &key) {
-                return this->Remove(std::addressof(key), sizeof(Key));
+                R_RETURN(this->Remove(std::addressof(key), sizeof(Key)));
             }
     };
 

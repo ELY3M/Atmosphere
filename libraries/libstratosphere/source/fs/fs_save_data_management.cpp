@@ -68,23 +68,23 @@ namespace ams::fs {
     }
 
     Result CreateSystemSaveData(SystemSaveDataId save_id, s64 size, s64 journal_size, u32 flags) {
-        return CreateSystemSaveData(SaveDataSpaceId::System, save_id, InvalidUserId, 0, size, journal_size, flags);
+        R_RETURN(CreateSystemSaveData(SaveDataSpaceId::System, save_id, InvalidUserId, 0, size, journal_size, flags));
     }
 
     Result CreateSystemSaveData(SystemSaveDataId save_id, u64 owner_id, s64 size, s64 journal_size, u32 flags) {
-        return CreateSystemSaveData(SaveDataSpaceId::System, save_id, InvalidUserId, owner_id, size, journal_size, flags);
+        R_RETURN(CreateSystemSaveData(SaveDataSpaceId::System, save_id, InvalidUserId, owner_id, size, journal_size, flags));
     }
 
     Result CreateSystemSaveData(SaveDataSpaceId space_id, SystemSaveDataId save_id, u64 owner_id, s64 size, s64 journal_size, u32 flags) {
-        return CreateSystemSaveData(space_id, save_id, InvalidUserId, owner_id, size, journal_size, flags);
+        R_RETURN(CreateSystemSaveData(space_id, save_id, InvalidUserId, owner_id, size, journal_size, flags));
     }
 
     Result CreateSystemSaveData(SystemSaveDataId save_id, UserId user_id, s64 size, s64 journal_size, u32 flags) {
-        return CreateSystemSaveData(SaveDataSpaceId::System, save_id, user_id, 0, size, journal_size, flags);
+        R_RETURN(CreateSystemSaveData(SaveDataSpaceId::System, save_id, user_id, 0, size, journal_size, flags));
     }
 
     Result CreateSystemSaveData(SystemSaveDataId save_id, UserId user_id, u64 owner_id, s64 size, s64 journal_size, u32 flags) {
-        return CreateSystemSaveData(SaveDataSpaceId::System, save_id, user_id, owner_id, size, journal_size, flags);
+        R_RETURN(CreateSystemSaveData(SaveDataSpaceId::System, save_id, user_id, owner_id, size, journal_size, flags));
     }
 
     Result DeleteSaveData(SaveDataId id) {
@@ -124,7 +124,7 @@ namespace ams::fs {
         R_TRY(impl::ReadSaveDataFileSystemExtraData(std::addressof(extra_data), id));
 
         *out = extra_data.flags;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result GetSaveDataFlags(u32 *out, SaveDataSpaceId space_id, SaveDataId id) {
@@ -132,14 +132,14 @@ namespace ams::fs {
         R_TRY(impl::ReadSaveDataFileSystemExtraData(std::addressof(extra_data), space_id, id));
 
         *out = extra_data.flags;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result SetSaveDataFlags(SaveDataId id, SaveDataSpaceId space_id, u32 flags) {
         SaveDataExtraData extra_data;
         R_TRY(impl::ReadSaveDataFileSystemExtraData(std::addressof(extra_data), space_id, id));
         extra_data.flags = flags;
-        return impl::WriteSaveDataFileSystemExtraData(space_id, id, extra_data);
+        R_RETURN(impl::WriteSaveDataFileSystemExtraData(space_id, id, extra_data));
     }
 
     Result GetSaveDataAvailableSize(s64 *out, SaveDataId id) {
@@ -147,7 +147,7 @@ namespace ams::fs {
         R_TRY(impl::ReadSaveDataFileSystemExtraData(std::addressof(extra_data), id));
 
         *out = extra_data.available_size;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result GetSaveDataJournalSize(s64 *out, SaveDataId id) {
@@ -155,7 +155,7 @@ namespace ams::fs {
         R_TRY(impl::ReadSaveDataFileSystemExtraData(std::addressof(extra_data), id));
 
         *out = extra_data.journal_size;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result ExtendSaveData(SaveDataSpaceId space_id, SaveDataId id, s64 available_size, s64 journal_size) {

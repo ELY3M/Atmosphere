@@ -113,10 +113,10 @@ namespace ams::sdmmc::impl {
                 case 1:  *out = SpeedMode_MmcHighSpeed;   break;
                 case 2:  *out = SpeedMode_MmcHs200;       break;
                 case 3:  *out = SpeedMode_MmcHs400;       break;
-                default: return sdmmc::ResultUnexpectedMmcExtendedCsdValue();
+                default: R_THROW(sdmmc::ResultUnexpectedMmcExtendedCsdValue());
             }
 
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
     }
@@ -147,7 +147,7 @@ namespace ams::sdmmc::impl {
         /* Get the response. */
         hc->GetLastResponse(out_ocr, sizeof(*out_ocr), CommandResponseType);
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result MmcDeviceAccessor::IssueCommandSetRelativeAddr() const {
@@ -159,7 +159,7 @@ namespace ams::sdmmc::impl {
         const u32 arg = rca << 16;
         R_TRY(BaseDeviceAccessor::IssueCommandAndCheckR1(CommandIndex_SetRelativeAddr, arg, false, DeviceState_Unknown));
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result MmcDeviceAccessor::IssueCommandSwitch(CommandSwitch cs) const {
@@ -169,7 +169,7 @@ namespace ams::sdmmc::impl {
         /* Issue the command. */
         R_TRY(BaseDeviceAccessor::IssueCommandAndCheckR1(CommandIndex_Switch, arg, true, DeviceState_Unknown));
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result MmcDeviceAccessor::IssueCommandSendExtCsd(void *dst, size_t dst_size) const {
@@ -189,7 +189,7 @@ namespace ams::sdmmc::impl {
         hc->GetLastResponse(std::addressof(resp), sizeof(resp), CommandResponseType);
         R_TRY(m_mmc_device.CheckDeviceStatus(resp));
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result MmcDeviceAccessor::IssueCommandEraseGroupStart(u32 sector_index) const {
@@ -199,7 +199,7 @@ namespace ams::sdmmc::impl {
         /* Issue the command. */
         R_TRY(BaseDeviceAccessor::IssueCommandAndCheckR1(CommandIndex_EraseGroupStart, arg, false, DeviceState_Unknown));
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result MmcDeviceAccessor::IssueCommandEraseGroupEnd(u32 sector_index) const {
@@ -209,14 +209,14 @@ namespace ams::sdmmc::impl {
         /* Issue the command. */
         R_TRY(BaseDeviceAccessor::IssueCommandAndCheckR1(CommandIndex_EraseGroupEnd, arg, false, DeviceState_Tran));
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result MmcDeviceAccessor::IssueCommandErase() const {
         /* Issue the command. */
         R_TRY(BaseDeviceAccessor::IssueCommandAndCheckR1(CommandIndex_Erase, 0, false, DeviceState_Tran));
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result MmcDeviceAccessor::CancelToshibaMmcModel() {
@@ -232,7 +232,7 @@ namespace ams::sdmmc::impl {
         R_TRY(this->IssueCommandSwitch(CommandSwitch_WriteProductionStateAwarenessNormal));
         R_TRY(BaseDeviceAccessor::IssueCommandSendStatus());
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result MmcDeviceAccessor::ChangeToReadyState(BusPower bus_power) {
@@ -244,7 +244,7 @@ namespace ams::sdmmc::impl {
             R_TRY(this->IssueCommandSendOpCond(std::addressof(ocr), bus_power));
             if ((ocr & OcrCardPowerUpStatus) != 0) {
                 m_mmc_device.SetOcrAndHighCapacity(ocr);
-                return ResultSuccess();
+                R_SUCCEED();
             }
 
             /* Check if we've timed out. */
@@ -271,7 +271,7 @@ namespace ams::sdmmc::impl {
             cs        = CommandSwitch_WriteBusWidth4Bit;
         } else {
             /* Target bus width is 1bit. */
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         /* Set the bus width. */
@@ -279,7 +279,7 @@ namespace ams::sdmmc::impl {
         R_TRY(BaseDeviceAccessor::IssueCommandSendStatus());
         hc->SetBusWidth(target_bw);
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result MmcDeviceAccessor::EnableBkopsAuto() {
@@ -287,7 +287,7 @@ namespace ams::sdmmc::impl {
         R_TRY(this->IssueCommandSwitch(CommandSwitch_SetBitsBkopsEnAutoEn));
         R_TRY(BaseDeviceAccessor::IssueCommandSendStatus());
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result MmcDeviceAccessor::ChangeToHighSpeed(bool check_before) {
@@ -307,7 +307,7 @@ namespace ams::sdmmc::impl {
             R_TRY(BaseDeviceAccessor::IssueCommandSendStatus());
         }
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result MmcDeviceAccessor::ChangeToHs200() {
@@ -324,7 +324,7 @@ namespace ams::sdmmc::impl {
         /* Check status. */
         R_TRY(BaseDeviceAccessor::IssueCommandSendStatus());
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result MmcDeviceAccessor::ChangeToHs400() {
@@ -348,7 +348,7 @@ namespace ams::sdmmc::impl {
         /* Check status. */
         R_TRY(BaseDeviceAccessor::IssueCommandSendStatus());
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result MmcDeviceAccessor::ExtendBusSpeed(u8 device_type, SpeedMode max_sm) {
@@ -357,19 +357,19 @@ namespace ams::sdmmc::impl {
         IHostController *hc = BaseDeviceAccessor::GetHostController();
         if (hc->IsSupportedTuning() && hc->GetBusPower() == BusPower_1_8V) {
             if (hc->GetBusWidth() == BusWidth_8Bit && IsSupportedHs400(device_type) && max_sm == SpeedMode_MmcHs400) {
-                return this->ChangeToHs400();
+                R_RETURN(this->ChangeToHs400());
             } else if ((hc->GetBusWidth() == BusWidth_8Bit ||  hc->GetBusWidth() == BusWidth_4Bit) && IsSupportedHs200(device_type) && (max_sm == SpeedMode_MmcHs400 || max_sm == SpeedMode_MmcHs200)) {
-                return this->ChangeToHs200();
+                R_RETURN(this->ChangeToHs200());
             }
         }
 
         /* Check if we can switch to high speed. */
         if (IsSupportedHighSpeed(device_type)) {
-            return this->ChangeToHighSpeed(true);
+            R_RETURN(this->ChangeToHighSpeed(true));
         }
 
         /* We can't, so stay at normal speeds. */
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result MmcDeviceAccessor::StartupMmcDevice(BusWidth max_bw, SpeedMode max_sm, void *wb, size_t wb_size) {
@@ -418,7 +418,7 @@ namespace ams::sdmmc::impl {
             R_TRY(m_mmc_device.SetLegacyMemoryCapacity());
 
             m_mmc_device.SetActive();
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         /* Extend the bus width to the largest that we can. */
@@ -442,7 +442,7 @@ namespace ams::sdmmc::impl {
         /* Enable power saving. */
         hc->SetPowerSaving(true);
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result MmcDeviceAccessor::OnActivate() {
@@ -479,7 +479,7 @@ namespace ams::sdmmc::impl {
                     BaseDeviceAccessor::IncrementNumActivationErrorCorrections();
                 }
 
-                return ResultSuccess();
+                R_SUCCEED();
             }
 
             /* Log that our startup failed. */
@@ -492,7 +492,7 @@ namespace ams::sdmmc::impl {
         /* We failed to start up with all sets of parameters. */
         BaseDeviceAccessor::PushErrorTimeStamp();
 
-        return result;
+        R_RETURN(result);
     }
 
     Result MmcDeviceAccessor::OnReadWrite(u32 sector_index, u32 num_sectors, void *buf, size_t buf_size, bool is_read) {
@@ -505,7 +505,7 @@ namespace ams::sdmmc::impl {
         }
 
         /* Do the read/write. */
-        return BaseDeviceAccessor::ReadWriteMultiple(sector_index, num_sectors, sector_index_alignment, buf, buf_size, is_read);
+        R_RETURN(BaseDeviceAccessor::ReadWriteMultiple(sector_index, num_sectors, sector_index_alignment, buf, buf_size, is_read));
     }
 
     Result MmcDeviceAccessor::ReStartup() {
@@ -516,10 +516,10 @@ namespace ams::sdmmc::impl {
         Result result = this->StartupMmcDevice(m_max_bus_width, m_max_speed_mode, m_work_buffer, m_work_buffer_size);
         if (R_FAILED(result)) {
             BaseDeviceAccessor::PushErrorLog(false, "S %d %d:%X", m_max_bus_width, m_max_speed_mode, result.GetValue());
-            return result;
+            R_RETURN(result);
         }
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     void MmcDeviceAccessor::Initialize() {
@@ -564,7 +564,7 @@ namespace ams::sdmmc::impl {
         R_TRY(GetMmcExtendedCsd(m_work_buffer, m_work_buffer_size));
         R_TRY(GetCurrentSpeedModeFromExtCsd(out_speed_mode, static_cast<const u8 *>(m_work_buffer)));
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     void MmcDeviceAccessor::PutMmcToSleep() {
@@ -630,7 +630,7 @@ namespace ams::sdmmc::impl {
         }
         m_current_partition = part;
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result MmcDeviceAccessor::EraseMmc() {
@@ -676,7 +676,7 @@ namespace ams::sdmmc::impl {
 
             /* Otherwise, check if we should reject the error. */
             if (!sdmmc::ResultUnexpectedDeviceState::Includes(result)) {
-                return result;
+                R_RETURN(result);
             }
 
             /* Check if timeout has been exceeded. */
@@ -693,7 +693,7 @@ namespace ams::sdmmc::impl {
             }
         }
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result MmcDeviceAccessor::GetMmcBootPartitionCapacity(u32 *out_num_sectors) const {
@@ -702,7 +702,7 @@ namespace ams::sdmmc::impl {
         R_TRY(this->GetMmcExtendedCsd(m_work_buffer, m_work_buffer_size));
 
         *out_num_sectors = GetBootPartitionMemoryCapacityFromExtCsd(static_cast<const u8 *>(m_work_buffer));
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result MmcDeviceAccessor::GetMmcExtendedCsd(void *dst, size_t dst_size) const {
@@ -722,7 +722,7 @@ namespace ams::sdmmc::impl {
         /* Get the ext csd. */
         R_TRY(this->IssueCommandSendExtCsd(dst, dst_size));
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
 }

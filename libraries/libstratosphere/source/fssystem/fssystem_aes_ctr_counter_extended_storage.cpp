@@ -33,8 +33,9 @@ namespace ams::fssystem {
             private:
                 AesCtrCounterExtendedStorage::DecryptFunction m_decrypt_function;
                 s32 m_key_index;
+                s32 m_key_generation;
             public:
-                ExternalDecryptor(AesCtrCounterExtendedStorage::DecryptFunction df, s32 key_idx) : m_decrypt_function(df), m_key_index(key_idx) {
+                ExternalDecryptor(AesCtrCounterExtendedStorage::DecryptFunction df, s32 key_idx, s32 key_gen) : m_decrypt_function(df), m_key_index(key_idx), m_key_generation(key_gen) {
                     AMS_ASSERT(m_decrypt_function != nullptr);
                 }
             public:
@@ -44,18 +45,18 @@ namespace ams::fssystem {
 
     }
 
-    Result AesCtrCounterExtendedStorage::CreateExternalDecryptor(std::unique_ptr<IDecryptor> *out, DecryptFunction func, s32 key_index) {
-        std::unique_ptr<IDecryptor> decryptor = std::make_unique<ExternalDecryptor>(func, key_index);
+    Result AesCtrCounterExtendedStorage::CreateExternalDecryptor(std::unique_ptr<IDecryptor> *out, DecryptFunction func, s32 key_index, s32 key_generation) {
+        std::unique_ptr<IDecryptor> decryptor = std::make_unique<ExternalDecryptor>(func, key_index, key_generation);
         R_UNLESS(decryptor != nullptr, fs::ResultAllocationMemoryFailedInAesCtrCounterExtendedStorageA());
         *out = std::move(decryptor);
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result AesCtrCounterExtendedStorage::CreateSoftwareDecryptor(std::unique_ptr<IDecryptor> *out) {
         std::unique_ptr<IDecryptor> decryptor = std::make_unique<SoftwareDecryptor>();
         R_UNLESS(decryptor != nullptr, fs::ResultAllocationMemoryFailedInAesCtrCounterExtendedStorageA());
         *out = std::move(decryptor);
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result AesCtrCounterExtendedStorage::Initialize(IAllocator *allocator, const void *key, size_t key_size, u32 secure_value, fs::SubStorage data_storage, fs::SubStorage table_storage) {
@@ -75,7 +76,7 @@ namespace ams::fssystem {
         R_TRY(CreateSoftwareDecryptor(std::addressof(sw_decryptor)));
 
         /* Initialize. */
-        return this->Initialize(allocator, key, key_size, secure_value, 0, data_storage, fs::SubStorage(std::addressof(table_storage), node_storage_offset, node_storage_size), fs::SubStorage(std::addressof(table_storage), entry_storage_offset, entry_storage_size), header.entry_count, std::move(sw_decryptor));
+        R_RETURN(this->Initialize(allocator, key, key_size, secure_value, 0, data_storage, fs::SubStorage(std::addressof(table_storage), node_storage_offset, node_storage_size), fs::SubStorage(std::addressof(table_storage), entry_storage_offset, entry_storage_size), header.entry_count, std::move(sw_decryptor)));
     }
 
     Result AesCtrCounterExtendedStorage::Initialize(IAllocator *allocator, const void *key, size_t key_size, u32 secure_value, s64 counter_offset, fs::SubStorage data_storage, fs::SubStorage node_storage, fs::SubStorage entry_storage, s32 entry_count, std::unique_ptr<IDecryptor> &&decryptor) {
@@ -95,7 +96,7 @@ namespace ams::fssystem {
         m_counter_offset = counter_offset;
         m_decryptor      = std::move(decryptor);
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     void AesCtrCounterExtendedStorage::Finalize() {
@@ -188,7 +189,7 @@ namespace ams::fssystem {
             cur_offset += cur_size;
         }
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result AesCtrCounterExtendedStorage::OperateRange(void *dst, size_t dst_size, fs::OperationId op_id, s64 offset, s64 size, const void *src, size_t src_size) {
@@ -204,7 +205,7 @@ namespace ams::fssystem {
                     /* Operate on our data storage. */
                     R_TRY(m_data_storage.OperateRange(fs::OperationId::Invalidate, 0, std::numeric_limits<s64>::max()));
 
-                    return ResultSuccess();
+                    R_SUCCEED();
                 }
             case fs::OperationId::QueryRange:
                 {
@@ -219,7 +220,7 @@ namespace ams::fssystem {
                     /* Succeed if there's nothing to operate on. */
                     if (size == 0) {
                         reinterpret_cast<fs::QueryRangeInfo *>(dst)->Clear();
-                        return ResultSuccess();
+                        R_SUCCEED();
                     }
 
                     /* Validate arguments. */
@@ -242,10 +243,10 @@ namespace ams::fssystem {
                     /*  Merge in the new info. */
                     reinterpret_cast<fs::QueryRangeInfo *>(dst)->Merge(new_info);
 
-                    return ResultSuccess();
+                    R_SUCCEED();
                 }
             default:
-                return fs::ResultUnsupportedOperateRangeForAesCtrCounterExtendedStorage();
+                R_THROW(fs::ResultUnsupportedOperateRangeForAesCtrCounterExtendedStorage());
         }
     }
 
@@ -280,7 +281,7 @@ namespace ams::fssystem {
             size_t cur_size = std::min(pooled_buffer.GetSize(), remaining_size);
             u8 *dst = static_cast<u8 *>(buf) + cur_offset;
 
-            m_decrypt_function(pooled_buffer.GetBuffer(), cur_size, m_key_index, enc_key, enc_key_size, ctr, IvSize, dst, cur_size);
+            m_decrypt_function(pooled_buffer.GetBuffer(), cur_size, m_key_index, m_key_generation, enc_key, enc_key_size, ctr, IvSize, dst, cur_size);
 
             std::memcpy(dst, pooled_buffer.GetBuffer(), cur_size);
 

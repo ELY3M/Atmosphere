@@ -31,25 +31,38 @@ namespace ams::fs {
 
             virtual Result GetSize(s64 *out) = 0;
         public:
-            static inline bool CheckAccessRange(s64 offset, s64 size, s64 total_size) {
-                return offset >= 0 &&
-                       size >= 0 &&
-                       size <= total_size &&
-                       offset <= (total_size - size);
+            static inline Result CheckAccessRange(s64 offset, s64 size, s64 total_size) {
+                R_UNLESS(offset >= 0,                                    fs::ResultInvalidOffset());
+                R_UNLESS(size >= 0,                                      fs::ResultInvalidSize());
+                R_UNLESS(util::CanAddWithoutOverflow<s64>(offset, size), fs::ResultOutOfRange());
+                R_UNLESS(offset + size <= total_size,                    fs::ResultOutOfRange());
+                R_SUCCEED();
             }
 
-            static inline bool CheckAccessRange(s64 offset, size_t size, s64 total_size) {
-                return CheckAccessRange(offset, static_cast<s64>(size), total_size);
+            static ALWAYS_INLINE Result CheckAccessRange(s64 offset, size_t size, s64 total_size) {
+                R_RETURN(CheckAccessRange(offset, static_cast<s64>(size), total_size));
             }
 
-            static inline bool CheckOffsetAndSize(s64 offset, s64 size) {
-                return offset >= 0 &&
-                       size >= 0 &&
-                       offset <= (offset + size);
+            static inline Result CheckOffsetAndSize(s64 offset, s64 size) {
+                R_UNLESS(offset >= 0,                                    fs::ResultInvalidOffset());
+                R_UNLESS(size >= 0,                                      fs::ResultInvalidSize());
+                R_UNLESS(util::CanAddWithoutOverflow<s64>(offset, size), fs::ResultOutOfRange());
+                R_SUCCEED();
             }
 
-            static inline bool CheckOffsetAndSize(s64 offset, size_t size) {
-                return CheckOffsetAndSize(offset, static_cast<s64>(size));
+            static ALWAYS_INLINE Result CheckOffsetAndSize(s64 offset, size_t size) {
+                R_RETURN(CheckOffsetAndSize(offset, static_cast<s64>(size)));
+            }
+
+            static inline Result CheckOffsetAndSizeWithResult(s64 offset, s64 size, Result fail_result) {
+                R_TRY_CATCH(CheckOffsetAndSize(offset, size)) {
+                    R_CONVERT_ALL(fail_result);
+                } R_END_TRY_CATCH;
+                R_SUCCEED();
+            }
+
+            static ALWAYS_INLINE Result CheckOffsetAndSizeWithResult(s64 offset, size_t size, Result fail_result) {
+                R_RETURN(CheckOffsetAndSizeWithResult(offset, static_cast<s64>(size), fail_result));
             }
     };
 
@@ -60,23 +73,23 @@ namespace ams::fs {
             ReadOnlyStorageAdapter(IStorage &s) : m_storage(s) { /* ... */ }
 
             virtual Result Read(s64 offset, void *buffer, size_t size) override {
-                return m_storage.Read(offset, buffer, size);
+                R_RETURN(m_storage.Read(offset, buffer, size));
             }
 
             virtual Result Flush() override {
-                return m_storage.Flush();
+                R_RETURN(m_storage.Flush());
             }
 
             virtual Result GetSize(s64 *out) override {
-                return m_storage.GetSize(out);
+                R_RETURN(m_storage.GetSize(out));
             }
 
             virtual Result Write(s64 offset, const void *buffer, size_t size) override {
-                return fs::ResultUnsupportedOperation();
+                R_THROW(fs::ResultUnsupportedOperation());
             }
 
             virtual Result SetSize(s64 size) override {
-                return fs::ResultUnsupportedOperation();
+                R_THROW(fs::ResultUnsupportedOperation());
             }
     };
 
@@ -93,9 +106,9 @@ namespace ams::fs {
                 R_SUCCEED_IF(size == 0);
 
                 /* Validate arguments and read. */
-                R_UNLESS(buffer != nullptr,                                fs::ResultNullptrArgument());
-                R_UNLESS(IStorage::CheckAccessRange(offset, size, m_size), fs::ResultOutOfRange());
-                return m_storage.Read(m_offset + offset, buffer, size);
+                R_UNLESS(buffer != nullptr, fs::ResultNullptrArgument());
+                R_TRY(IStorage::CheckAccessRange(offset, size, m_size));
+                R_RETURN(m_storage.Read(m_offset + offset, buffer, size));
             }
 
             virtual Result Write(s64 offset, const void *buffer, size_t size) override{
@@ -103,22 +116,22 @@ namespace ams::fs {
                 R_SUCCEED_IF(size == 0);
 
                 /* Validate arguments and write. */
-                R_UNLESS(buffer != nullptr,                                fs::ResultNullptrArgument());
-                R_UNLESS(IStorage::CheckAccessRange(offset, size, m_size), fs::ResultOutOfRange());
-                return m_storage.Write(m_offset + offset, buffer, size);
+                R_UNLESS(buffer != nullptr, fs::ResultNullptrArgument());
+                R_TRY(IStorage::CheckAccessRange(offset, size, m_size));
+                R_RETURN(m_storage.Write(m_offset + offset, buffer, size));
             }
 
             virtual Result Flush() override {
-                return m_storage.Flush();
+                R_RETURN(m_storage.Flush());
             }
 
             virtual Result GetSize(s64 *out) override {
                 *out = m_size;
-                return ResultSuccess();
+                R_SUCCEED();
             }
 
             virtual Result SetSize(s64 size) override {
-                return fs::ResultUnsupportedSetSizeForNotResizableSubStorage();
+                R_THROW(fs::ResultUnsupportedSetSizeForNotResizableSubStorage());
             }
     };
 

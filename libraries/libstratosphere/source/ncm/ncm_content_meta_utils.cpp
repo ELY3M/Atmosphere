@@ -21,7 +21,7 @@ namespace ams::ncm {
     namespace {
 
         Result MountContentMetaByRemoteFileSystemProxy(const char *mount_name, const char *path) {
-            return fs::MountContent(mount_name, path, fs::ContentType_Meta);
+            R_RETURN(fs::MountContent(mount_name, path, fs::ContentType_Meta));
         }
 
         constinit MountContentMetaFunction g_mount_content_meta_func = MountContentMetaByRemoteFileSystemProxy;
@@ -185,7 +185,7 @@ namespace ams::ncm {
 
             /* Write out the buffer we've populated. */
             *out_meta_infos = std::move(buffer);
-            return ResultSuccess();
+            R_SUCCEED();
         };
 
         /* If there are no firmware variations to list, read meta infos from base. */
@@ -219,7 +219,7 @@ namespace ams::ncm {
             R_UNLESS(force_refer_to_base, ncm::ResultInvalidFirmwareVariation());
 
             /* Force a referral to base. */
-            return ReadMetaInfoListFromBase();
+            R_RETURN(ReadMetaInfoListFromBase());
         }
 
         /* Obtain the variation info. */
@@ -251,7 +251,7 @@ namespace ams::ncm {
 
         /* Output the content meta info buffer. */
         *out_meta_infos = std::move(buffer);
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     void SetMountContentMetaFunction(MountContentMetaFunction func) {

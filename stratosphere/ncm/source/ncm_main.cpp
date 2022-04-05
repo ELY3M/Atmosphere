@@ -76,14 +76,14 @@ namespace ams {
                     explicit ContentManagerServerManager(sf::SharedPointer<ncm::IContentManager> manager) : m_manager(manager) { /* ... */ }
 
                     ams::Result Initialize() {
-                        return this->RegisterObjectForServer(m_manager, ContentManagerServiceName, ContentManagerManagerSessions);
+                        R_RETURN(this->RegisterObjectForServer(m_manager, ContentManagerServiceName, ContentManagerManagerSessions));
                     }
 
                     ams::Result StartThreads() {
                         R_TRY(os::CreateThread(std::addressof(m_thread), ThreadFunction, this, g_content_manager_thread_stack, sizeof(g_content_manager_thread_stack), AMS_GET_SYSTEM_THREAD_PRIORITY(ncm, ContentManagerServerIpcSession)));
                         os::SetThreadNamePointer(std::addressof(m_thread),  AMS_GET_SYSTEM_THREAD_NAME(ncm, ContentManagerServerIpcSession));
                         os::StartThread(std::addressof(m_thread));
-                        return ResultSuccess();
+                        R_SUCCEED();
                     }
 
                     void Wait() {
@@ -120,14 +120,14 @@ namespace ams {
                     LocationResolverServerManager(sf::SharedPointer<lr::ILocationResolverManager> manager) : m_manager(manager) { /* ... */ }
 
                     ams::Result Initialize() {
-                        return this->RegisterObjectForServer(m_manager, LocationResolverServiceName, LocationResolverManagerSessions);
+                        R_RETURN(this->RegisterObjectForServer(m_manager, LocationResolverServiceName, LocationResolverManagerSessions));
                     }
 
                     ams::Result StartThreads() {
                         R_TRY(os::CreateThread(std::addressof(m_thread), ThreadFunction, this, g_location_resolver_thread_stack, sizeof(g_location_resolver_thread_stack), AMS_GET_SYSTEM_THREAD_PRIORITY(ncm, LocationResolverServerIpcSession)));
                         os::SetThreadNamePointer(std::addressof(m_thread), AMS_GET_SYSTEM_THREAD_NAME(ncm, LocationResolverServerIpcSession));
                         os::StartThread(std::addressof(m_thread));
-                        return ResultSuccess();
+                        R_SUCCEED();
                     }
 
                     void Wait() {

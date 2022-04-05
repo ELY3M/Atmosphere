@@ -150,7 +150,7 @@ namespace ams::fssystem {
         }
         out_info->SetSkipCount(entry_index - param.entry_index);
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     template<typename EntryType>
@@ -166,7 +166,7 @@ namespace ams::fssystem {
         std::memcpy(std::addressof(param.entry), m_entry, sizeof(EntryType));
 
         /* Scan. */
-        return m_tree->ScanContinuousReading<EntryType>(out_info, param);
+        R_RETURN(m_tree->ScanContinuousReading<EntryType>(out_info, param));
     }
 
 }

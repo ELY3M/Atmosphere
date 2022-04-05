@@ -92,7 +92,7 @@ namespace ams::settings::impl {
                 m_is_activated = true;
             }
 
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         Result LazyFileAccessor::Commit(const char *name, bool synchronous) {
@@ -113,7 +113,7 @@ namespace ams::settings::impl {
                 m_timer_event.StartOneShot(TimeSpan::FromMilliSeconds(LazyWriterDelayMilliSeconds));
             }
 
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         Result LazyFileAccessor::Create(const char *name, s64 size) {
@@ -157,7 +157,7 @@ namespace ams::settings::impl {
 
             /* Start the timer to write. */
             m_timer_event.StartOneShot(TimeSpan::FromMilliSeconds(LazyWriterDelayMilliSeconds));
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
        Result LazyFileAccessor::Open(const char *name, int mode) {
@@ -177,7 +177,7 @@ namespace ams::settings::impl {
                     if (m_open_mode == mode || m_open_mode == fs::OpenMode_Read) {
                         m_is_busy = true;
                         m_open_mode = mode;
-                        return ResultSuccess();
+                        R_SUCCEED();
                     }
                     caches = false;
                 }
@@ -212,7 +212,7 @@ namespace ams::settings::impl {
 
             m_is_busy   = true;
             m_open_mode = mode;
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         void LazyFileAccessor::Close() {
@@ -238,7 +238,7 @@ namespace ams::settings::impl {
 
             std::memcpy(dst, m_buffer + offset, size);
 
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         Result LazyFileAccessor::Write(s64 offset, const void *src, size_t size) {
@@ -272,7 +272,7 @@ namespace ams::settings::impl {
                 m_size        = size;
             }
 
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         Result LazyFileAccessor::SetFileSize(s64 size) {
@@ -310,7 +310,7 @@ namespace ams::settings::impl {
             /* Update state. */
             m_is_file_size_changed = prev_file_size != size;
             m_file_size            = size;
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         void LazyFileAccessor::ThreadFunc(void *arg) {
@@ -402,7 +402,7 @@ namespace ams::settings::impl {
                 R_TRY(fs::CommitSaveData(m_mount_name));
             }
 
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
     }
@@ -454,23 +454,23 @@ namespace ams::settings::impl {
         }
 
         /* Mount the save data. */
-        return fs::MountSystemSaveData(m_mount_name, m_save_data_space_id, m_system_save_data_id);
+        R_RETURN(fs::MountSystemSaveData(m_mount_name, m_save_data_space_id, m_system_save_data_id));
     }
 
     Result SystemSaveData::Commit(bool synchronous) {
-        return GetLazyFileAccessor().Commit(m_mount_name, synchronous);
+        R_RETURN(GetLazyFileAccessor().Commit(m_mount_name, synchronous));
     }
 
     Result SystemSaveData::Create(s64 size) {
-        return GetLazyFileAccessor().Create(m_mount_name, size);
+        R_RETURN(GetLazyFileAccessor().Create(m_mount_name, size));
     }
 
     Result SystemSaveData::OpenToRead() {
-        return GetLazyFileAccessor().Open(m_mount_name, fs::OpenMode_Read);
+        R_RETURN(GetLazyFileAccessor().Open(m_mount_name, fs::OpenMode_Read));
     }
 
     Result SystemSaveData::OpenToWrite() {
-        return GetLazyFileAccessor().Open(m_mount_name, fs::OpenMode_Write);
+        R_RETURN(GetLazyFileAccessor().Open(m_mount_name, fs::OpenMode_Write));
     }
 
     void SystemSaveData::Close() {
@@ -481,23 +481,23 @@ namespace ams::settings::impl {
         AMS_ASSERT(offset >= 0);
         AMS_ASSERT(buf != nullptr);
 
-        return GetLazyFileAccessor().Read(offset, buf, size);
+        R_RETURN(GetLazyFileAccessor().Read(offset, buf, size));
     }
 
     Result SystemSaveData::Write(s64 offset, const void *buf, size_t size) {
         AMS_ASSERT(offset >= 0);
         AMS_ASSERT(buf != nullptr);
 
-        return GetLazyFileAccessor().Write(offset, buf, size);
+        R_RETURN(GetLazyFileAccessor().Write(offset, buf, size));
     }
 
     Result SystemSaveData::Flush() {
         /* N doesn't do anything here. */
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result SystemSaveData::SetFileSize(s64 size) {
-        return GetLazyFileAccessor().SetFileSize(size);
+        R_RETURN(GetLazyFileAccessor().SetFileSize(size));
     }
 
 }

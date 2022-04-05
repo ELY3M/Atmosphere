@@ -50,7 +50,7 @@ namespace ams::htc::server::driver {
             AMS_ABORT("Unsupported channel");
         }
 
-        return this->Open(channel, m_default_receive_buffer, sizeof(m_default_receive_buffer), m_default_send_buffer, sizeof(m_default_send_buffer));
+        R_RETURN(this->Open(channel, m_default_receive_buffer, sizeof(m_default_receive_buffer), m_default_send_buffer, sizeof(m_default_send_buffer)));
     }
 
     Result HtclowDriver::Open(htclow::ChannelId channel, void *receive_buffer, size_t receive_buffer_size, void *send_buffer, size_t send_buffer_size) {
@@ -61,7 +61,7 @@ namespace ams::htc::server::driver {
         m_manager->SetReceiveBuffer(GetHtclowChannel(channel, m_module_id), receive_buffer, receive_buffer_size);
         m_manager->SetSendBuffer(GetHtclowChannel(channel, m_module_id), send_buffer, send_buffer_size);
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     void HtclowDriver::Close(htclow::ChannelId channel) {
@@ -84,7 +84,7 @@ namespace ams::htc::server::driver {
         /* Finish connecting. */
         R_TRY(m_manager->ConnectEnd(GetHtclowChannel(channel, m_module_id), task_id));
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     void HtclowDriver::Shutdown(htclow::ChannelId channel) {
@@ -117,7 +117,7 @@ namespace ams::htc::server::driver {
         /* Set the output sent size. */
         *out = static_cast<s64>(sent);
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result HtclowDriver::ReceiveInternal(size_t *out, void *dst, size_t dst_size, htclow::ChannelId channel, htclow::ReceiveOption option) {
@@ -132,7 +132,7 @@ namespace ams::htc::server::driver {
         this->WaitTask(task_id);
 
         /* Finish receiving. */
-        return m_manager->ReceiveEnd(out, dst, dst_size, GetHtclowChannel(channel, m_module_id), task_id);
+        R_RETURN(m_manager->ReceiveEnd(out, dst, dst_size, GetHtclowChannel(channel, m_module_id), task_id));
     }
 
     Result HtclowDriver::Receive(s64 *out, void *dst, s64 dst_size, htclow::ChannelId channel, htclow::ReceiveOption option) {
@@ -164,7 +164,7 @@ namespace ams::htc::server::driver {
                 if (htclow::ResultChannelNotExist::Includes(result)) {
                     *out = received;
                 }
-                return result;
+                R_RETURN(result);
             }
 
             received += cur_received;
@@ -173,7 +173,7 @@ namespace ams::htc::server::driver {
         /* Set the output received size. */
         *out = static_cast<s64>(received);
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     htclow::ChannelState HtclowDriver::GetChannelState(htclow::ChannelId channel) {

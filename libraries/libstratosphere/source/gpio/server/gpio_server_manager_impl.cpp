@@ -34,7 +34,7 @@ namespace ams::gpio::server {
     }
 
     Result ManagerImpl::OpenSession(ams::sf::Out<ams::sf::SharedPointer<gpio::sf::IPadSession>> out, gpio::GpioPadName pad_name) {
-        return this->OpenSession2(out, ConvertToDeviceCode(pad_name), ddsf::AccessMode_ReadWrite);
+        R_RETURN(this->OpenSession2(out, ConvertToDeviceCode(pad_name), ddsf::AccessMode_ReadWrite));
     }
 
     Result ManagerImpl::OpenSessionForTest(ams::sf::Out<ams::sf::SharedPointer<gpio::sf::IPadSession>> out, gpio::GpioPadName pad_name) {
@@ -76,7 +76,7 @@ namespace ams::gpio::server {
 
         /* We succeeded. */
         *out = std::move(session);
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result ManagerImpl::IsWakeEventActive2(ams::sf::Out<bool> out, DeviceCode device_code) {

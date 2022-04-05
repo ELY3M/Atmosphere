@@ -73,11 +73,11 @@ namespace ams::fssystem {
             constexpr KeySlotCache() : m_mutex(), m_high_priority_mru_list(), m_low_priority_mru_list() { /* ... */ }
 
             Result AllocateHighPriority(std::unique_ptr<KeySlotCacheAccessor> *out, const void *key, size_t key_size, s32 key2) {
-                return this->AllocateFromLru(out, m_high_priority_mru_list, key, key_size, key2);
+                R_RETURN(this->AllocateFromLru(out, m_high_priority_mru_list, key, key_size, key2));
             }
 
             Result AllocateLowPriority(std::unique_ptr<KeySlotCacheAccessor> *out, const void *key, size_t key_size, s32 key2) {
-                return this->AllocateFromLru(out, m_high_priority_mru_list, key, key_size, key2);
+                R_RETURN(this->AllocateFromLru(out, m_high_priority_mru_list, key, key_size, key2));
             }
 
             Result Find(std::unique_ptr<KeySlotCacheAccessor> *out, const void *key, size_t key_size, s32 key2) {
@@ -93,12 +93,12 @@ namespace ams::fssystem {
                             *out = std::move(accessor);
 
                             this->UpdateMru(list, it);
-                            return ResultSuccess();
+                            R_SUCCEED();
                         }
                     }
                 }
 
-                return fs::ResultTargetNotFound();
+                R_THROW(fs::ResultTargetNotFound());
             }
 
             void AddEntry(KeySlotCacheEntry *entry) {
@@ -122,7 +122,7 @@ namespace ams::fssystem {
                 src_list.pop_back();
                 dst_list.push_front(*entry);
 
-                return ResultSuccess();
+                R_SUCCEED();
             }
 
             void UpdateMru(KeySlotCacheEntryList *list, KeySlotCacheEntryList::iterator it) {

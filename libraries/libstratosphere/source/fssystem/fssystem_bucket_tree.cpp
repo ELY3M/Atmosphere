@@ -107,7 +107,7 @@ namespace ams::fssystem {
                     }
 
                     m_index = static_cast<s32>(pos - m_start) - 1;
-                    return ResultSuccess();
+                    R_SUCCEED();
                 }
         };
 
@@ -126,7 +126,7 @@ namespace ams::fssystem {
         R_UNLESS(this->magic == Magic,     fs::ResultInvalidBucketTreeSignature());
         R_UNLESS(this->entry_count >= 0,   fs::ResultInvalidBucketTreeEntryCount());
         R_UNLESS(this->version <= Version, fs::ResultUnsupportedVersion());
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result BucketTree::NodeHeader::Verify(s32 node_index, size_t node_size, size_t entry_size) const {
@@ -137,7 +137,7 @@ namespace ams::fssystem {
         R_UNLESS(this->count > 0 && static_cast<size_t>(this->count) <= max_entry_count, fs::ResultInvalidBucketTreeNodeEntryCount());
         R_UNLESS(this->offset >= 0,                                                      fs::ResultInvalidBucketTreeNodeOffset());
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result BucketTree::Initialize(IAllocator *allocator, fs::SubStorage node_storage, fs::SubStorage entry_storage, size_t node_size, size_t entry_size, s32 entry_count) {
@@ -237,7 +237,7 @@ namespace ams::fssystem {
 
         R_TRY(visitor->Initialize(this, offsets));
 
-        return visitor->Find(virtual_address);
+        R_RETURN(visitor->Find(virtual_address));
     }
 
     Result BucketTree::InvalidateCache() {
@@ -300,7 +300,7 @@ namespace ams::fssystem {
             m_offsets = offsets;
         }
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result BucketTree::Visitor::MoveNext() {
@@ -336,7 +336,7 @@ namespace ams::fssystem {
 
         /* Note that we changed index. */
         m_entry_index = entry_index;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result BucketTree::Visitor::MovePrevious() {
@@ -374,7 +374,7 @@ namespace ams::fssystem {
 
         /* Note that we changed index. */
         m_entry_index = entry_index;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result BucketTree::Visitor::Find(s64 virtual_address) {
@@ -421,7 +421,7 @@ namespace ams::fssystem {
 
         /* Set count. */
         m_entry_set_count = m_tree->m_entry_set_count;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result BucketTree::Visitor::FindEntrySet(s32 *out_index, s64 virtual_address, s32 node_index) {
@@ -429,10 +429,10 @@ namespace ams::fssystem {
 
         PooledBuffer pool(node_size, 1);
         if (node_size <= pool.GetSize()) {
-            return this->FindEntrySetWithBuffer(out_index, virtual_address, node_index, pool.GetBuffer());
+            R_RETURN(this->FindEntrySetWithBuffer(out_index, virtual_address, node_index, pool.GetBuffer()));
         } else {
             pool.Deallocate();
-            return this->FindEntrySetWithoutBuffer(out_index, virtual_address, node_index);
+            R_RETURN(this->FindEntrySetWithoutBuffer(out_index, virtual_address, node_index));
         }
     }
 
@@ -457,7 +457,7 @@ namespace ams::fssystem {
 
         /* Return the index. */
         *out_index = m_tree->GetEntrySetIndex(header.index, node.GetIndex());
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result BucketTree::Visitor::FindEntrySetWithoutBuffer(s32 *out_index, s64 virtual_address, s32 node_index) {
@@ -478,7 +478,7 @@ namespace ams::fssystem {
 
         /* Return the index. */
         *out_index = m_tree->GetEntrySetIndex(header.index, node.GetIndex());
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result BucketTree::Visitor::FindEntry(s64 virtual_address, s32 entry_set_index) {
@@ -486,10 +486,10 @@ namespace ams::fssystem {
 
         PooledBuffer pool(entry_set_size, 1);
         if (entry_set_size <= pool.GetSize()) {
-            return this->FindEntryWithBuffer(virtual_address, entry_set_index, pool.GetBuffer());
+            R_RETURN(this->FindEntryWithBuffer(virtual_address, entry_set_index, pool.GetBuffer()));
         } else {
             pool.Deallocate();
-            return this->FindEntryWithoutBuffer(virtual_address, entry_set_index);
+            R_RETURN(this->FindEntryWithoutBuffer(virtual_address, entry_set_index));
         }
     }
 
@@ -522,7 +522,7 @@ namespace ams::fssystem {
         m_entry_set   = entry_set;
         m_entry_index = entry_index;
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result BucketTree::Visitor::FindEntryWithoutBuffer(s64 virtual_address, s32 entry_set_index) {
@@ -551,7 +551,7 @@ namespace ams::fssystem {
         m_entry_set   = entry_set;
         m_entry_index = entry_index;
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
 }

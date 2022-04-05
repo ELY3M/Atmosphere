@@ -145,7 +145,7 @@ namespace ams::pgl::srv {
             /* Set the globals. */
             g_crashed_process_id = process_id;
             g_ssd_process_id     = ssd_process_id;
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         bool ShouldSnapShotAutoDump() {
@@ -395,12 +395,12 @@ namespace ams::pgl::srv {
 
         /* We succeeded. */
         *out = process_id;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result TerminateProcess(os::ProcessId process_id) {
         /* Ask PM to terminate the process. */
-        return pm::shell::TerminateProcess(process_id);
+        R_RETURN(pm::shell::TerminateProcess(process_id));
     }
 
     Result GetApplicationProcessId(os::ProcessId *out) {
@@ -410,12 +410,12 @@ namespace ams::pgl::srv {
 
         /* Return the id. */
         *out = *application_process_id;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result BoostSystemMemoryResourceLimit(u64 size) {
         /* Ask PM to boost the limit. */
-        return pm::shell::BoostSystemMemoryResourceLimit(size);
+        R_RETURN(pm::shell::BoostSystemMemoryResourceLimit(size));
     }
 
     bool IsProcessTracked(os::ProcessId process_id) {
@@ -493,7 +493,7 @@ namespace ams::pgl::srv {
 
         /* Launch the snapshot dumper, clearing the global tracker process id. */
         ON_SCOPE_EXIT { g_ssd_process_id = os::InvalidProcessId; };
-        return TriggerSnapShotDumper(process_id, dump_type, arg);
+        R_RETURN(TriggerSnapShotDumper(process_id, dump_type, arg));
     }
 
 }

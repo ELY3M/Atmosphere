@@ -73,7 +73,7 @@ namespace ams::usb {
         /* Mark ourselves as initialized. */
         m_is_initialized = true;
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result DsClient::Finalize() {
@@ -104,7 +104,7 @@ namespace ams::usb {
         m_ds_service   = nullptr;
         m_root_session = nullptr;
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     bool DsClient::IsInitialized() {
@@ -132,7 +132,7 @@ namespace ams::usb {
 
         /* Mark disabled. */
         m_is_enabled = true;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result DsClient::DisableDevice() {
@@ -156,7 +156,7 @@ namespace ams::usb {
 
         /* Mark disabled. */
         m_is_enabled = false;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     os::SystemEventType *DsClient::GetStateChangeEvent() {
@@ -176,27 +176,27 @@ namespace ams::usb {
         /* Check that we have a service. */
         AMS_ABORT_UNLESS(m_ds_service != nullptr);
 
-        return m_ds_service->GetState(out);
+        R_RETURN(m_ds_service->GetState(out));
     }
 
     Result DsClient::ClearDeviceData() {
-        return m_ds_service->ClearDeviceData();
+        R_RETURN(m_ds_service->ClearDeviceData());
     }
 
     Result DsClient::AddUsbStringDescriptor(u8 *out_index, UsbStringDescriptor *desc) {
-        return m_ds_service->AddUsbStringDescriptor(out_index, sf::InBuffer(reinterpret_cast<const u8 *>(desc), sizeof(*desc)));
+        R_RETURN(m_ds_service->AddUsbStringDescriptor(out_index, sf::InBuffer(reinterpret_cast<const u8 *>(desc), sizeof(*desc))));
     }
 
     Result DsClient::DeleteUsbStringDescriptor(u8 index) {
-        return m_ds_service->DeleteUsbStringDescriptor(index);
+        R_RETURN(m_ds_service->DeleteUsbStringDescriptor(index));
     }
 
     Result DsClient::SetUsbDeviceDescriptor(UsbDeviceDescriptor *desc, UsbDeviceSpeed speed) {
-        return m_ds_service->SetUsbDeviceDescriptor(sf::InBuffer(reinterpret_cast<const u8 *>(desc), sizeof(*desc)), speed);
+        R_RETURN(m_ds_service->SetUsbDeviceDescriptor(sf::InBuffer(reinterpret_cast<const u8 *>(desc), sizeof(*desc)), speed));
     }
 
     Result DsClient::SetBinaryObjectStore(u8 *data, int size) {
-        return m_ds_service->SetBinaryObjectStore(sf::InBuffer(reinterpret_cast<const u8 *>(data), size));
+        R_RETURN(m_ds_service->SetBinaryObjectStore(sf::InBuffer(reinterpret_cast<const u8 *>(data), size)));
     }
 
     Result DsClient::AddInterface(DsInterface *intf, sf::SharedPointer<ds::IDsInterface> *out_srv, uint8_t bInterfaceNumber) {
@@ -215,7 +215,7 @@ namespace ams::usb {
         /* Set interface. */
         m_interfaces[bInterfaceNumber] = intf;
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result DsClient::DeleteInterface(uint8_t bInterfaceNumber) {
@@ -231,7 +231,7 @@ namespace ams::usb {
         /* Clear the interface. */
         m_interfaces[bInterfaceNumber] = nullptr;
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result DsInterface::Initialize(DsClient *client, u8 bInterfaceNumber) {
@@ -280,7 +280,7 @@ namespace ams::usb {
         m_is_initialized = true;
 
         intf_guard.Cancel();
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result DsInterface::Finalize() {
@@ -322,11 +322,11 @@ namespace ams::usb {
         --m_client->m_reference_count;
         m_client = nullptr;
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result DsInterface::AppendConfigurationData(UsbDeviceSpeed speed, void *data, u32 size) {
-        return m_interface->AppendConfigurationData(m_interface_num, speed, sf::InBuffer(data, size));
+        R_RETURN(m_interface->AppendConfigurationData(m_interface_num, speed, sf::InBuffer(data, size)));
     }
 
     bool DsInterface::IsInitialized() {
@@ -350,7 +350,7 @@ namespace ams::usb {
         /* Check that we have a service. */
         AMS_ABORT_UNLESS(m_interface != nullptr);
 
-        return m_interface->GetSetupPacket(sf::OutBuffer(out, sizeof(*out)));
+        R_RETURN(m_interface->GetSetupPacket(sf::OutBuffer(out, sizeof(*out))));
     }
 
     Result DsInterface::Enable() {
@@ -369,7 +369,7 @@ namespace ams::usb {
         /* Perform the enable. */
         R_TRY(m_interface->Enable());
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result DsInterface::Disable() {
@@ -388,7 +388,7 @@ namespace ams::usb {
         /* Perform the disable. */
         R_TRY(m_interface->Disable());
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result DsInterface::AddEndpoint(DsEndpoint *ep, u8 bEndpointAddress, sf::SharedPointer<ds::IDsEndpoint> *out) {
@@ -410,7 +410,7 @@ namespace ams::usb {
         /* Set the endpoint. */
         m_endpoints[impl::GetEndpointIndex(bEndpointAddress)] = ep;
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result DsInterface::DeleteEndpoint(u8 bEndpointAddress) {
@@ -428,7 +428,7 @@ namespace ams::usb {
         /* Clear the endpoint. */
         m_endpoints[index] = nullptr;
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result DsInterface::CtrlIn(u32 *out_transferred, void *dst, u32 size) {
@@ -475,13 +475,13 @@ namespace ams::usb {
         /* Handle the report. */
         switch (m_report.reports[0].status) {
             case UrbStatus_Cancelled:
-                return usb::ResultInterrupted();
+                R_THROW(usb::ResultInterrupted());
             case UrbStatus_Failed:
-                return usb::ResultTransactionError();
+                R_THROW(usb::ResultTransactionError());
             case UrbStatus_Finished:
-                return ResultSuccess();
+                R_SUCCEED();
             default:
-                return usb::ResultInternalStateError();
+                R_THROW(usb::ResultInternalStateError());
         }
     }
 
@@ -536,13 +536,13 @@ namespace ams::usb {
         /* Handle the report. */
         switch (m_report.reports[0].status) {
             case UrbStatus_Cancelled:
-                return usb::ResultInterrupted();
+                R_THROW(usb::ResultInterrupted());
             case UrbStatus_Failed:
-                return usb::ResultTransactionError();
+                R_THROW(usb::ResultTransactionError());
             case UrbStatus_Finished:
-                return ResultSuccess();
+                R_SUCCEED();
             default:
-                return usb::ResultInternalStateError();
+                R_THROW(usb::ResultInternalStateError());
         }
     }
 
@@ -561,12 +561,12 @@ namespace ams::usb {
             result = this->CtrlIn(nullptr, nullptr, 0);
         }
 
-        /* If we failed, stall. */
+        /* If we fail, stall. */
         if (R_FAILED(result)) {
             result = this->CtrlStall();
         }
 
-        return result;
+        R_RETURN(result);
     }
 
     Result DsInterface::CtrlWrite(u32 *out_transferred, void *dst, u32 size) {
@@ -589,7 +589,7 @@ namespace ams::usb {
             result = this->CtrlStall();
         }
 
-        return result;
+        R_RETURN(result);
     }
 
     Result DsInterface::CtrlDone() {
@@ -607,7 +607,7 @@ namespace ams::usb {
             result = this->CtrlStall();
         }
 
-        return result;
+        R_RETURN(result);
     }
 
     Result DsInterface::CtrlStall() {
@@ -623,7 +623,7 @@ namespace ams::usb {
         /* Check that we have a service. */
         AMS_ABORT_UNLESS(m_interface != nullptr);
 
-        return m_interface->CtrlStall();
+        R_RETURN(m_interface->CtrlStall());
     }
 
     Result DsEndpoint::Initialize(DsInterface *interface, u8 bEndpointAddress) {
@@ -661,7 +661,7 @@ namespace ams::usb {
         m_is_initialized = true;
 
         ep_guard.Cancel();
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result DsEndpoint::Finalize() {
@@ -696,7 +696,7 @@ namespace ams::usb {
         /* Mark uninitialized. */
         m_is_initialized = false;
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     bool DsEndpoint::IsInitialized() {
@@ -735,13 +735,13 @@ namespace ams::usb {
         /* Handle the report. */
         switch (report.reports[0].status) {
             case UrbStatus_Cancelled:
-                return usb::ResultInterrupted();
+                R_THROW(usb::ResultInterrupted());
             case UrbStatus_Failed:
-                return usb::ResultTransactionError();
+                R_THROW(usb::ResultTransactionError());
             case UrbStatus_Finished:
-                return ResultSuccess();
+                R_SUCCEED();
             default:
-                return usb::ResultInternalStateError();
+                R_THROW(usb::ResultInternalStateError());
         }
     }
 
@@ -763,7 +763,7 @@ namespace ams::usb {
         R_TRY(m_endpoint->PostBufferAsync(std::addressof(urb_id), reinterpret_cast<u64>(buf), size));
 
         *out_urb_id = urb_id;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     os::SystemEventType *DsEndpoint::GetCompletionEvent() {
@@ -783,7 +783,7 @@ namespace ams::usb {
         /* Check that we have a service. */
         AMS_ABORT_UNLESS(m_endpoint != nullptr);
 
-        return m_endpoint->GetUrbReport(out);
+        R_RETURN(m_endpoint->GetUrbReport(out));
     }
 
     Result DsEndpoint::Cancel() {
@@ -796,7 +796,7 @@ namespace ams::usb {
         /* Check that we have a service. */
         AMS_ABORT_UNLESS(m_endpoint != nullptr);
 
-        return m_endpoint->Cancel();
+        R_RETURN(m_endpoint->Cancel());
     }
 
     Result DsEndpoint::SetZeroLengthTransfer(bool zlt) {
@@ -809,7 +809,7 @@ namespace ams::usb {
         /* Check that we have a service. */
         AMS_ABORT_UNLESS(m_endpoint != nullptr);
 
-        return m_endpoint->SetZlt(zlt);
+        R_RETURN(m_endpoint->SetZlt(zlt));
     }
 
 }

@@ -85,7 +85,7 @@ namespace ams::mitm::settings {
                 *out = g_firmware_version;
             }
 
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
     }
@@ -96,11 +96,11 @@ namespace ams::mitm::settings {
         /* GetFirmwareVersion sanitizes the revision fields. */
         out.GetPointer()->revision_major = 0;
         out.GetPointer()->revision_minor = 0;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result SetSysMitmService::GetFirmwareVersion2(sf::Out<settings::FirmwareVersion> out) {
-        return GetFirmwareVersionImpl(out.GetPointer(), m_client_info);
+        R_RETURN(GetFirmwareVersionImpl(out.GetPointer(), m_client_info));
     }
 
     Result SetSysMitmService::GetSettingsItemValueSize(sf::Out<u64> out_size, const settings::SettingsName &name, const settings::SettingsItemKey &key) {
@@ -109,7 +109,7 @@ namespace ams::mitm::settings {
             R_CONVERT_ALL(sm::mitm::ResultShouldForwardToSession());
         } R_END_TRY_CATCH;
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result SetSysMitmService::GetSettingsItemValue(sf::Out<u64> out_size, const sf::OutBuffer &out, const settings::SettingsName &name, const settings::SettingsItemKey &key) {
@@ -118,7 +118,7 @@ namespace ams::mitm::settings {
             R_CONVERT_ALL(sm::mitm::ResultShouldForwardToSession());
         } R_END_TRY_CATCH;
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result SetSysMitmService::GetDebugModeFlag(sf::Out<bool> out) {
@@ -130,7 +130,7 @@ namespace ams::mitm::settings {
         settings::fwdbg::GetSettingsItemValue(std::addressof(en), sizeof(en), "atmosphere", "enable_am_debug_mode");
 
         out.SetValue(en != 0);
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
 }

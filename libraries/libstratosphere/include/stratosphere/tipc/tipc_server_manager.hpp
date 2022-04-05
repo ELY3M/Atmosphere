@@ -501,7 +501,7 @@ namespace ams::tipc {
                     /* Add the session to the least burdened manager. */
                     best_manager->AddSession(session_handle, object);
 
-                    return ResultSuccess();
+                    R_SUCCEED();
                 }
             private:
                 template<size_t Ix> requires (Ix < NumPorts)
@@ -795,7 +795,7 @@ namespace ams::tipc {
                     /* Add the session to our manager. */
                     m_port_manager.AddSession(session_handle, object);
 
-                    return ResultSuccess();
+                    R_SUCCEED();
                 }
             private:
                 void LoopProcess(PortManagerBase &port_manager) {

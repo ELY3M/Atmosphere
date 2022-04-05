@@ -58,19 +58,19 @@ namespace ams::ncm {
             }
         }
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result PackageSystemDowngradeTask::Commit() {
         R_TRY(this->PreCommit());
-        return InstallTaskBase::Commit();
+        R_RETURN(InstallTaskBase::Commit());
     }
 
     Result PackageSystemDowngradeTask::PrepareContentMetaIfLatest(const ContentMetaKey &key) {
         /* Get and prepare install content meta info. We aren't concerned if our key is older. */
         InstallContentMetaInfo install_content_meta_info;
         R_TRY(this->GetInstallContentMetaInfo(std::addressof(install_content_meta_info), key));
-        return this->PrepareContentMeta(install_content_meta_info, key, util::nullopt);
+        R_RETURN(this->PrepareContentMeta(install_content_meta_info, key, util::nullopt));
     }
 
 }

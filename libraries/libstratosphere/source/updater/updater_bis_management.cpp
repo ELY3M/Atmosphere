@@ -49,7 +49,7 @@ namespace ams::updater {
     }
 
     Result BisAccessor::Initialize() {
-        return fs::OpenBisPartition(std::addressof(m_storage), m_partition_id);
+        R_RETURN(fs::OpenBisPartition(std::addressof(m_storage), m_partition_id));
     }
 
     void BisAccessor::Finalize() {
@@ -58,12 +58,12 @@ namespace ams::updater {
 
     Result BisAccessor::Read(void *dst, size_t size, u64 offset) {
         AMS_ABORT_UNLESS((offset % SectorAlignment) == 0);
-        return m_storage->Read(static_cast<u32>(offset), dst, size);
+        R_RETURN(m_storage->Read(static_cast<u32>(offset), dst, size));
     }
 
     Result BisAccessor::Write(u64 offset, const void *src, size_t size) {
         AMS_ABORT_UNLESS((offset % SectorAlignment) == 0);
-        return m_storage->Write(static_cast<u32>(offset), src, size);
+        R_RETURN(m_storage->Write(static_cast<u32>(offset), src, size));
     }
 
     Result BisAccessor::Write(u64 offset, size_t size, const char *bip_path, void *work_buffer, size_t work_buffer_size) {
@@ -91,7 +91,7 @@ namespace ams::updater {
                 break;
             }
         }
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result BisAccessor::Clear(u64 offset, u64 size, void *work_buffer, size_t work_buffer_size) {
@@ -106,7 +106,7 @@ namespace ams::updater {
             R_TRY(this->Write(offset + written, work_buffer, cur_write_size));
             written += cur_write_size;
         }
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result BisAccessor::GetHash(void *dst, u64 offset, u64 size, u64 hash_size, void *work_buffer, size_t work_buffer_size) {
@@ -127,7 +127,7 @@ namespace ams::updater {
         }
         generator.GetHash(dst, hash_size);
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     size_t Boot0Accessor::GetBootloaderVersion(void *bct) {
@@ -149,12 +149,12 @@ namespace ams::updater {
         size_t read_size;
         R_TRY(this->Read(&read_size, eks_work_buffer, EksSize, Boot0Partition::Eks));
 
-        return this->UpdateEksManually(dst_bct, eks_work_buffer);
+        R_RETURN(this->UpdateEksManually(dst_bct, eks_work_buffer));
     }
 
     Result Boot0Accessor::UpdateEksManually(void *dst_bct, const void *src_eks) {
         this->CopyEks(dst_bct, src_eks, GetEksIndex(GetBootloaderVersion(dst_bct)));
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result Boot0Accessor::PreserveAutoRcm(void *dst_bct, void *work_buffer, Boot0Partition which) {
@@ -168,7 +168,7 @@ namespace ams::updater {
         void *src_pubk = reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(work_buffer) + BctPubkOffsetErista);
         std::memcpy(dst_pubk, src_pubk, BctPubkSize);
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result Boot0Accessor::DetectCustomPublicKey(bool *out, void *work_buffer, BootImageUpdateType boot_image_update_type) {
@@ -181,18 +181,18 @@ namespace ams::updater {
 
         if (std::memcmp(reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(work_buffer) + pubk_offset), CustomPublicKey, sizeof(CustomPublicKey)) != 0) {
             *out = false;
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         R_TRY(this->Read(&read_size, work_buffer, BctSize, Boot0Partition::BctSafeMain));
 
         if (std::memcmp(reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(work_buffer) + pubk_offset), CustomPublicKey, sizeof(CustomPublicKey)) != 0) {
             *out = false;
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         *out = true;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
 }

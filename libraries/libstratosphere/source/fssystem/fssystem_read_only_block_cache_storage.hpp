@@ -67,7 +67,7 @@ namespace ams::fssystem {
                         bool found = m_block_cache.FindValueAndUpdateMru(std::addressof(cached_buffer), offset / m_block_size);
                         if (found) {
                             std::memcpy(buffer, cached_buffer, size);
-                            return ResultSuccess();
+                            R_SUCCEED();
                         }
                     }
 
@@ -82,9 +82,9 @@ namespace ams::fssystem {
                         m_block_cache.PushMruNode(std::move(lru), offset / m_block_size);
                     }
 
-                    return ResultSuccess();
+                    R_SUCCEED();
                 } else {
-                    return m_base_storage->Read(offset, buffer, size);
+                    R_RETURN(m_base_storage->Read(offset, buffer, size));
                 }
             }
             virtual Result OperateRange(void *dst, size_t dst_size, fs::OperationId op_id, s64 offset, s64 size, const void *src, size_t src_size) override {
@@ -98,7 +98,7 @@ namespace ams::fssystem {
                         m_block_cache.PushMruNode(std::move(lru), -1);
                     }
 
-                    return ResultSuccess();
+                    R_SUCCEED();
                 } else {
                     /* Validate preconditions. */
                     AMS_ASSERT(util::IsAligned(offset, m_block_size));
@@ -106,25 +106,25 @@ namespace ams::fssystem {
                 }
 
                 /* Operate on the base storage. */
-                return m_base_storage->OperateRange(dst, dst_size, op_id, offset, size, src, src_size);
+                R_RETURN(m_base_storage->OperateRange(dst, dst_size, op_id, offset, size, src, src_size));
             }
 
             virtual Result GetSize(s64 *out) override {
-                return m_base_storage->GetSize(out);
+                R_RETURN(m_base_storage->GetSize(out));
             }
 
             virtual Result Flush() override {
-                return ResultSuccess();
+                R_SUCCEED();
             }
 
             virtual Result Write(s64 offset, const void *buffer, size_t size) override {
                 AMS_UNUSED(offset, buffer, size);
-                return fs::ResultUnsupportedWriteForReadOnlyBlockCacheStorage();
+                R_THROW(fs::ResultUnsupportedWriteForReadOnlyBlockCacheStorage());
             }
 
             virtual Result SetSize(s64 size) override {
                 AMS_UNUSED(size);
-                return fs::ResultUnsupportedSetSizeForReadOnlyBlockCacheStorage();
+                R_THROW(fs::ResultUnsupportedSetSizeForReadOnlyBlockCacheStorage());
             }
     };
 

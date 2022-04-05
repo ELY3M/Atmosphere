@@ -31,29 +31,29 @@ namespace ams::boot {
         u8 power_status;
         R_TRY(this->GetPowerStatus(std::addressof(power_status)));
         *out = (power_status & 0x02) != 0;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result PmicDriver::GetOnOffIrq(u8 *out) {
         const u8 addr = 0x0B;
-        return ReadI2cRegister(m_i2c_session, out, sizeof(*out), std::addressof(addr), sizeof(addr));
+        R_RETURN(ReadI2cRegister(m_i2c_session, out, sizeof(*out), std::addressof(addr), sizeof(addr)));
     }
 
     Result PmicDriver::GetPowerStatus(u8 *out) {
         const u8 addr = 0x15;
-        return ReadI2cRegister(m_i2c_session, out, sizeof(*out), std::addressof(addr), sizeof(addr));
+        R_RETURN(ReadI2cRegister(m_i2c_session, out, sizeof(*out), std::addressof(addr), sizeof(addr)));
     }
 
     Result PmicDriver::GetNvErc(u8 *out) {
         const u8 addr = 0x0C;
-        return ReadI2cRegister(m_i2c_session, out, sizeof(*out), std::addressof(addr), sizeof(addr));
+        R_RETURN(ReadI2cRegister(m_i2c_session, out, sizeof(*out), std::addressof(addr), sizeof(addr)));
     }
 
     Result PmicDriver::GetPowerButtonPressed(bool *out) {
         u8 on_off_irq;
         R_TRY(this->GetOnOffIrq(std::addressof(on_off_irq)));
         *out = (on_off_irq & 0x08) != 0;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     void PmicDriver::ShutdownSystem(bool reboot) {

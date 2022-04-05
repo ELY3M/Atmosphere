@@ -36,7 +36,7 @@ namespace ams::os::impl {
         } R_END_TRY_CATCH_WITH_ABORT_UNLESS;
 
         *out_index = index;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result MultiWaitHorizonImpl::ReplyAndReceiveN(s32 *out_index, s32 num, NativeHandle arr[], s32 array_size, s64 ns, NativeHandle reply_target) {
@@ -47,25 +47,25 @@ namespace ams::os::impl {
         static_assert(MultiWaitImpl::WaitInvalid != -1);
 
         R_TRY_CATCH(svc::ReplyAndReceive(std::addressof(index), arr, num, reply_target, ns)) {
-            R_CATCH(svc::ResultTimedOut)  { *out_index = MultiWaitImpl::WaitTimedOut;  return R_CURRENT_RESULT; }
-            R_CATCH(svc::ResultCancelled) { *out_index = MultiWaitImpl::WaitCancelled; return R_CURRENT_RESULT; }
+            R_CATCH(svc::ResultTimedOut)  { *out_index = MultiWaitImpl::WaitTimedOut;  R_THROW(R_CURRENT_RESULT); }
+            R_CATCH(svc::ResultCancelled) { *out_index = MultiWaitImpl::WaitCancelled; R_THROW(R_CURRENT_RESULT); }
             R_CATCH(svc::ResultSessionClosed)   {
                 if (index == -1) {
                     *out_index = MultiWaitImpl::WaitInvalid;
-                    return os::ResultSessionClosedForReply();
+                    R_THROW(os::ResultSessionClosedForReply());
                 } else {
                     *out_index = index;
-                    return os::ResultSessionClosedForReceive();
+                    R_THROW(os::ResultSessionClosedForReceive());
                 }
             }
             R_CATCH(svc::ResultReceiveListBroken) {
                 *out_index = index;
-                return os::ResultReceiveListBroken();
+                R_THROW(os::ResultReceiveListBroken());
             }
         } R_END_TRY_CATCH_WITH_ABORT_UNLESS;
 
         *out_index = index;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     void MultiWaitHorizonImpl::CancelWait() {

@@ -43,29 +43,29 @@ namespace ams::erpt::srv {
         for (auto &manager : g_manager_list) {
             manager.NotifyOne();
         }
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result ManagerImpl::GetReportList(const ams::sf::OutBuffer &out_list, ReportType type_filter) {
         R_UNLESS(out_list.GetSize() == sizeof(ReportList), erpt::ResultInvalidArgument());
 
-        return Journal::GetReportList(reinterpret_cast<ReportList *>(out_list.GetPointer()), type_filter);
+        R_RETURN(Journal::GetReportList(reinterpret_cast<ReportList *>(out_list.GetPointer()), type_filter));
     }
 
     Result ManagerImpl::GetEvent(ams::sf::OutCopyHandle out) {
         out.SetValue(m_system_event.GetReadableHandle(), false);
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result ManagerImpl::CleanupReports() {
         Journal::CleanupReports();
         Journal::CleanupAttachments();
-        return Journal::Commit();
+        R_RETURN(Journal::Commit());
     }
 
     Result ManagerImpl::DeleteReport(const ReportId &report_id) {
         R_TRY(Journal::Delete(report_id));
-        return Journal::Commit();
+        R_RETURN(Journal::Commit());
     }
 
     Result ManagerImpl::GetStorageUsageStatistics(ams::sf::Out<StorageUsageStatistics> out) {
@@ -83,13 +83,13 @@ namespace ams::erpt::srv {
         }
 
         out.SetValue(stats);
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result ManagerImpl::GetAttachmentList(const ams::sf::OutBuffer &out_list, const ReportId &report_id) {
         R_UNLESS(out_list.GetSize() == sizeof(AttachmentList), erpt::ResultInvalidArgument());
 
-        return Journal::GetAttachmentList(reinterpret_cast<AttachmentList *>(out_list.GetPointer()), report_id);
+        R_RETURN(Journal::GetAttachmentList(reinterpret_cast<AttachmentList *>(out_list.GetPointer()), report_id));
     }
 
 }

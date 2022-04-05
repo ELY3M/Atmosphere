@@ -19,7 +19,7 @@ namespace ams::capsrv {
 
     Result InitializeScreenShotControl() {
         #if defined(ATMOSPHERE_OS_HORIZON)
-        return ::capsscInitialize();
+        R_RETURN(::capsscInitialize());
         #else
         AMS_ABORT("TODO");
         #endif
@@ -35,7 +35,7 @@ namespace ams::capsrv {
 
     Result CaptureJpegScreenshot(u64 *out_size, void *dst, size_t dst_size, vi::LayerStack layer_stack, TimeSpan timeout) {
         #if defined(ATMOSPHERE_OS_HORIZON)
-        return ::capsscCaptureJpegScreenShot(out_size, dst, dst_size, static_cast<::ViLayerStack>(layer_stack), timeout.GetNanoSeconds());
+        R_RETURN(::capsscCaptureJpegScreenShot(out_size, dst, dst_size, static_cast<::ViLayerStack>(layer_stack), timeout.GetNanoSeconds()));
         #else
         AMS_UNUSED(out_size, dst, dst_size, layer_stack, timeout);
         AMS_ABORT("TODO");
@@ -51,7 +51,7 @@ namespace ams::capsrv {
         *out_width     = static_cast<s32>(width);
         *out_height    = static_cast<s32>(height);
 
-        return ResultSuccess();
+        R_SUCCEED();
         #else
         AMS_UNUSED(out_data_size, out_width, out_height, layer_stack, timeout);
         AMS_ABORT("TODO");
@@ -64,7 +64,7 @@ namespace ams::capsrv {
         R_TRY(::capsscReadRawScreenShotReadStream(std::addressof(read_size), dst, dst_size, static_cast<u64>(offset)));
 
         *out_read_size = static_cast<size_t>(read_size);
-        return ResultSuccess();
+        R_SUCCEED();
         #else
         AMS_UNUSED(out_read_size, dst, dst_size, offset);
         AMS_ABORT("TODO");

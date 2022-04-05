@@ -23,9 +23,9 @@ namespace ams::sf::hipc {
             s32 unused_index;
             if (message_buf == hipc::GetMessageBufferOnTls()) {
                 /* Consider: AMS_ABORT_UNLESS(message_buf_size == TlsMessageBufferSize); */
-                return svc::ReplyAndReceive(&unused_index, &session_handle, 1, svc::InvalidHandle, std::numeric_limits<u64>::max());
+                R_RETURN(svc::ReplyAndReceive(&unused_index, &session_handle, 1, svc::InvalidHandle, std::numeric_limits<u64>::max()));
             } else {
-                return svc::ReplyAndReceiveWithUserBuffer(&unused_index, reinterpret_cast<uintptr_t>(message_buf), message_buf_size, &session_handle, 1, svc::InvalidHandle, std::numeric_limits<u64>::max());
+                R_RETURN(svc::ReplyAndReceiveWithUserBuffer(&unused_index, reinterpret_cast<uintptr_t>(message_buf), message_buf_size, &session_handle, 1, svc::InvalidHandle, std::numeric_limits<u64>::max()));
             }
         }
 
@@ -33,9 +33,9 @@ namespace ams::sf::hipc {
             s32 unused_index;
             if (message_buf == hipc::GetMessageBufferOnTls()) {
                 /* Consider: AMS_ABORT_UNLESS(message_buf_size == TlsMessageBufferSize); */
-                return svc::ReplyAndReceive(&unused_index, &session_handle, 0, session_handle, 0);
+                R_RETURN(svc::ReplyAndReceive(&unused_index, &session_handle, 0, session_handle, 0));
             } else {
-                return svc::ReplyAndReceiveWithUserBuffer(&unused_index, reinterpret_cast<uintptr_t>(message_buf), message_buf_size, &session_handle, 0, session_handle, 0);
+                R_RETURN(svc::ReplyAndReceiveWithUserBuffer(&unused_index, reinterpret_cast<uintptr_t>(message_buf), message_buf_size, &session_handle, 0, session_handle, 0));
             }
         }
 
@@ -53,26 +53,26 @@ namespace ams::sf::hipc {
         R_TRY_CATCH(ReceiveImpl(session_handle, message_buffer.GetPointer(), message_buffer.GetSize())) {
             R_CATCH(svc::ResultSessionClosed) {
                 *out_recv_result = ReceiveResult::Closed;
-                return ResultSuccess();
+                R_SUCCEED();
             }
             R_CATCH(svc::ResultReceiveListBroken) {
                 *out_recv_result = ReceiveResult::NeedsRetry;
-                return ResultSuccess();
+                R_SUCCEED();
             }
         } R_END_TRY_CATCH;
         *out_recv_result = ReceiveResult::Success;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result Receive(bool *out_closed, os::NativeHandle session_handle, const cmif::PointerAndSize &message_buffer) {
         R_TRY_CATCH(ReceiveImpl(session_handle, message_buffer.GetPointer(), message_buffer.GetSize())) {
             R_CATCH(svc::ResultSessionClosed) {
                 *out_closed = true;
-                return ResultSuccess();
+                R_SUCCEED();
             }
         } R_END_TRY_CATCH;
         *out_closed = false;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result Reply(os::NativeHandle session_handle, const cmif::PointerAndSize &message_buffer) {
@@ -88,7 +88,7 @@ namespace ams::sf::hipc {
         R_TRY_CATCH(svc::CreateSession(out_server_handle, out_client_handle, 0, 0)) {
             R_CONVERT(svc::ResultOutOfResource, sf::hipc::ResultOutOfSessions());
         } R_END_TRY_CATCH;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
 }

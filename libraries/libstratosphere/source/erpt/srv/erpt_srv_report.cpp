@@ -52,18 +52,18 @@ namespace ams::erpt::srv {
 
     Result Report::Open(ReportOpenType type) {
         switch (type) {
-            case ReportOpenType_Create: return this->OpenStream(this->FileName().name, StreamMode_Write, ReportStreamBufferSize);
-            case ReportOpenType_Read:   return this->OpenStream(this->FileName().name, StreamMode_Read,  ReportStreamBufferSize);
-            default:                    return erpt::ResultInvalidArgument();
+            case ReportOpenType_Create: R_RETURN(this->OpenStream(this->FileName().name, StreamMode_Write, ReportStreamBufferSize));
+            case ReportOpenType_Read:   R_RETURN(this->OpenStream(this->FileName().name, StreamMode_Read,  ReportStreamBufferSize));
+            default:                    R_THROW(erpt::ResultInvalidArgument());
         }
     }
 
     Result Report::Read(u32 *out_read_count, u8 *dst, u32 dst_size) {
-        return this->ReadStream(out_read_count, dst, dst_size);
+        R_RETURN(this->ReadStream(out_read_count, dst, dst_size));
     }
 
     Result Report::Delete() {
-        return this->DeleteStream(this->FileName().name);
+        R_RETURN(this->DeleteStream(this->FileName().name));
     }
 
     void Report::Close() {
@@ -72,19 +72,19 @@ namespace ams::erpt::srv {
 
     Result Report::GetFlags(ReportFlagSet *out) const {
         *out = m_record->m_info.flags;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result Report::SetFlags(ReportFlagSet flags) {
         if (((~m_record->m_info.flags) & flags).IsAnySet()) {
             m_record->m_info.flags |= flags;
-            return Journal::Commit();
+            R_RETURN(Journal::Commit());
         }
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result Report::GetSize(s64 *out) const {
-        return this->GetStreamSize(out);
+        R_RETURN(this->GetStreamSize(out));
     }
 
 }

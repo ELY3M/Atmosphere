@@ -108,7 +108,7 @@ namespace ams::fssystem {
             AddCounter(ctr, IvSize, 1);
         }
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     template<typename BasePointer>
@@ -206,36 +206,39 @@ namespace ams::fssystem {
             remaining      -= write_size;
         }
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     template<typename BasePointer>
     Result AesXtsStorage<BasePointer>::Flush() {
-        return m_base_storage->Flush();
+        R_RETURN(m_base_storage->Flush());
     }
 
     template<typename BasePointer>
     Result AesXtsStorage<BasePointer>::SetSize(s64 size) {
         R_UNLESS(util::IsAligned(size, AesBlockSize), fs::ResultUnexpectedInAesXtsStorageA());
 
-        return m_base_storage->SetSize(size);
+        R_RETURN(m_base_storage->SetSize(size));
     }
 
     template<typename BasePointer>
     Result AesXtsStorage<BasePointer>::GetSize(s64 *out) {
-        return m_base_storage->GetSize(out);
+        R_RETURN(m_base_storage->GetSize(out));
     }
 
     template<typename BasePointer>
     Result AesXtsStorage<BasePointer>::OperateRange(void *dst, size_t dst_size, fs::OperationId op_id, s64 offset, s64 size, const void *src, size_t src_size) {
-        /* Handle the zero size case. */
-        R_SUCCEED_IF(size == 0);
+        /* Unless invalidating cache, check the arguments. */
+        if (op_id != fs::OperationId::Invalidate) {
+            /* Handle the zero size case. */
+            R_SUCCEED_IF(size == 0);
 
-        /* Ensure alignment. */
-        R_UNLESS(util::IsAligned(offset, AesBlockSize), fs::ResultInvalidArgument());
-        R_UNLESS(util::IsAligned(size, AesBlockSize),   fs::ResultInvalidArgument());
+            /* Ensure alignment. */
+            R_UNLESS(util::IsAligned(offset, AesBlockSize), fs::ResultInvalidArgument());
+            R_UNLESS(util::IsAligned(size, AesBlockSize),   fs::ResultInvalidArgument());
+        }
 
-        return m_base_storage->OperateRange(dst, dst_size, op_id, offset, size, src, src_size);
+        R_RETURN(m_base_storage->OperateRange(dst, dst_size, op_id, offset, size, src, src_size));
     }
 
     template class AesXtsStorage<fs::IStorage *>;

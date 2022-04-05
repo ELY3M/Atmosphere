@@ -70,7 +70,7 @@ namespace ams::fssystem {
         auto dec_size = crypto::DecryptAes128Ctr(buffer, size, m_key, KeySize, ctr, IvSize, buffer, size);
         R_UNLESS(size == dec_size, fs::ResultUnexpectedInAesCtrStorageA());
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     template<typename BasePointer>
@@ -124,42 +124,45 @@ namespace ams::fssystem {
             }
         }
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     template<typename BasePointer>
     Result AesCtrStorage<BasePointer>::Flush() {
-        return m_base_storage->Flush();
+        R_RETURN(m_base_storage->Flush());
     }
 
     template<typename BasePointer>
     Result AesCtrStorage<BasePointer>::SetSize(s64 size) {
         AMS_UNUSED(size);
-        return fs::ResultUnsupportedSetSizeForAesCtrStorage();
+        R_THROW(fs::ResultUnsupportedSetSizeForAesCtrStorage());
     }
 
     template<typename BasePointer>
     Result AesCtrStorage<BasePointer>::GetSize(s64 *out) {
-        return m_base_storage->GetSize(out);
+        R_RETURN(m_base_storage->GetSize(out));
     }
 
     template<typename BasePointer>
     Result AesCtrStorage<BasePointer>::OperateRange(void *dst, size_t dst_size, fs::OperationId op_id, s64 offset, s64 size, const void *src, size_t src_size) {
-        /* Handle the zero size case. */
-        if (size == 0) {
-            if (op_id == fs::OperationId::QueryRange) {
-                R_UNLESS(dst != nullptr,                         fs::ResultNullptrArgument());
-                R_UNLESS(dst_size == sizeof(fs::QueryRangeInfo), fs::ResultInvalidSize());
+        /* If operation isn't invalidate, special case. */
+        if (op_id != fs::OperationId::Invalidate) {
+            /* Handle the zero-size case. */
+            if (size == 0) {
+                if (op_id == fs::OperationId::QueryRange) {
+                    R_UNLESS(dst != nullptr,                         fs::ResultNullptrArgument());
+                    R_UNLESS(dst_size == sizeof(fs::QueryRangeInfo), fs::ResultInvalidSize());
 
-                reinterpret_cast<fs::QueryRangeInfo *>(dst)->Clear();
+                    reinterpret_cast<fs::QueryRangeInfo *>(dst)->Clear();
+                }
+
+                R_SUCCEED();
             }
 
-            return ResultSuccess();
+            /* Ensure alignment. */
+            R_UNLESS(util::IsAligned(offset, BlockSize), fs::ResultInvalidArgument());
+            R_UNLESS(util::IsAligned(size, BlockSize),   fs::ResultInvalidArgument());
         }
-
-        /* Ensure alignment. */
-        R_UNLESS(util::IsAligned(offset, BlockSize), fs::ResultInvalidArgument());
-        R_UNLESS(util::IsAligned(size, BlockSize),   fs::ResultInvalidArgument());
 
         switch (op_id) {
             case fs::OperationId::QueryRange:
@@ -183,7 +186,7 @@ namespace ams::fssystem {
                 break;
         }
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     template class AesCtrStorage<fs::IStorage *>;

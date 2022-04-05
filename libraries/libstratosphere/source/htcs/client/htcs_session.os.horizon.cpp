@@ -109,12 +109,12 @@ namespace ams::htcs::client {
 
         Result RemoteManager::GetPeerNameAny(sf::Out<htcs::HtcsPeerName> out) {
             static_assert(sizeof(htcs::HtcsPeerName) == sizeof(::HtcsPeerName));
-            return ::htcsGetPeerNameAny(reinterpret_cast<::HtcsPeerName *>(out.GetPointer()));
+            R_RETURN(::htcsGetPeerNameAny(reinterpret_cast<::HtcsPeerName *>(out.GetPointer())));
         }
 
         Result RemoteManager::GetDefaultHostName(sf::Out<htcs::HtcsPeerName> out) {
             static_assert(sizeof(htcs::HtcsPeerName) == sizeof(::HtcsPeerName));
-            return ::htcsGetDefaultHostName(reinterpret_cast<::HtcsPeerName *>(out.GetPointer()));
+            R_RETURN(::htcsGetDefaultHostName(reinterpret_cast<::HtcsPeerName *>(out.GetPointer())));
         }
 
         Result RemoteManager::CreateSocket(sf::Out<s32> out_err, sf::Out<sf::SharedPointer<tma::ISocket>> out, bool enable_disconnection_emulation) {
@@ -124,19 +124,19 @@ namespace ams::htcs::client {
             R_SUCCEED_IF(*out_err != 0);
 
             *out = ObjectFactory::CreateSharedEmplaced<tma::ISocket, RemoteSocket>(libnx_socket);
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         Result RemoteManager::RegisterProcessId(const sf::ClientProcessId &client_pid) {
             /* Handled by libnx init. */
             AMS_UNUSED(client_pid);
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         Result RemoteManager::MonitorManager(const sf::ClientProcessId &client_pid) {
             /* Handled by libnx init. */
             AMS_UNUSED(client_pid);
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         Result RemoteManager::StartSelect(sf::Out<u32> out_task_id, sf::OutCopyHandle out_event, const sf::InMapAliasArray<s32> &read_handles, const sf::InMapAliasArray<s32> &write_handles, const sf::InMapAliasArray<s32> &exception_handles, s64 tv_sec, s64 tv_usec) {
@@ -144,37 +144,37 @@ namespace ams::htcs::client {
             R_TRY(::htcsStartSelect(out_task_id.GetPointer(), std::addressof(event_handle), read_handles.GetPointer(), read_handles.GetSize(), write_handles.GetPointer(), write_handles.GetSize(), exception_handles.GetPointer(), exception_handles.GetSize(), tv_sec, tv_usec));
 
             out_event.SetValue(event_handle, true);
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         Result RemoteManager::EndSelect(sf::Out<s32> out_err, sf::Out<s32> out_count, const sf::OutMapAliasArray<s32> &read_handles, const sf::OutMapAliasArray<s32> &write_handles, const sf::OutMapAliasArray<s32> &exception_handles, u32 task_id) {
-            return ::htcsEndSelect(out_err.GetPointer(), out_count.GetPointer(), read_handles.GetPointer(), read_handles.GetSize(), write_handles.GetPointer(), write_handles.GetSize(), exception_handles.GetPointer(), exception_handles.GetSize(), task_id);
+            R_RETURN(::htcsEndSelect(out_err.GetPointer(), out_count.GetPointer(), read_handles.GetPointer(), read_handles.GetSize(), write_handles.GetPointer(), write_handles.GetSize(), exception_handles.GetPointer(), exception_handles.GetSize(), task_id));
         }
 
         Result RemoteSocket::Close(sf::Out<s32> out_err, sf::Out<s32> out_res) {
-            return ::htcsSocketClose(std::addressof(m_s), out_err.GetPointer(), out_res.GetPointer());
+            R_RETURN(::htcsSocketClose(std::addressof(m_s), out_err.GetPointer(), out_res.GetPointer()));
         }
 
         Result RemoteSocket::Connect(sf::Out<s32> out_err, sf::Out<s32> out_res, const htcs::SockAddrHtcs &address) {
             static_assert(sizeof(htcs::SockAddrHtcs) == sizeof(::HtcsSockAddr));
-            return ::htcsSocketConnect(std::addressof(m_s), out_err.GetPointer(), out_res.GetPointer(), reinterpret_cast<const ::HtcsSockAddr *>(std::addressof(address)));
+            R_RETURN(::htcsSocketConnect(std::addressof(m_s), out_err.GetPointer(), out_res.GetPointer(), reinterpret_cast<const ::HtcsSockAddr *>(std::addressof(address))));
         }
 
         Result RemoteSocket::Bind(sf::Out<s32> out_err, sf::Out<s32> out_res, const htcs::SockAddrHtcs &address) {
             static_assert(sizeof(htcs::SockAddrHtcs) == sizeof(::HtcsSockAddr));
-            return ::htcsSocketBind(std::addressof(m_s), out_err.GetPointer(), out_res.GetPointer(), reinterpret_cast<const ::HtcsSockAddr *>(std::addressof(address)));
+            R_RETURN(::htcsSocketBind(std::addressof(m_s), out_err.GetPointer(), out_res.GetPointer(), reinterpret_cast<const ::HtcsSockAddr *>(std::addressof(address))));
         }
 
         Result RemoteSocket::Listen(sf::Out<s32> out_err, sf::Out<s32> out_res, s32 backlog_count) {
-            return ::htcsSocketListen(std::addressof(m_s), out_err.GetPointer(), out_res.GetPointer(), backlog_count);
+            R_RETURN(::htcsSocketListen(std::addressof(m_s), out_err.GetPointer(), out_res.GetPointer(), backlog_count));
         }
 
         Result RemoteSocket::Shutdown(sf::Out<s32> out_err, sf::Out<s32> out_res, s32 how) {
-            return ::htcsSocketShutdown(std::addressof(m_s), out_err.GetPointer(), out_res.GetPointer(), how);
+            R_RETURN(::htcsSocketShutdown(std::addressof(m_s), out_err.GetPointer(), out_res.GetPointer(), how));
         }
 
         Result RemoteSocket::Fcntl(sf::Out<s32> out_err, sf::Out<s32> out_res, s32 command, s32 value) {
-            return ::htcsSocketFcntl(std::addressof(m_s), out_err.GetPointer(), out_res.GetPointer(), command, value);
+            R_RETURN(::htcsSocketFcntl(std::addressof(m_s), out_err.GetPointer(), out_res.GetPointer(), command, value));
         }
 
         Result RemoteSocket::AcceptStart(sf::Out<u32> out_task_id, sf::OutCopyHandle out_event) {
@@ -182,7 +182,7 @@ namespace ams::htcs::client {
             R_TRY(::htcsSocketAcceptStart(std::addressof(m_s), out_task_id.GetPointer(), std::addressof(event_handle)));
 
             out_event.SetValue(event_handle, true);
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         Result RemoteSocket::AcceptResults(sf::Out<s32> out_err, sf::Out<sf::SharedPointer<tma::ISocket>> out, sf::Out<htcs::SockAddrHtcs> out_address, u32 task_id) {
@@ -193,7 +193,7 @@ namespace ams::htcs::client {
             R_SUCCEED_IF(*out_err != 0);
 
             *out = ObjectFactory::CreateSharedEmplaced<tma::ISocket, RemoteSocket>(libnx_socket);
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         Result RemoteSocket::RecvStart(sf::Out<u32> out_task_id, sf::OutCopyHandle out_event, s32 mem_size, s32 flags) {
@@ -201,11 +201,11 @@ namespace ams::htcs::client {
             R_TRY(::htcsSocketRecvStart(std::addressof(m_s), out_task_id.GetPointer(), std::addressof(event_handle), mem_size, flags));
 
             out_event.SetValue(event_handle, true);
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         Result RemoteSocket::RecvResults(sf::Out<s32> out_err, sf::Out<s64> out_size, const sf::OutAutoSelectBuffer &buffer, u32 task_id) {
-            return ::htcsSocketRecvResults(std::addressof(m_s), out_err.GetPointer(), out_size.GetPointer(), buffer.GetPointer(), buffer.GetSize(), task_id);
+            R_RETURN(::htcsSocketRecvResults(std::addressof(m_s), out_err.GetPointer(), out_size.GetPointer(), buffer.GetPointer(), buffer.GetSize(), task_id));
         }
 
         Result RemoteSocket::SendStart(sf::Out<u32> out_task_id, sf::OutCopyHandle out_event, const sf::InNonSecureAutoSelectBuffer &buffer, s32 flags) {
@@ -213,11 +213,11 @@ namespace ams::htcs::client {
             R_TRY(::htcsSocketSendStart(std::addressof(m_s), out_task_id.GetPointer(), std::addressof(event_handle), buffer.GetPointer(), buffer.GetSize(), flags));
 
             out_event.SetValue(event_handle, true);
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         Result RemoteSocket::SendResults(sf::Out<s32> out_err, sf::Out<s64> out_size, u32 task_id) {
-            return ::htcsSocketSendResults(std::addressof(m_s), out_err.GetPointer(), out_size.GetPointer(), task_id);
+            R_RETURN(::htcsSocketSendResults(std::addressof(m_s), out_err.GetPointer(), out_size.GetPointer(), task_id));
         }
 
         Result RemoteSocket::StartSend(sf::Out<u32> out_task_id, sf::OutCopyHandle out_event, sf::Out<s64> out_max_size, s64 size, s32 flags) {
@@ -225,15 +225,15 @@ namespace ams::htcs::client {
             R_TRY(::htcsSocketStartSend(std::addressof(m_s), out_task_id.GetPointer(), std::addressof(event_handle), out_max_size.GetPointer(), size, flags));
 
             out_event.SetValue(event_handle, true);
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         Result RemoteSocket::ContinueSend(sf::Out<s64> out_size, sf::Out<bool> out_wait, const sf::InNonSecureAutoSelectBuffer &buffer, u32 task_id) {
-            return ::htcsSocketContinueSend(std::addressof(m_s), out_size.GetPointer(), out_wait.GetPointer(), buffer.GetPointer(), buffer.GetSize(), task_id);
+            R_RETURN(::htcsSocketContinueSend(std::addressof(m_s), out_size.GetPointer(), out_wait.GetPointer(), buffer.GetPointer(), buffer.GetSize(), task_id));
         }
 
         Result RemoteSocket::EndSend(sf::Out<s32> out_err, sf::Out<s64> out_size, u32 task_id) {
-            return ::htcsSocketEndSend(std::addressof(m_s), out_err.GetPointer(), out_size.GetPointer(), task_id);
+            R_RETURN(::htcsSocketEndSend(std::addressof(m_s), out_err.GetPointer(), out_size.GetPointer(), task_id));
         }
 
         Result RemoteSocket::StartRecv(sf::Out<u32> out_task_id, sf::OutCopyHandle out_event, s64 size, s32 flags) {
@@ -241,15 +241,15 @@ namespace ams::htcs::client {
             R_TRY(::htcsSocketStartRecv(std::addressof(m_s), out_task_id.GetPointer(), std::addressof(event_handle), size, flags));
 
             out_event.SetValue(event_handle, true);
-            return ResultSuccess();
+            R_SUCCEED();
         }
 
         Result RemoteSocket::EndRecv(sf::Out<s32> out_err, sf::Out<s64> out_size, const sf::OutAutoSelectBuffer &buffer, u32 task_id) {
-            return ::htcsSocketEndRecv(std::addressof(m_s), out_err.GetPointer(), out_size.GetPointer(), buffer.GetPointer(), buffer.GetSize(), task_id);
+            R_RETURN(::htcsSocketEndRecv(std::addressof(m_s), out_err.GetPointer(), out_size.GetPointer(), buffer.GetPointer(), buffer.GetSize(), task_id));
         }
 
         Result RemoteSocket::GetPrimitive(sf::Out<s32> out) {
-            return ::htcsSocketGetPrimitive(std::addressof(m_s), out.GetPointer());
+            R_RETURN(::htcsSocketGetPrimitive(std::addressof(m_s), out.GetPointer()));
         }
 
     }

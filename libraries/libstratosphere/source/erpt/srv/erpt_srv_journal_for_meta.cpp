@@ -27,7 +27,7 @@ namespace ams::erpt::srv {
     }
 
     Result JournalForMeta::CommitJournal(Stream *stream) {
-        return stream->WriteStream(reinterpret_cast<const u8 *>(std::addressof(s_journal_meta)), sizeof(s_journal_meta));
+        R_RETURN(stream->WriteStream(reinterpret_cast<const u8 *>(std::addressof(s_journal_meta)), sizeof(s_journal_meta)));
     }
 
     Result JournalForMeta::RestoreJournal(Stream *stream) {
@@ -35,7 +35,7 @@ namespace ams::erpt::srv {
         if (R_FAILED(stream->ReadStream(std::addressof(size), reinterpret_cast<u8 *>(std::addressof(s_journal_meta)), sizeof(s_journal_meta))) || size != sizeof(s_journal_meta)) {
             InitializeJournal();
         }
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     u32 JournalForMeta::GetTransmittedCount(ReportType type) {

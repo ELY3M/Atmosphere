@@ -56,7 +56,7 @@ namespace ams::os {
         InitializeIoRegion(io_region, handle, size, true);
 
         state_guard.Cancel();
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     void AttachIoRegionHandle(IoRegionType *io_region, size_t size, NativeHandle handle, bool managed) {
@@ -67,6 +67,28 @@ namespace ams::os {
 
         /* Setup the object. */
         InitializeIoRegion(io_region, handle, size, managed);
+    }
+
+    os::NativeHandle DetachIoRegionHandle(IoRegionType *io_region) {
+        /* Check pre-conditions. */
+        AMS_ASSERT(io_region->state != IoRegionType::State_NotInitialized);
+
+        /* Acquire exclusive access to the io region. */
+        std::scoped_lock lk(util::GetReference(io_region->cs_io_region));
+
+        /* Check that we can detach. */
+        AMS_ASSERT(io_region->state == IoRegionType::State_Initialized);
+
+        /* Set state as detached. */
+        io_region->state = IoRegionType::State_Detached;
+
+        /* Detach the handle. */
+        const auto handle = io_region->handle;
+
+        io_region->handle         = os::InvalidNativeHandle;
+        io_region->handle_managed = false;
+
+        return handle;
     }
 
     void DestroyIoRegion(IoRegionType *io_region) {
@@ -135,7 +157,7 @@ namespace ams::os {
         /* Set the output address. */
         *out = mapped_address;
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     void UnmapIoRegion(IoRegionType *io_region) {

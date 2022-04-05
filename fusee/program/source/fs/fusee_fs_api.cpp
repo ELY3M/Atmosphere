@@ -39,45 +39,45 @@ namespace ams::fs {
         Result TranslateFatFsError(FRESULT res) {
             switch (res) {
                 case FR_OK:
-                    return ResultSuccess();
+                    R_SUCCEED();
                 case FR_DISK_ERR:
-                    return fs::ResultMmcAccessFailed();
+                    R_THROW(fs::ResultMmcAccessFailed());
                 case FR_INT_ERR:
-                    return fs::ResultPreconditionViolation();
+                    R_THROW(fs::ResultPreconditionViolation());
                 case FR_NOT_READY:
-                    return fs::ResultMmcAccessFailed();
+                    R_THROW(fs::ResultMmcAccessFailed());
                 case FR_NO_FILE:
-                    return fs::ResultPathNotFound();
+                    R_THROW(fs::ResultPathNotFound());
                 case FR_NO_PATH:
-                    return fs::ResultPathNotFound();
+                    R_THROW(fs::ResultPathNotFound());
                 case FR_INVALID_NAME:
-                    return fs::ResultInvalidPath();
+                    R_THROW(fs::ResultInvalidPath());
                 case FR_DENIED:
-                    return fs::ResultPermissionDenied();
+                    R_THROW(fs::ResultPermissionDenied());
                 case FR_EXIST:
-                    return fs::ResultPathAlreadyExists();
+                    R_THROW(fs::ResultPathAlreadyExists());
                 case FR_INVALID_OBJECT:
-                    return fs::ResultInvalidArgument();
+                    R_THROW(fs::ResultInvalidArgument());
                 case FR_WRITE_PROTECTED:
-                    return fs::ResultWriteNotPermitted();
+                    R_THROW(fs::ResultWriteNotPermitted());
                 case FR_INVALID_DRIVE:
-                    return fs::ResultInvalidMountName();
+                    R_THROW(fs::ResultInvalidMountName());
                 case FR_NOT_ENABLED:
-                    return fs::ResultInvalidMountName(); /* BAD/TODO */
+                    R_THROW(fs::ResultInvalidMountName()); /* BAD/TODO */
                 case FR_NO_FILESYSTEM:
-                    return fs::ResultInvalidMountName(); /* BAD/TODO */
+                    R_THROW(fs::ResultInvalidMountName()); /* BAD/TODO */
                 case FR_TIMEOUT:
-                    return fs::ResultTargetLocked(); /* BAD/TODO */
+                    R_THROW(fs::ResultTargetLocked()); /* BAD/TODO */
                 case FR_LOCKED:
-                    return fs::ResultTargetLocked();
+                    R_THROW(fs::ResultTargetLocked());
                 case FR_NOT_ENOUGH_CORE:
-                    return fs::ResultPreconditionViolation(); /* BAD/TODO */
+                    R_THROW(fs::ResultPreconditionViolation()); /* BAD/TODO */
                 case FR_TOO_MANY_OPEN_FILES:
-                    return fs::ResultPreconditionViolation(); /* BAD/TODO */
+                    R_THROW(fs::ResultPreconditionViolation()); /* BAD/TODO */
                 case FR_INVALID_PARAMETER:
-                    return fs::ResultInvalidArgument();
+                    R_THROW(fs::ResultInvalidArgument());
                 default:
-                    return fs::ResultInternal();
+                    R_THROW(fs::ResultInternal());
             }
         }
 
@@ -138,7 +138,7 @@ namespace ams::fs {
         *out_entry_type = (info.fattrib & AM_DIR) ? DirectoryEntryType_Directory : DirectoryEntryType_File;
         *out_archive    = (info.fattrib & AM_ARC);
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result CreateFile(const char *path, s64 size) {
@@ -152,11 +152,11 @@ namespace ams::fs {
         /* Expand the file. */
         R_TRY(TranslateFatFsError(f_expand(std::addressof(fp), size, 1)));
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result CreateDirectory(const char *path) {
-        return TranslateFatFsError(f_mkdir(path));
+        R_RETURN(TranslateFatFsError(f_mkdir(path)));
     }
 
     Result OpenFile(FileHandle *out_file, const char *path, int mode) {
@@ -171,10 +171,10 @@ namespace ams::fs {
                 out_file->_handle = fp;
                 g_files_opened[i] = true;
                 g_open_modes[i] = mode;
-                return ResultSuccess();
+                R_SUCCEED();
             }
         }
-        return fs::ResultOpenCountLimit();
+        R_THROW(fs::ResultOpenCountLimit());
     }
 
     Result OpenDirectory(DirectoryHandle *out_dir, const char *path) {
@@ -188,10 +188,10 @@ namespace ams::fs {
                 /* Set the output. */
                 out_dir->_handle = dp;
                 g_dirs_opened[i] = true;
-                return ResultSuccess();
+                R_SUCCEED();
             }
         }
-        return fs::ResultOpenCountLimit();
+        R_THROW(fs::ResultOpenCountLimit());
     }
 
     Result ReadDirectory(s64 *out_count, DirectoryEntry *out_entries, DirectoryHandle handle, s64 max_entries) {
@@ -209,7 +209,7 @@ namespace ams::fs {
         }
 
         *out_count = count;
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     void CloseDirectory(DirectoryHandle handle) {
@@ -232,11 +232,11 @@ namespace ams::fs {
         /* Check that we read the correct amount. */
         R_UNLESS(br == size, fs::ResultOutOfRange());
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result ReadFile(FileHandle handle, s64 offset, void *buffer, size_t size) {
-        return ReadFile(handle, offset, buffer, size, fs::ReadOption::None);
+        R_RETURN(ReadFile(handle, offset, buffer, size, fs::ReadOption::None));
     }
 
     Result ReadFile(size_t *out, FileHandle handle, s64 offset, void *buffer, size_t size, const fs::ReadOption &option) {
@@ -253,21 +253,21 @@ namespace ams::fs {
         /* Set the output size. */
         *out = br;
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result ReadFile(size_t *out, FileHandle handle, s64 offset, void *buffer, size_t size) {
-        return ReadFile(out, handle, offset, buffer, size, fs::ReadOption::None);
+        R_RETURN(ReadFile(out, handle, offset, buffer, size, fs::ReadOption::None));
     }
 
     Result GetFileSize(s64 *out, FileHandle handle) {
         FIL *fp = GetInternalFile(handle);
         *out = f_size(fp);
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result FlushFile(FileHandle handle) {
-        return TranslateFatFsError(f_sync(GetInternalFile(handle)));
+        R_RETURN(TranslateFatFsError(f_sync(GetInternalFile(handle))));
     }
 
     Result WriteFile(FileHandle handle, s64 offset, const void *buffer, size_t size, const fs::WriteOption &option) {
@@ -286,7 +286,7 @@ namespace ams::fs {
             R_TRY(FlushFile(handle));
         }
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     Result SetFileSize(FileHandle handle, s64 size) {
@@ -310,7 +310,7 @@ namespace ams::fs {
         /* Check that our expansion succeeded. */
         AMS_ASSERT(f_size(fp) == static_cast<FSIZE_t>(size));
 
-        return ResultSuccess();
+        R_SUCCEED();
     }
 
     int GetFileOpenMode(FileHandle handle) {
