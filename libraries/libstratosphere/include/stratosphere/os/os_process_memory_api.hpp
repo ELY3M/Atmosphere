@@ -15,13 +15,14 @@
  */
 
 #pragma once
-#include <stratosphere.hpp>
+#include <stratosphere/os/os_native_handle.hpp>
+#include <stratosphere/os/os_memory_common.hpp>
 
-namespace ams::ro::impl {
+namespace ams::os {
 
-    /* Utilities for working with NROs. */
-    Result MapNro(u64 *out_base_address, os::NativeHandle process_handle, u64 nro_heap_address, u64 nro_heap_size, u64 bss_heap_address, u64 bss_heap_size);
-    Result SetNroPerms(os::NativeHandle process_handle, u64 base_address, u64 rx_size, u64 ro_size, u64 rw_size);
-    Result UnmapNro(os::NativeHandle process_handle, u64 base_address, u64 nro_heap_address, u64 nro_heap_size, u64 bss_heap_address, u64 bss_heap_size);
+    Result MapProcessMemory(void **out, NativeHandle handle, u64 process_address, size_t process_size);
+    void UnmapProcessMemory(void *mapped_memory, NativeHandle handle, u64 process_address, size_t process_size);
+
+    Result SetProcessMemoryPermission(NativeHandle handle, u64 process_address, u64 process_size, MemoryPermission perm);
 
 }
