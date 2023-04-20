@@ -13,6 +13,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+//Modded by ELY M. 
 #include <stratosphere.hpp>
 #include "dmnt_cheat_api.hpp"
 #include "dmnt_cheat_vm.hpp"
@@ -23,8 +24,10 @@ namespace ams::dmnt::cheat::impl {
     namespace {
 
         /* Helper definitions. */
-        constexpr size_t MaxCheatCount = 0x80;
-        constexpr size_t MaxFrozenAddressCount = 0x80;
+		// from 0x80 to 0x400  (128 to 1024) //ELY M. 
+		//need to increase or the cheats will get cut off....    
+        constexpr size_t MaxCheatCount = 0x400;
+        constexpr size_t MaxFrozenAddressCount = 0x400;
 
         class FrozenAddressMapEntry : public util::IntrusiveRedBlackTreeBaseNode<FrozenAddressMapEntry> {
             public:
@@ -58,7 +61,22 @@ namespace ams::dmnt::cheat::impl {
         };
 
         constinit os::SdkMutex g_text_file_buffer_lock;
-        constinit char g_text_file_buffer[64_KB];
+		//modded by ELY M.
+        constinit char g_text_file_buffer[512_KB];  //was 64_KB  //I need my 95kb cheat txts to work!!!!!   ELY M.    
+		/*
+		
+		Why not do it via settings like system_settings.ini  
+		and let someone make decision.....   
+		I know there is risk for stuff not to work.... 
+		
+		I need my 95kb txt cheats to work.  
+		It was working great for me in atmosphere 0.17.1   
+		
+		ELY M.   
+		
+		
+		*/
+		
 
         constinit u8 g_frozen_address_map_memory[sizeof(FrozenAddressMapEntry) * MaxFrozenAddressCount];
         constinit lmem::HeapHandle g_frozen_address_map_heap;
