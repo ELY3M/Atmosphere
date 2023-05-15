@@ -13,14 +13,15 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 #pragma once
+#include <vapours.hpp>
+#include <stratosphere/ncm/ncm_program_id.hpp>
+#include <stratosphere/cfg/cfg_types.hpp>
+#include <stratosphere/sf.hpp>
 
-#define ATMOSPHERE_RELEASE_VERSION_MAJOR    1
-#define ATMOSPHERE_RELEASE_VERSION_MINOR    5
-#define ATMOSPHERE_RELEASE_VERSION_MICRO    4
+#define AMS_MITM_PM_IMPL_I_PM_INTERFACE_INFO(C, H) \
+    AMS_SF_METHOD_INFO(C, H, 65000, Result, PrepareLaunchProgram, (sf::Out<u64> out_boost_size, ncm::ProgramId program_id, const cfg::OverrideStatus &override_status, bool is_application), (out_boost_size, program_id, override_status, is_application))
 
-#define ATMOSPHERE_RELEASE_VERSION ATMOSPHERE_RELEASE_VERSION_MAJOR, ATMOSPHERE_RELEASE_VERSION_MINOR, ATMOSPHERE_RELEASE_VERSION_MICRO
+AMS_SF_DEFINE_INTERFACE(ams::mitm::pm::impl, IPmInterface, AMS_MITM_PM_IMPL_I_PM_INTERFACE_INFO, 0xEA88789C)
 
-#define ATMOSPHERE_SUPPORTED_HOS_VERSION_MAJOR 16
-#define ATMOSPHERE_SUPPORTED_HOS_VERSION_MINOR 0
-#define ATMOSPHERE_SUPPORTED_HOS_VERSION_MICRO 3

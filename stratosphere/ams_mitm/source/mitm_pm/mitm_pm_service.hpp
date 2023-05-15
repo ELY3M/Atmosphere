@@ -14,13 +14,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
+#include <stratosphere.hpp>
 
-#define ATMOSPHERE_RELEASE_VERSION_MAJOR    1
-#define ATMOSPHERE_RELEASE_VERSION_MINOR    5
-#define ATMOSPHERE_RELEASE_VERSION_MICRO    4
+namespace ams::mitm::pm {
 
-#define ATMOSPHERE_RELEASE_VERSION ATMOSPHERE_RELEASE_VERSION_MAJOR, ATMOSPHERE_RELEASE_VERSION_MINOR, ATMOSPHERE_RELEASE_VERSION_MICRO
+    class PmService {
+        public:
+            Result PrepareLaunchProgram(sf::Out<u64> out, ncm::ProgramId program_id, const cfg::OverrideStatus &status, bool is_application);
+    };
+    static_assert(impl::IsIPmInterface<PmService>);
 
-#define ATMOSPHERE_SUPPORTED_HOS_VERSION_MAJOR 16
-#define ATMOSPHERE_SUPPORTED_HOS_VERSION_MINOR 0
-#define ATMOSPHERE_SUPPORTED_HOS_VERSION_MICRO 3
+}
