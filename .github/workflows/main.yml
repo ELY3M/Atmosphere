@@ -21,6 +21,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13.3'
-          cache: 'pip' # caching pip dependencies
-          run: pip install lz4
+          ##cache: 'pip' # caching pip dependencies
+          ##run: pip install lz4
                 
