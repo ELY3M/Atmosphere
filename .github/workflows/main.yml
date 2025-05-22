@@ -24,8 +24,9 @@ jobs:
           ##cache: 'pip' # caching pip dependencies
           ##run: pip install lz4
 
-      - name: pip install lz4 
-        run: pip install lz4
+      - uses: BSFishy/pip-action@v1
+          with:
+          packages: lz4
 
       - name: test
         run: ls -la
