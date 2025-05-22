@@ -8,7 +8,6 @@ on:
 
 jobs:
   build:
-    name: Test build
     runs-on: ubuntu-latest
     container:
       image: 'devkitpro/devkita64'
