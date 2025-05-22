@@ -18,12 +18,11 @@ jobs:
         with:
           persist-credentials: false
 
-      # - uses: actions/setup-python@v5
-        # with:
-          # python-version: '3.9.5'
-          # cache: 'pip' # caching pip dependencies
-          # run: pip install lz4
- 
+       - name: pacman 
+        run: | 
+          pacman -Syuu
+          pacman -Sy switch-dev switch-glm switch-libjpeg-turbo devkitARM devkitarm-rules hactool
+          
       - name: install python and pip 
         run: | 
           sudo apt-get update
