@@ -26,7 +26,7 @@ jobs:
  
       - name: install python and pip 
         run: | 
-          sudo apt-get install python python3-pip
+          sudo apt-get -y install python python3-pip
           
       - name: python test
         run: python --version
