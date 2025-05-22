@@ -20,8 +20,8 @@ jobs:
 
       - name: pacman 
         run: | 
-          pacman -Syuu
-          pacman -Sy switch-dev switch-glm switch-libjpeg-turbo devkitARM devkitarm-rules hactool
+          dkp-pacman -Syuu
+          dkp-pacman -Sy switch-dev switch-glm switch-libjpeg-turbo devkitARM devkitarm-rules hactool
           
       - name: install python and pip 
         run: | 
