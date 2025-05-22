@@ -18,17 +18,21 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.9.5'
+      # - uses: actions/setup-python@v5
+        # with:
+          # python-version: '3.9.5'
           # cache: 'pip' # caching pip dependencies
           # run: pip install lz4
  
+      - name: install python and pip 
+        run: | 
+          sudo apt-get install python python-pip
+          
       - name: python test
         run: python --version
         
-      # - name: Install dependencies
-        # run: python -m pip install --upgrade pip lz4           
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip lz4           
            
 
       - name: test
