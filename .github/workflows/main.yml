@@ -18,7 +18,7 @@ jobs:
         with:
           persist-credentials: false
 
-       - name: pacman 
+      - name: pacman 
         run: | 
           pacman -Syuu
           pacman -Sy switch-dev switch-glm switch-libjpeg-turbo devkitARM devkitarm-rules hactool
