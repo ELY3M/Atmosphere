@@ -18,9 +18,9 @@ jobs:
         with:
           persist-credentials: false
           
-    - name: setup python 
+      - name: setup python
       - uses: actions/setup-python@v5
         with:
-        python-version: '2.7'
-        cache: 'pip' # caching pip dependencies
-        run: pip install lz4          
+          python-version: '2.7'
+          cache: 'pip' # caching pip dependencies
+          run: pip install lz4          
