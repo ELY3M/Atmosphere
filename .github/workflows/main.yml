@@ -23,4 +23,9 @@ jobs:
           python-version: '3.13.3'
           ##cache: 'pip' # caching pip dependencies
           ##run: pip install lz4
-                
+
+      - name: pip install lz4 
+        run: pip install lz4
+
+      - name: test
+        run: ls -la
