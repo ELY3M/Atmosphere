@@ -18,24 +18,15 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: egor-tensin/setup-gcc@v1
+      - uses: actions/setup-python@v5
         with:
-          version: latest
-          platform: x64
-        
-      - uses: LizardByte/setup-python-action@master
-        with:
-           python-version: '2.7'
+          python-version: '3.13.3'
+          # cache: 'pip' # caching pip dependencies
+          # run: pip install lz4
            
       - name: Install dependencies
         run: python -m pip install --upgrade pip lz4           
            
-          
-      # - uses: actions/setup-python@v5
-        # with:
-          # python-version: '3.10'
-          # cache: 'pip' # caching pip dependencies
-          # run: pip install lz4
 
       - name: test
         run: ls -la
