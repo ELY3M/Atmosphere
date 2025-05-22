@@ -23,9 +23,12 @@ jobs:
           python-version: '3.13.3'
           # cache: 'pip' # caching pip dependencies
           # run: pip install lz4
-           
-      - name: Install dependencies
-        run: python -m pip install --upgrade pip lz4           
+ 
+      - name: python test
+        run: python --version
+        
+      # - name: Install dependencies
+        # run: python -m pip install --upgrade pip lz4           
            
 
       - name: test
