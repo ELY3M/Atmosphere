@@ -8,45 +8,12 @@ on:
 
 jobs:
   build:
+    name: Test build
     runs-on: ubuntu-latest
     container:
       image: 'devkitpro/devkita64'
 
     steps:
-      - uses: actions/checkout@v2
-        with:
-          persist-credentials: false
-    
-    - name: pacman
-      run: |
-       pacman -Syuu 
-       pacman -Sy switch-dev switch-glm switch-libjpeg-turbo devkitARM devkitarm-rules hactool
-        
-        
-    - name: setup python 
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '2.7'
-        cache: 'pip' # caching pip dependencies
-        run: pip install lz4
-
-    - name: check out
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-
-      # - name: build
-        # run: make -j2
-
-      - name: test
-        run: ls -la
-        
-      # - name: Publish GitHub release
-        # uses: softprops/action-gh-release@v2
-        # with:
-          # tag_name: ${{ github.run_number }}
-          # prerelease: false
-          # draft: false
-          # body: ${{ github.event.head_commit.message }}
-          # files: fuck-u.nro
-          # name: "Switch Release #${{ github.run_number }}"
