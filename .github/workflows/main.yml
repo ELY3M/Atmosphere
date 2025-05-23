@@ -39,8 +39,10 @@ jobs:
           ls -la
           nproc
         
-      # - name: run python script
-        # run: ls -la
+      - name: run fusee python script
+        run: |
+          python fusee\program\update_mtc_tables.py
+          python fusee\program\update_sdram_params.py
         
       - name: make 
         run: make -j4
