@@ -41,8 +41,10 @@ jobs:
         
       - name: run fusee python script
         run: |
-          python fusee/program/update_mtc_tables.py
-          python fusee/program/update_sdram_params.py
+          cd fusee/program/
+          python update_mtc_tables.py
+          python update_sdram_params.py
+          cd ../..
         
       - name: make 
         run: make -j4
