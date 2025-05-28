@@ -28,6 +28,7 @@ jobs:
           sudo apt-get update
           sudo apt-get -y install libssl-dev openssl make gcc
           wget https://www.python.org/ftp/python/3.13.3/Python-3.13.3.tar.xz
+          tar xzvf Python-3.13.3.tgz
           cd Python-3.13.3  
           ./configure
           make
