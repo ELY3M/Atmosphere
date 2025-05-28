@@ -14,44 +14,60 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-constexpr const u8 T210b01SdevEmcDvfsTableM4gb03[] = {
-    #embed "../../mtc_tables/combined/T210b01SdevEmcDvfsTableM4gb03/table.bin"
+constexpr const u8 T210b01SdevEmcDvfsTableH1a4gb01[] = {
+    #embed "../../mtc_tables/combined/T210b01SdevEmcDvfsTableH1a4gb01/table.bin"
 };
 
-constexpr const u8 T210b01SdevEmcDvfsTableS4gb01[] = {
-    #embed "../../mtc_tables/combined/T210b01SdevEmcDvfsTableS4gb01/table.bin"
-};
-
-constexpr const u8 T210b01SdevEmcDvfsTableS1z4gb01[] = {
-    #embed "../../mtc_tables/combined/T210b01SdevEmcDvfsTableS1z4gb01/table.bin"
-};
-
-constexpr const u8 T210b01SdevEmcDvfsTableS1y8gbY01[] = {
-    #embed "../../mtc_tables/combined/T210b01SdevEmcDvfsTableS1y8gbY01/table.bin"
-};
-
-constexpr const u8 T210b01SdevEmcDvfsTableM1a4gb01[] = {
-    #embed "../../mtc_tables/combined/T210b01SdevEmcDvfsTableM1a4gb01/table.bin"
+constexpr const u8 T210b01SdevEmcDvfsTableH1y4gb01[] = {
+    #embed "../../mtc_tables/combined/T210b01SdevEmcDvfsTableH1y4gb01/table.bin"
 };
 
 constexpr const u8 T210b01SdevEmcDvfsTableH4gb03[] = {
     #embed "../../mtc_tables/combined/T210b01SdevEmcDvfsTableH4gb03/table.bin"
 };
 
-constexpr const u8 T210b01SdevEmcDvfsTableS1y4gbX03[] = {
-    #embed "../../mtc_tables/combined/T210b01SdevEmcDvfsTableS1y4gbX03/table.bin"
+constexpr const u8 T210b01SdevEmcDvfsTableM1a4gb01[] = {
+    #embed "../../mtc_tables/combined/T210b01SdevEmcDvfsTableM1a4gb01/table.bin"
 };
 
 constexpr const u8 T210b01SdevEmcDvfsTableM1y4gb01[] = {
     #embed "../../mtc_tables/combined/T210b01SdevEmcDvfsTableM1y4gb01/table.bin"
 };
 
+constexpr const u8 T210b01SdevEmcDvfsTableM4gb03[] = {
+    #embed "../../mtc_tables/combined/T210b01SdevEmcDvfsTableM4gb03/table.bin"
+};
+
 constexpr const u8 T210b01SdevEmcDvfsTableS1y4gb01[] = {
     #embed "../../mtc_tables/combined/T210b01SdevEmcDvfsTableS1y4gb01/table.bin"
 };
 
-constexpr const u8 T210b01SdevEmcDvfsTableH1y4gb01[] = {
-    #embed "../../mtc_tables/combined/T210b01SdevEmcDvfsTableH1y4gb01/table.bin"
+constexpr const u8 T210b01SdevEmcDvfsTableS1y4gbX03[] = {
+    #embed "../../mtc_tables/combined/T210b01SdevEmcDvfsTableS1y4gbX03/table.bin"
+};
+
+constexpr const u8 T210b01SdevEmcDvfsTableS1y4gbY01[] = {
+    #embed "../../mtc_tables/combined/T210b01SdevEmcDvfsTableS1y4gbY01/table.bin"
+};
+
+constexpr const u8 T210b01SdevEmcDvfsTableS1y8gb04[] = {
+    #embed "../../mtc_tables/combined/T210b01SdevEmcDvfsTableS1y8gb04/table.bin"
+};
+
+constexpr const u8 T210b01SdevEmcDvfsTableS1y8gbX03[] = {
+    #embed "../../mtc_tables/combined/T210b01SdevEmcDvfsTableS1y8gbX03/table.bin"
+};
+
+constexpr const u8 T210b01SdevEmcDvfsTableS1y8gbY01[] = {
+    #embed "../../mtc_tables/combined/T210b01SdevEmcDvfsTableS1y8gbY01/table.bin"
+};
+
+constexpr const u8 T210b01SdevEmcDvfsTableS1z4gb01[] = {
+    #embed "../../mtc_tables/combined/T210b01SdevEmcDvfsTableS1z4gb01/table.bin"
+};
+
+constexpr const u8 T210b01SdevEmcDvfsTableS4gb01[] = {
+    #embed "../../mtc_tables/combined/T210b01SdevEmcDvfsTableS4gb01/table.bin"
 };
 
 constexpr const u8 T210b01SdevEmcDvfsTableS4gb03[] = {
@@ -62,23 +78,7 @@ constexpr const u8 T210b01SdevEmcDvfsTableS4gbY01[] = {
     #embed "../../mtc_tables/combined/T210b01SdevEmcDvfsTableS4gbY01/table.bin"
 };
 
-constexpr const u8 T210b01SdevEmcDvfsTableS1y8gb04[] = {
-    #embed "../../mtc_tables/combined/T210b01SdevEmcDvfsTableS1y8gb04/table.bin"
-};
-
-constexpr const u8 T210b01SdevEmcDvfsTableH1a4gb01[] = {
-    #embed "../../mtc_tables/combined/T210b01SdevEmcDvfsTableH1a4gb01/table.bin"
-};
-
-constexpr const u8 T210b01SdevEmcDvfsTableS1y4gbY01[] = {
-    #embed "../../mtc_tables/combined/T210b01SdevEmcDvfsTableS1y4gbY01/table.bin"
-};
-
 constexpr const u8 T210b01SdevEmcDvfsTableS8gb03[] = {
     #embed "../../mtc_tables/combined/T210b01SdevEmcDvfsTableS8gb03/table.bin"
-};
-
-constexpr const u8 T210b01SdevEmcDvfsTableS1y8gbX03[] = {
-    #embed "../../mtc_tables/combined/T210b01SdevEmcDvfsTableS1y8gbX03/table.bin"
 };
 

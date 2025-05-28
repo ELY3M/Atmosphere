@@ -14,15 +14,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-constexpr const u8 T210SdevEmcDvfsTableS6gb01[] = {
-    #embed "../../mtc_tables/combined/T210SdevEmcDvfsTableS6gb01/table.bin"
-};
-
 constexpr const u8 T210SdevEmcDvfsTableH4gb01[] = {
     #embed "../../mtc_tables/combined/T210SdevEmcDvfsTableH4gb01/table.bin"
 };
 
 constexpr const u8 T210SdevEmcDvfsTableS4gb01[] = {
     #embed "../../mtc_tables/combined/T210SdevEmcDvfsTableS4gb01/table.bin"
+};
+
+constexpr const u8 T210SdevEmcDvfsTableS6gb01[] = {
+    #embed "../../mtc_tables/combined/T210SdevEmcDvfsTableS6gb01/table.bin"
 };
 
