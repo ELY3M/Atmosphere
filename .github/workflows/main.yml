@@ -26,8 +26,14 @@ jobs:
       - name: install python and pip 
         run: | 
           sudo apt-get update
+          sudo apt-get install libssl-dev openssl make gcc
+          wget https://www.python.org/ftp/python/3.13.3/Python-3.13.3.tar.xz
+          cd Python-3.13.3  
+          ./configure
+          make
+          make install
           sudo apt-get -y install python3 python3-pip
-          
+          cd ..
       - name: python test
         run: python --version
         
@@ -47,7 +53,7 @@ jobs:
           cd ../..
         
       - name: make 
-        run: make -j6
+        run: make -j4
 
       - name: list out dir
         run: ls -la out      
