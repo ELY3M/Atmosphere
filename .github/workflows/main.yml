@@ -26,6 +26,7 @@ jobs:
       - name: install python and pip 
         run: | 
           sudo apt-get update
+          sudo apt install -y software-properties-common
           add-apt-repository ppa:deadsnakes/ppa
           sudo apt update
           sudo apt-get -y install python3.12 python3.12-pip
