@@ -41,8 +41,8 @@ jobs:
           tar xzf Python-3.13.3.tgz
           cd Python-3.13.3
           ./configure  
-          make 
-          make install 
+          sudo make 
+          sudo make install 
 
       - name: python test
         run: python --version
