@@ -22,16 +22,13 @@ jobs:
         # run: | 
           # dkp-pacman -Syuu
           # dkp-pacman -Sy switch-dev switch-glm switch-libjpeg-turbo devkitARM devkitarm-rules hactool
-      - name: ubuntu version
-        run: lsb_release -sc
+      # - name: ubuntu version
+        # run: lsb_release -sc
           
       - name: install python and pip 
         run: | 
           sudo apt-get update
-          sudo apt install -y software-properties-common
-          add-apt-repository ppa:deadsnakes/ppa
-          sudo apt update
-          sudo apt-get -y install python3.14 python3.14-pip
+          sudo apt-get -y install python3.13 python3.13-pip
 
       - name: python test
         run: python --version
