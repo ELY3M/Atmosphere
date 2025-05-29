@@ -44,8 +44,6 @@ jobs:
           sudo make 
           sudo make install
           cd ..
-          wget https://bootstrap.pypa.io/pip/2.7/get-pip.py
-          sudo python2 get-pip.py
           
       - name: python test
         run: | 
