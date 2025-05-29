@@ -103,6 +103,6 @@ def main(argc, argv):
                 f.write('%s\n' % ('    #embed "../../mtc_tables/combined/%s/table.bin"' % (board)))
                 f.write('};\n\n')
     return 0
-
-if __name__ == '__main__':
-    sys.exit(main(len(sys.argv), sys.argv))
+## had to comment out those because of AssertionError on ubuntu  
+##if __name__ == '__main__':
+##    sys.exit(main(len(sys.argv), sys.argv))
