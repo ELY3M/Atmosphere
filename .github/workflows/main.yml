@@ -83,7 +83,7 @@ jobs:
       - name: make 
         run: | 
           git config --global --add safe.directory /__w/Atmosphere/Atmosphere 
-          make -j4 -S
+          make -j4 --stop
 
       - name: list out dir
         run: ls -la out  
