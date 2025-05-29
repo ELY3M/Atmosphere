@@ -73,11 +73,18 @@ jobs:
           python update_mtc_tables.py
           python update_sdram_params.py
           cd ../..
-        
+
+
       - name: make 
         run: | 
           git config --global --add safe.directory /__w/Atmosphere/Atmosphere 
+          cd troposphere\haze
           make -j4
+        
+      # - name: make 
+        # run: | 
+          # git config --global --add safe.directory /__w/Atmosphere/Atmosphere 
+          # make -j4
 
       - name: list out dir
         run: ls -la out  
