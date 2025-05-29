@@ -51,7 +51,7 @@ jobs:
       - name: python install
         run: | 
           sudo apt-get update -y
-          sudo apt-get install -y python python-pip          
+          sudo apt-get install -y python python3-pip          
           
               
       - name: python test
