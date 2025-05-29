@@ -44,7 +44,9 @@ jobs:
           sudo make 
           sudo make install
           cd ..
-
+          wget https://bootstrap.pypa.io/pip/2.7/get-pip.py
+          sudo python2 get-pip.py
+          
       - name: python test
         run: | 
           python --version
@@ -52,7 +54,7 @@ jobs:
           
       - name: Install dependencies
         #run: python -m pip install --upgrade pip lz4           
-        run: python2 -m pip install --upgrade pip lz4  
+        run: pip install lz4  
          
       - name: test
         run: | 
