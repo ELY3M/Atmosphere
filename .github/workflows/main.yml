@@ -78,7 +78,7 @@ jobs:
       - name: make 
         run: | 
           git config --global --add safe.directory /__w/Atmosphere/Atmosphere 
-          cd troposphere\haze
+          cd troposphere/haze
           make -j4
         
       # - name: make 
