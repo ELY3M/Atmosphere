@@ -72,4 +72,14 @@ jobs:
         run: make -j4
 
       - name: list out dir
-        run: ls -la out      
+        run: ls -la out  
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: ${{ github.workspace }}/out/nintendo_nx_arm64_armv8a
+     
+     
+
+
+        
