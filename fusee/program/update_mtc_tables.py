@@ -1,20 +1,13 @@
 #!/usr/bin/env python
-from __future__ import print_function
-import sys, os
-import lz4
+import sys, lz4, os
 from struct import unpack as up
-
-try:
-    xrange
-except NameError:
-    xrange = range
 
 def lz4_compress(data):
     try:
         import lz4.block as block
     except ImportError:
         block = lz4.LZ4_compress
-    return block.compress(data, mode='high_compression', store_size=False)
+    return block.compress(data, 'high_compression', store_size=False)
 
 def read_file(fn):
     with open(fn, 'rb') as f:
@@ -69,7 +62,7 @@ def main(argc, argv):
         except:
             pass
         data_1600 = params[soc][board][-1]
-        data_800 = params[soc][board][-4] if soc == 'erista' else b''
+        data_800 = params[soc][board][-4] if soc == 'erista' else ''
         data_204  = params[soc][board][0] if soc == 'mariko' else params[soc][board][3]
         assert up('<I', data_1600[0x40:0x44])[0] == 1600000
         assert up('<I', data_204[0x40:0x44])[0] == 204000
