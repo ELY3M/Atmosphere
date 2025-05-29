@@ -48,22 +48,23 @@ jobs:
         # with:
           # python-version: '3.13' 
           
-      - name: python install
-        run: | 
-          sudo apt-get update -y
-          sudo apt-get install -y python3 python3-pip          
+      # - name: python install
+        # run: | 
+          # sudo apt-get update -y
+          # sudo apt-get install -y python3 python3-pip          
           
-              
-      - name: python test
-        run: | 
-          python --version
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13.3"
           
       - name: Install dependencies
-        #run: python -m pip install --upgrade pip lz4           
-        run: pip install lz4  
-         
-      - name: nproc
-        run: nproc
+        run: python -m pip install --upgrade pip lz4
+        
+      - name: python / nproc test
+        run: | 
+          python --version
+          nproc 
         
       - name: run fusee python script
         run: |
