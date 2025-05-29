@@ -29,32 +29,30 @@ jobs:
       # - name: install python and pip 
         # run: | 
           # sudo apt-get update
-          # sudo apt install -y software-properties-common
-          # add-apt-repository ppa:deadsnakes/ppa
-          # sudo apt update
-          # sudo apt-get -y install python3.12 python3.12-pip
-      - name: install python and pip 
-        run: | 
-          sudo apt-get update
-          sudo apt install -y make build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
-          wget https://www.python.org/ftp/python/2.7.18/Python-2.7.18.tgz
-          tar xzf Python-2.7.18.tgz
-          cd Python-2.7.18
-          ./configure  
-          sudo make 
-          sudo make install
-          cd ..
-          ##sudo apt -y install python-pip
-          curl https://bootstrap.pypa.io/pip/2.7/get-pip.py -o get-pip.py
-          python get-pip.py       
+          # sudo apt install -y make build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
+          # wget https://www.python.org/ftp/python/2.7.18/Python-2.7.18.tgz
+          # tar xzf Python-2.7.18.tgz
+          # cd Python-2.7.18
+          # ./configure  
+          # sudo make 
+          # sudo make install
+          # cd ..
+          # ##sudo apt -y install python-pip
+          # curl https://bootstrap.pypa.io/pip/2.7/get-pip.py -o get-pip.py
+          # python get-pip.py   
+
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13' 
+              
       - name: python test
         run: | 
           python --version
-          python2 --version
           
       - name: Install dependencies
-        #run: python -m pip install --upgrade pip lz4           
-        run: pip2 install lz4  
+        run: python -m pip install --upgrade pip lz4           
+        #run: pip2 install lz4  
          
       - name: test
         run: | 
@@ -64,8 +62,8 @@ jobs:
       - name: run fusee python script
         run: |
           cd fusee/program/
-          python2 update_mtc_tables.py
-          python2 update_sdram_params.py
+          python update_mtc_tables.py
+          python update_sdram_params.py
           cd ../..
         
       - name: make 
