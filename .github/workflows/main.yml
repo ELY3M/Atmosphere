@@ -59,8 +59,7 @@ jobs:
           # python-version: "3.13.3"
           
       - name: Install dependencies
-        run: python -m pip install --upgrade pip lz4
-        #run: python -m pip install --upgrade pip lz4        
+        run: python -m pip install --upgrade pip lz4     
       
       - name: python / nproc test
         run: | 
@@ -75,16 +74,16 @@ jobs:
           cd ../..
 
 
-      - name: make 
-        run: | 
-          git config --global --add safe.directory /__w/Atmosphere/Atmosphere 
-          cd troposphere/haze
-          make -j4
-        
       # - name: make 
         # run: | 
           # git config --global --add safe.directory /__w/Atmosphere/Atmosphere 
+          # cd troposphere/haze
           # make -j4
+        
+      - name: make 
+        run: | 
+          git config --global --add safe.directory /__w/Atmosphere/Atmosphere 
+          make -j4 -S
 
       - name: list out dir
         run: ls -la out  
