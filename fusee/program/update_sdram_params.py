@@ -1,13 +1,22 @@
 #!/usr/bin/env python
-import sys, lz4, os
+from __future__ import print_function
+import sys, os
+
+try:
+    import lz4.block as block
+except ImportError:
+    import lz4
+    block = lz4.LZ4_compress
+
+try:
+    xrange
+except NameError:
+    xrange = range
+
 from struct import unpack as up
 
 def lz4_compress(data):
-    try:
-        import lz4.block as block
-    except ImportError:
-        block = lz4.LZ4_compress
-    return block.compress(data, 'high_compression', store_size=False)
+    return block.compress(data, mode='high_compression', store_size=False)
 
 def read_file(fn):
     with open(fn, 'rb') as f:
@@ -19,8 +28,8 @@ def write_file(fn, data):
 
 def get_param_size(soc):
     return {
-        'erista' : 0x768,
-        'mariko' : 0x838,
+        'erista': 0x768,
+        'mariko': 0x838,
     }[soc]
 
 def main(argc, argv):
@@ -28,12 +37,12 @@ def main(argc, argv):
         print('Usage: %s' % argv[0])
         return 1
     params = {
-        'erista' : {},
-        'mariko' : {},
+        'erista': {},
+        'mariko': {},
     }
     compressed_params = {
-        'erista' : {},
-        'mariko' : {},
+        'erista': {},
+        'mariko': {},
     }
     for fn in os.listdir('sdram_params/bin'):
         assert fn.startswith('sdram_params_') and fn.endswith('.bin')
@@ -44,12 +53,12 @@ def main(argc, argv):
         assert len(uncompressed) == get_param_size(soc)
         params[soc][param_id] = uncompressed
     for soc in ('erista', 'mariko'):
-        empty_params = '\x00' * get_param_size(soc)
+        empty_params = b'\x00' * get_param_size(soc)
         for param_id in xrange(0, max(params[soc].keys()) + 4, 2):
             param_id_l = param_id
             param_id_h = param_id + 1
             if param_id_l in params[soc] or param_id_h in params[soc]:
-                print soc, param_id_l, param_id_h
+                print(soc, param_id_l, param_id_h)
                 param_l = params[soc][param_id_l] if param_id_l in params[soc] else empty_params
                 param_h = params[soc][param_id_h] if param_id_h in params[soc] else empty_params
                 compressed = lz4_compress(param_l + param_h)
@@ -73,7 +82,8 @@ def main(argc, argv):
         f.write('%s\n' % " */")
         f.write('\n')
         for soc in ('Erista', 'Mariko'):
-            for (param_id_l, param_id_h) in sorted(compressed_params[soc.lower()].keys(), key=lambda (l, h): l):
+            for key in sorted(compressed_params[soc.lower()].keys()):
+                param_id_l, param_id_h = key
                 compressed = compressed_params[soc.lower()][(param_id_l, param_id_h)]
                 f.write('%s\n' % ('constexpr inline const u8 SdramParams%s%d_%d[0x%03X] = {' % (soc, param_id_l, param_id_h, len(compressed))))
                 f.write('%s\n' % ('    #embed "../../sdram_params/lz/sdram_params_%s_%d_%d.lz4"' % (soc.lower(), param_id_l, param_id_h)))
