@@ -44,16 +44,17 @@ jobs:
           sudo make 
           sudo make install
           cd ..
-          sudo apt -y install python-pip
-          
+          ##sudo apt -y install python-pip
+          curl https://bootstrap.pypa.io/pip/2.7/get-pip.py -o get-pip.py
+          python get-pip.py       
       - name: python test
         run: | 
           python --version
           python2 --version
           
       - name: Install dependencies
-        run: python -m pip install --upgrade pip lz4           
-        #run: pip install lz4  
+        #run: python -m pip install --upgrade pip lz4           
+        run: pip2 install lz4  
          
       - name: test
         run: | 
