@@ -97,6 +97,14 @@ jobs:
           path: ${{ github.workspace }}/out/nintendo_nx_arm64_armv8a
      
      
-
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.run_number }}
+          prerelease: false
+          draft: false
+          body: ${{ github.event.head_commit.message }}
+          files: ${{ github.workspace }}/out/nintendo_nx_arm64_armv8a/atmosphere-*.zip, ${{ github.workspace }}/out/nintendo_nx_arm64_armv8a/fusee.bin 
+          name: "Switch Release #${{ github.run_number }}"
 
         
