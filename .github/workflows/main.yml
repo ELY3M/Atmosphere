@@ -79,8 +79,9 @@ jobs:
      
       - name: list out dir
         run: |  
-           ls -la out/nintendo_nx_arm64_armv8a
-           ls -la out/nintendo_nx_arm64_armv8a/release
+          ls -la
+          ls -la out/nintendo_nx_arm64_armv8a
+          ls -la out/nintendo_nx_arm64_armv8a/release
            
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
@@ -89,7 +90,7 @@ jobs:
           prerelease: false
           draft: false
           body: ${{ github.event.head_commit.message }}
-          files: ${{ github.workspace }}/out/nintendo_nx_arm64_armv8a/release/*.*, ${{ github.workspace }}/out/nintendo_nx_arm64_armv8a/release.zip
+          files: ${{ github.workspace }}/out/nintendo_nx_arm64_armv8a/release/*.*
           name: "Switch Release #${{ github.run_number }}"
 
         
