@@ -72,15 +72,16 @@ jobs:
           cd ../..
           make -j4
 
-      - name: list out dir
-        run: ls -la out/nintendo_nx_arm64_armv8a/release 
-
       - uses: actions/upload-artifact@v4
         with:
           name: release
           path: ${{ github.workspace }}/out/nintendo_nx_arm64_armv8a
      
-     
+      - name: list out dir
+        run: |  
+           ls -la out/nintendo_nx_arm64_armv8a
+           ls -la out/nintendo_nx_arm64_armv8a/release
+           
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
@@ -88,7 +89,7 @@ jobs:
           prerelease: false
           draft: false
           body: ${{ github.event.head_commit.message }}
-          files: ${{ github.workspace }}/out/nintendo_nx_arm64_armv8a/release/*.*
+          files: ${{ github.workspace }}/out/nintendo_nx_arm64_armv8a/release/*.*, ${{ github.workspace }}/out/nintendo_nx_arm64_armv8a/release.zip
           name: "Switch Release #${{ github.run_number }}"
 
         
