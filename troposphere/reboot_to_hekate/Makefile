@@ -37,8 +37,8 @@ DATA		:=	data
 INCLUDES	:=	include
 EXEFS_SRC	:=	exefs_src
 APP_TITLE	:=	Reboot to Hekate
-APP_AUTHOR	:=	Tomvita
-APP_VERSION	:=	1.0.0
+APP_AUTHOR	:=	Tomvita and ELY M.
+APP_VERSION	:=	1.0.1
 #ROMFS	:=	romfs
 
 #---------------------------------------------------------------------------------
