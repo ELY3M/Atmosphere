@@ -14,7 +14,7 @@ Ely's Changes
 * error/crash screens have my name in it to show that it is not official build.    
 * Added reboot to hekate payload - Thanks to __tomvita__ for this code and idea. 
 * my own favorite splash screen haha        
-* python scripts from [mrdude2478](https://github.com/mrdude2478) for building fusee with python3 - you have to hand run them first before building     
+* ~~python scripts from [mrdude2478](https://github.com/mrdude2478) for building fusee with python3 - you have to hand run them first before building~~
 
 
 Components

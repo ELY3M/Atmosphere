@@ -53,17 +53,17 @@ jobs:
       # - name: Install dependencies
         # run: python -m pip install --upgrade pip lz4     
       
-      - name: python / nproc test
-        run: | 
-          python --version
-          nproc 
+      # - name: python / nproc test
+        # run: | 
+          # python --version
+          # nproc 
         
-      - name: run fusee python script
-        run: |
-          cd fusee/program/
-          python update_mtc_tables.py
-          python update_sdram_params.py
-          cd ../..
+      # - name: run fusee python script
+        # run: |
+          # cd fusee/program/
+          # python update_mtc_tables.py
+          # python update_sdram_params.py
+          # cd ../..
         
       - name: make 
         run: | 
