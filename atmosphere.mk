@@ -53,6 +53,7 @@ dist: dist-no-debug
 	cp $(CURRENT_DIRECTORY)/stratosphere/memlet/$(ATMOSPHERE_OUT_DIR)/memlet.elf $(DIST_DIR)/memlet.elf
 	cp $(CURRENT_DIRECTORY)/troposphere/daybreak/daybreak.elf $(DIST_DIR)/daybreak.elf
 	cp $(CURRENT_DIRECTORY)/troposphere/haze/haze.elf $(DIST_DIR)/haze.elf
+	cp $(CURRENT_DIRECTORY)/troposphere/reboot_to_hekate/reboot_to_hekate.elf $(DIST_DIR)/reboot_to_hekate.elf	
 	cp $(CURRENT_DIRECTORY)/troposphere/reboot_to_payload/reboot_to_payload.elf $(DIST_DIR)/reboot_to_payload.elf
 	cd $(DIST_DIR); zip -r ../atmosphere-$(ATMOSPHERE_VERSION)-debug.zip ./*; cd ../;
 	rm -rf $(DIST_DIR)
@@ -110,6 +111,7 @@ dist-no-debug: package3 $(CURRENT_DIRECTORY)/$(ATMOSPHERE_OUT_DIR)
 	@PATH="$(DEVKITPRO)/tools/bin:$$PATH" build_romfs $(DIST_DIR)/stratosphere_romfs $(DIST_DIR)/atmosphere/stratosphere.romfs
 	rm -r $(DIST_DIR)/stratosphere_romfs
 	cp troposphere/reboot_to_payload/reboot_to_payload.nro $(DIST_DIR)/switch/reboot_to_payload.nro
+	cp troposphere/reboot_to_hekate/reboot_to_hekate.nro $(DIST_DIR)/switch/reboot_to_hekate.nro	
 	cp troposphere/daybreak/daybreak.nro $(DIST_DIR)/switch/daybreak.nro
 	cp troposphere/haze/haze.nro $(DIST_DIR)/switch/haze.nro
 	cd $(DIST_DIR); zip -r ../atmosphere-$(ATMOSPHERE_VERSION).zip ./*; cd ../;
