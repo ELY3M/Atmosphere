@@ -14,13 +14,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
+#include <switch.h>
 
-#define ATMOSPHERE_RELEASE_VERSION_MAJOR    1
-#define ATMOSPHERE_RELEASE_VERSION_MINOR    11
-#define ATMOSPHERE_RELEASE_VERSION_MICRO    1
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#define ATMOSPHERE_RELEASE_VERSION ATMOSPHERE_RELEASE_VERSION_MAJOR, ATMOSPHERE_RELEASE_VERSION_MINOR, ATMOSPHERE_RELEASE_VERSION_MICRO
+Result amsBpcInitialize();
+void   amsBpcExit();
+Service *amsBpcGetServiceSession(void);
 
-#define ATMOSPHERE_SUPPORTED_HOS_VERSION_MAJOR 22
-#define ATMOSPHERE_SUPPORTED_HOS_VERSION_MINOR 1
-#define ATMOSPHERE_SUPPORTED_HOS_VERSION_MICRO 0
+Result amsBpcSetRebootPayload(const void *src, size_t src_size);
+
+#ifdef __cplusplus
+}
+#endif

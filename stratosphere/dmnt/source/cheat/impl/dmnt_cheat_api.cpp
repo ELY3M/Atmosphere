@@ -23,8 +23,10 @@ namespace ams::dmnt::cheat::impl {
     namespace {
 
         /* Helper definitions. */
-        constexpr size_t MaxCheatCount = 0x80;
-        constexpr size_t MaxFrozenAddressCount = 0x80;
+		// from 0x80 to 0x400  (128 to 1024) //ELY M. 
+		//need to increase or the cheats will get cut off....    
+        constexpr size_t MaxCheatCount = 0x400;
+        constexpr size_t MaxFrozenAddressCount = 0x400;
 
         class FrozenAddressMapEntry : public util::IntrusiveRedBlackTreeBaseNode<FrozenAddressMapEntry> {
             public:
@@ -58,6 +60,7 @@ namespace ams::dmnt::cheat::impl {
         };
 
         constinit os::SdkMutex g_text_file_buffer_lock;
+		//I have to undo my cheat mod here because of eshop crashing on opening.   
         constinit char g_text_file_buffer[64_KB];
 
         constinit u8 g_frozen_address_map_memory[sizeof(FrozenAddressMapEntry) * MaxFrozenAddressCount];
