@@ -1,0 +1,24 @@
+name: Scheduled merge action
+on: 
+  schedule:
+    - cron: '* */1 * * *'
+  workflow_dispatch:
+  workflow_call:
+  
+jobs:
+  merge-from-upstream-repo:
+    runs-on: ubuntu-latest
+    steps: 
+      - name: Checkout
+        uses: actions/checkout@latest
+        with:
+          ref: master             # set the branch to merge to
+          fetch-depth: 0            # get all changes
+          
+      - name: Sync with upstream 
+         run: |
+          git remote add upstream https://github.com/Atmosphere-NX/Atmosphere.git
+          git fetch upstream
+          git checkout master 
+          git push origin master
+          date
