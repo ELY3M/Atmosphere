@@ -12,7 +12,7 @@ jobs:
 
     steps:
     - name: Send Push Notification
-      uses: techulus/push-github-action@latest
+      uses: techulus/push-github-action@v3
       env:
         API_KEY: ${{ secrets.API_KEY }}
         MESSAGE: "TEST!!!!!!"
