@@ -16,7 +16,7 @@ jobs:
           fetch-depth: 0            # get all changes
           
       - name: Sync with upstream 
-         run: |
+        run: |
           git remote add upstream https://github.com/Atmosphere-NX/Atmosphere.git
           git fetch upstream
           git checkout master 
