@@ -55,7 +55,7 @@ dist: dist-no-debug
 	cp $(CURRENT_DIRECTORY)/troposphere/haze/haze.elf $(DIST_DIR)/haze.elf
 	cp $(CURRENT_DIRECTORY)/troposphere/reboot_to_hekate/reboot_to_hekate.elf $(DIST_DIR)/reboot_to_hekate.elf	
 	cp $(CURRENT_DIRECTORY)/troposphere/reboot_to_payload/reboot_to_payload.elf $(DIST_DIR)/reboot_to_payload.elf
-	cd $(DIST_DIR); zip -r ../atmosphere-$(ATMOSPHERE_VERSION)-debug.zip ./*; cd ../;
+	cd $(DIST_DIR); zip -1 -r ../atmosphere-$(ATMOSPHERE_VERSION)-debug.zip ./*; cd ../;
 	rm -rf $(DIST_DIR)
 
 dist-no-debug: package3 $(CURRENT_DIRECTORY)/$(ATMOSPHERE_OUT_DIR)
