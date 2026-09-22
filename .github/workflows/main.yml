@@ -73,9 +73,9 @@ jobs:
         run: | 
           git config --global --add safe.directory /__w/Atmosphere/Atmosphere 
           cd troposphere/haze
-          make -j4
+          make -j$(nproc)
           cd ../..
-          make -j4
+          make -j$(nproc)
           
       - name: get date/date 
         env:
