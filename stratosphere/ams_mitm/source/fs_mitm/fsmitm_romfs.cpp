@@ -36,6 +36,12 @@ namespace ams::mitm::fs {
             };
 
             constexpr const ApplicationWithDynamicHeapInfo ApplicationsWithDynamicHeap[] = {
+                
+                ///Scarlet: 0100A3D008C5C000
+                ///Violet: 01008F6008C5E000
+                { 0x0100A3D008C5C000,  16_MB, 0_MB },
+                { 0x01008F6008C5E000,  16_MB, 0_MB },
+                
                 /* Danganronpa V3: Killing Harmony Anniversary Edition. */
                 /* Requirement ? MB. 16 MB stolen heap fixes a crash, though. */
                 /* Unknown heap sensitivity. */
