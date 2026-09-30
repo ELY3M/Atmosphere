@@ -349,6 +349,19 @@ namespace ams::mitm::fs {
         R_SUCCEED();
     }
 
+    Result FsMitmService::OpenDataStorageByCurrentProcessForBatchRead(sf::Out<sf::SharedPointer<ams::fssrv::sf::IStorage>> out) {
+        /* Only qlaunch's current-process RomFS override is verified for this command. */
+        R_UNLESS(m_client_info.program_id == ncm::SystemAppletId::Qlaunch, sm::mitm::ResultShouldForwardToSession());
+        R_UNLESS(m_client_info.override_status.IsProgramSpecific(), sm::mitm::ResultShouldForwardToSession());
+        R_UNLESS(mitm::fs::HasSdRomfsContent(m_client_info.program_id), sm::mitm::ResultShouldForwardToSession());
+
+        FsStorage data_storage;
+        R_TRY(fsOpenDataStorageByCurrentProcessFwd(m_forward_service.get(), std::addressof(data_storage)));
+        const sf::cmif::DomainObjectId target_object_id{serviceGetObjectId(std::addressof(data_storage.s))};
+        out.SetValue(MakeSharedStorage(GetLayeredRomfsStorage(m_client_info.program_id, data_storage, true)), target_object_id);
+        R_SUCCEED();
+    }
+
     Result FsMitmService::OpenDataStorageWithProgramIndex(sf::Out<sf::SharedPointer<ams::fssrv::sf::IStorage>> out, u8 program_index) {
         /* Only mitm if we should override contents for the current process. */
         R_UNLESS(m_client_info.override_status.IsProgramSpecific(), sm::mitm::ResultShouldForwardToSession());
